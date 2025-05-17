@@ -35,7 +35,7 @@ def googleApi(request):
         }
         print(f'The data: {data}')
         
-        access_token_url = 'https://oauth2.googleapis.com/token/'
+        access_token_url = 'https://oauth2.googleapis.com/token'
         response = requests.post(access_token_url, data=data)
         user_data = response.json()
         
@@ -80,7 +80,6 @@ def googleApi(request):
             user.refresh_token = user_refresh_token
         user.save()
 
-    login(request, user)
     # Assign first login achievement to user
     user_achiev, create = UserAchievements.objects.get_or_create(user=user)
     achievement = Achievements.objects.filter(name="The Journey Begins").first()
@@ -120,7 +119,7 @@ def refreshAccessToken(user):
             logout(user)
             return Response({'Detail': 'Login expired. Please sign in again.'}, status=status.HTTP_401_UNAUTHORIZED)
         elif token_info.get('error'):
-            return Response({'Detail': f'Error during new access token process: {token_info['error_description']}'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'Detail': f"Error during new access token process: {token_info['error_description']}"}, status=status.HTTP_400_BAD_REQUEST)
 
         user.access_token = token_info['access_token']
         user.access_token_expires_at = datetime.now(dt_timezone.utc) + timedelta(seconds=token_info['expires_in'])

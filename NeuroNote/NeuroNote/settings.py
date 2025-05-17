@@ -145,6 +145,6 @@ AUTH_USER_MODEL = 'authentication.AuthUser'
 
 GOOGLE_CLIENT_ID = '708025289440-pnb51jsd3pnbjdpv302lmjs03rt4v0i2.apps.googleusercontent.com'
 GOOGLE_CLIENT_SECRET = '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'
-REDIRECT_URI = 'http://127.0.0.1:8000/api/auth/google/'
+REDIRECT_URI = 'http://localhost:5173/auth/callback/'
 
 LOGIN_URL = '/'

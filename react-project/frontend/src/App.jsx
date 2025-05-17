@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Route, Routes, Link, Navigate } from 'react-ro
 import Home from './Home';  // Import the Home page component
 import About from './About'; // Import the About page component
 import './App.css'; // Import the CSS file
+import Signin from './auth/Signin';
 import Authentication from './api/OAuthSuccess';
 import { useAuth, AuthProvider } from './auth/AuthContext'; // or wherever it's defined
 
@@ -70,6 +71,7 @@ function App() {
                   </ProtectedRoute>
                 } 
               />
+              <Route path='/signin' element={ <Signin /> }/>
             </Routes>
           </main>
         </Router>
