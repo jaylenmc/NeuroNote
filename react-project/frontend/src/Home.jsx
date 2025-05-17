@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from './auth/AuthContext'; // or wherever you defined its
+import generateState from './utils/auth';
 
 function Home() {
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
@@ -11,7 +12,7 @@ function Home() {
 
   const OAUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth?' +
     new URLSearchParams({
-      client_id:'REDACTED',
+      client_id:import.meta.env.VITE_GOOGLE_CLIENT_ID,
       redirect_uri:'http://localhost:5173/auth/callback/',
       response_type: "code",
       scope: 'openid email profile',
@@ -20,6 +21,9 @@ function Home() {
     }).toString();
 
   const handleLogin = () => {
+    const state = generateState();
+    sessionStorage.setItem('oauth_state', state);
+
     window.location.href = OAUTH_URL;
   }
 
@@ -38,7 +42,7 @@ function Home() {
   // Redirect to dashboard if user is already logged in
   useEffect(() => {
     if (user) {
-      navigate('/dashboard');
+      navigate('/dashboard/');
     }
   }, [user, navigate]);
 
@@ -85,7 +89,7 @@ function Home() {
           <div className="hero-content">
             <h1 className="hero-title">Master Any Subject<br />Backed By Brain Science</h1>
             <p className="hero-subtitle">Minimal, modern note-taking powered by AI.</p>
-            <button onClick={handleLogin} className="cta-btn">Get Started</button>
+            <Link to='/signin' className="cta-btn">Get Started</Link>
           </div>
         </div>
       </section>

@@ -145,6 +145,6 @@ AUTH_USER_MODEL = 'authentication.AuthUser'
 
 GOOGLE_CLIENT_ID = 'REDACTED'
 GOOGLE_CLIENT_SECRET = 'REDACTED'
-REDIRECT_URI = 'http://127.0.0.1:8000/api/auth/google/'
+REDIRECT_URI = 'http://localhost:5173/auth/callback/'
 
 LOGIN_URL = '/'
