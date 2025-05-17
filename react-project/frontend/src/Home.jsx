@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from './auth/AuthContext'; // or wherever you defined it
+import { useAuth } from './auth/AuthContext'; // or wherever you defined its
 
 function Home() {
   const [isVideoLoaded, setIsVideoLoaded] = useState(false);
