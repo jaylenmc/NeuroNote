@@ -1,0 +1,24 @@
+# Node.js
+node_modules/
+dist/
+build/
+react-project/node_modules/
+react-project/dist/
+react-project/build/
+
+# Python
+__pycache__/
+*.pyc
+NeuroNoteVenv/
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
+
+# Environment
+.env
+
+# Misc
+*.swp
