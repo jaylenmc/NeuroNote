@@ -1,17 +1,20 @@
+@font-face {
+    font-family: 'Floatien';
+    src: url('../assets/fonts/Floatien.ttf') format('truetype');
+}
+
 .signin-container {
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    background-color: #000000;
+    background-color: #272727;
     padding: 20px;
 }
 
 .signin-box {
-    background: #121212;
+    background: transparent;
     padding: 40px;
-    border-radius: 16px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
     width: 100%;
     max-width: 400px;
     text-align: center;
@@ -21,22 +24,16 @@
     margin-bottom: 40px;
 }
 
-.app-branding h1 {
+.neuronote-title {
+    font-family: 'Floatien', sans-serif;
     color: #ffffff;
-    font-size: 32px;
-    font-weight: 700;
-    margin: 0;
-    margin-bottom: 8px;
-}
-
-.app-branding p {
-    color: #e0e0e0;
-    font-size: 16px;
+    font-size: 48px;
+    letter-spacing: 2px;
     margin: 0;
 }
 
 .signin-content {
-    margin-top: 20px;
+    margin-top: 40px;
 }
 
 .google-signin-button {
@@ -46,28 +43,48 @@
     width: 100%;
     padding: 12px 24px;
     background-color: #1a1a1a;
-    border: 1px solid #333333;
+    border: 1px solid #333;
     border-radius: 8px;
     font-size: 16px;
     color: #ffffff;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.2s;
 }
 
 .google-signin-button:hover {
     background-color: #242424;
-    border-color: #404040;
+    border-color: #444;
     transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-}
-
-.google-signin-button:active {
-    transform: translateY(0);
 }
 
 .google-icon {
     font-size: 24px;
     margin-right: 12px;
+}
+
+.error-message-popup {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #ff4444;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    animation: slideDown 0.3s ease-out;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
+}
+
+@keyframes slideDown {
+    from {
+        transform: translate(-50%, -20px);
+        opacity: 0;
+    }
+    to {
+        transform: translate(-50%, 0);
+        opacity: 1;
+    }
 }
 
 @media (max-width: 480px) {

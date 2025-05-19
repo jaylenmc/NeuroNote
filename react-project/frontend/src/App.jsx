@@ -1,11 +1,12 @@
 // src/App.jsx
 import React from 'react';
-import { BrowserRouter as Router, Route, Routes, Link, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, Link, Navigate, useLocation } from 'react-router-dom';
 import Home from './Home';  // Import the Home page component
 import About from './About'; // Import the About page component
 import './App.css'; // Import the CSS file
-import Signin from './auth/Signin';
+import Signin from './auth/signin';
 import Authentication from './api/OAuthSuccess';
+import Dashboard from './components/Dashboard';
 import { useAuth, AuthProvider } from './auth/AuthContext'; // or wherever it's defined
 
 // Protected Route component
@@ -25,6 +26,13 @@ const ProtectedRoute = ({ children }) => {
 
 function Navbar() {
   const { user, logout } = useAuth();
+  const location = useLocation();
+  
+  // Hide navbar on these routes
+  const hideNavbarRoutes = ['/dashboard', '/signin', '/auth/callback/'];  // Added trailing slash to match exact path
+  if (hideNavbarRoutes.includes(location.pathname)) {
+    return null;
+  }
   
   return (
     <nav className="nn-navbar-global">
@@ -42,10 +50,41 @@ function Navbar() {
             <button onClick={logout} className="nn-signup-btn-minimal">Logout</button>
           </>
         ) : (
-          <Link to="/signup" className="nn-signup-btn-minimal">Get Started</Link>
+          <Link to="/signin" className="nn-signup-btn-minimal">Get Started</Link>
         )}
       </div>
     </nav>
+  );
+}
+
+// AppContent wrapper to use location
+function AppContent() {
+  const location = useLocation();
+  const showNavbar = !['/dashboard', '/signin', '/auth/callback/'].includes(location.pathname);
+
+  return (
+    <>
+      {showNavbar && <Navbar />}
+      <main className="main-content">
+        <Routes>
+          <Route path='/auth/callback/' element={<Authentication />}></Route>
+          <Route path="/" element={<Home />} /> {/* Home page route */}
+          <Route path="/about" element={<About />} /> {/* About page route */}
+          <Route path="/features" element={<div>Features Page</div>} />
+          <Route path="/pricing" element={<div>Pricing Page</div>} />
+          <Route path="/signup" element={<div>Sign Up Page</div>} />
+          <Route 
+            path="/dashboard" 
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route path='/signin' element={ <Signin /> }/>
+        </Routes>
+      </main>
+    </>
   );
 }
 
@@ -54,26 +93,7 @@ function App() {
     <div className="app">
       <AuthProvider>
         <Router>
-          <Navbar />
-          <main className="main-content">
-            <Routes>
-              <Route path='/auth/callback/' element={<Authentication />}></Route>
-              <Route path="/" element={<Home />} /> {/* Home page route */}
-              <Route path="/about" element={<About />} /> {/* About page route */}
-              <Route path="/features" element={<div>Features Page</div>} />
-              <Route path="/pricing" element={<div>Pricing Page</div>} />
-              <Route path="/signup" element={<div>Sign Up Page</div>} />
-              <Route 
-                path="/dashboard" 
-                element={
-                  <ProtectedRoute>
-                    <div>Dashboard Page</div>
-                  </ProtectedRoute>
-                } 
-              />
-              <Route path='/signin' element={ <Signin /> }/>
-            </Routes>
-          </main>
+          <AppContent />
         </Router>
       </AuthProvider>
     </div>

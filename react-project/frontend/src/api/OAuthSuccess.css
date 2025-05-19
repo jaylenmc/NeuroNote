@@ -1,0 +1,33 @@
+@font-face {
+    font-family: 'Floatien';
+    src: url('../assets/fonts/Floatien.ttf') format('truetype');
+}
+
+.auth-loading-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #000000;
+}
+
+.auth-loading-title {
+    font-family: 'Floatien', sans-serif;
+    color: #ffffff;
+    font-size: 48px;
+    letter-spacing: 2px;
+    animation: fadeInOut 2s infinite;
+    margin: 0;
+}
+
+@keyframes fadeInOut {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.3;
+    }
+    100% {
+        opacity: 1;
+    }
+} 
