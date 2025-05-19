@@ -14,10 +14,8 @@ class DeckCollection(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        deck_id = request.data.get('id')
-
-        deck = Deck.objects.filter(user=request.user, id=deck_id).first()
-        serialized = DeckSerializer(deck)
+        deck = Deck.objects.filter(user=request.user)
+        serialized = DeckSerializer(deck, many=True)
 
         return Response(serialized.data, status=status.HTTP_200_OK)
     
@@ -53,6 +51,12 @@ class DeckCollection(APIView):
     
 class CardCollection(APIView):
     permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        cards = Card.objects.filter(card_deck__user=request.user)
+        serialized = CardSerializer(cards, many=True)
+
+        return Response(serialized.data, status=status.HTTP_200_OK)
 
     def post(self, request):
         question = request.data.get('question')

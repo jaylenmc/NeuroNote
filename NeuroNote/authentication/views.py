@@ -1,5 +1,6 @@
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
+from django.http import JsonResponse
 import requests
 from django.conf import settings
 from .models import AuthUser
@@ -7,9 +8,10 @@ from .serializers import UserSerializer
 from django.utils import timezone
 from datetime import datetime, timedelta, timezone as dt_timezone
 from zoneinfo import ZoneInfo
-from django.contrib.auth import login, logout
+from django.contrib.auth import logout
 from rest_framework import status
 from dashboard.models import UserAchievements, Achievements
+from rest_framework_simplejwt.tokens import RefreshToken
 
 @api_view(['POST'])
 def googleApi(request):
@@ -62,7 +64,7 @@ def googleApi(request):
     email = user_info.get('email')
 
     user = AuthUser.objects.filter(email=email).first()
-
+    
     if not user:
         user = AuthUser.objects.create_user(
             email=email,
@@ -80,6 +82,12 @@ def googleApi(request):
             user.refresh_token = user_refresh_token
         user.save()
 
+    refresh = RefreshToken.for_user(user)
+    refresh['email'] = user.email
+
+    user.jwt_token = str(refresh.access_token)
+    user.save()
+
     # Assign first login achievement to user
     user_achiev, create = UserAchievements.objects.get_or_create(user=user)
     achievement = Achievements.objects.filter(name="The Journey Begins").first()
@@ -95,7 +103,18 @@ def googleApi(request):
     except Exception as e:
         return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
-    return Response(data_serialized.data, status=200)
+
+    response = Response(data_serialized.data, status=status.HTTP_200_OK)
+
+    response.set_cookie(
+        key='jwt_token',
+        value=str(refresh.access_token),
+        httponly=True,
+        secure=True,
+        samesite='Lax'
+    )
+    
+    return response
 
 def is_token_expired(user):
     current_time = datetime.now(dt_timezone.utc)
