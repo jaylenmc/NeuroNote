@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { FiPlus, FiTrash2 } from 'react-icons/fi';
 import './DeckManager.css';
+import { getAuthHeader, handleApiError } from '../utils/auth';
 
 const DeckManager = () => {
     const [decks, setDecks] = useState([]);
@@ -41,16 +42,19 @@ const DeckManager = () => {
     const fetchDecks = async () => {
         setIsLoadingDecks(true);
         try {
-            const jwt_token = sessionStorage.getItem('jwt_token');
-            const response = await axios.get(`${api}flashcards/deck/`, {
-                headers: {
-                    'Authorization': `Bearer ${jwt_token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
+            const headers = await getAuthHeader();
+            const response = await axios.get(`${api}flashcards/deck/`, { headers });
             setDecks(response.data);
         } catch (error) {
-            console.error('Error fetching decks:', error);
+            try {
+                await handleApiError(error);
+                // Retry the request with new token
+                const newHeaders = await getAuthHeader();
+                const response = await axios.get(`${api}flashcards/deck/`, { headers: newHeaders });
+                setDecks(response.data);
+            } catch (retryError) {
+                console.error('Error fetching decks:', retryError);
+            }
         } finally {
             setIsLoadingDecks(false);
         }
@@ -59,22 +63,25 @@ const DeckManager = () => {
     const fetchCards = async (deckId) => {
         setIsLoadingCards(true);
         try {
-            const jwt_token = sessionStorage.getItem('jwt_token');
-            const response = await axios.get(`${api}flashcards/cards/`, {
-                headers: {
-                    'Authorization': `Bearer ${jwt_token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
+            const headers = await getAuthHeader();
+            const response = await axios.get(`${api}flashcards/cards/`, { headers });
             
-            // Filter cards based on card_deck property
             const deckCards = response.data.filter(card => card.card_deck === deckId);
-            console.log('Fetched cards:', deckCards); // Debug log
+            console.log('Fetched cards:', deckCards);
             setCards(deckCards);
             
         } catch (error) {
-            console.error('Error fetching cards:', error);
-            setCards([]);
+            try {
+                await handleApiError(error);
+                // Retry the request with new token
+                const newHeaders = await getAuthHeader();
+                const response = await axios.get(`${api}flashcards/cards/`, { headers: newHeaders });
+                const deckCards = response.data.filter(card => card.card_deck === deckId);
+                setCards(deckCards);
+            } catch (retryError) {
+                console.error('Error fetching cards:', retryError);
+                setCards([]);
+            }
         } finally {
             setIsLoadingCards(false);
         }
@@ -84,40 +91,55 @@ const DeckManager = () => {
         if (!newDeck.title.trim() || !newDeck.subject.trim()) return;
         
         try {
-            const jwt_token = sessionStorage.getItem('jwt_token');
+            const headers = await getAuthHeader();
             await axios.post(`${api}flashcards/deck/`, 
                 newDeck,
-                {
-                    headers: {
-                        'Authorization': `Bearer ${jwt_token}`,
-                        'Content-Type': 'application/json'
-                    }
-                }
+                { headers }
             );
             setNewDeck({ title: '', subject: '' });
             setIsCreatingDeck(false);
             fetchDecks();
         } catch (error) {
-            console.error('Error creating deck:', error);
+            try {
+                await handleApiError(error);
+                // Retry the request with new token
+                const newHeaders = await getAuthHeader();
+                await axios.post(`${api}flashcards/deck/`, 
+                    newDeck,
+                    { headers: newHeaders }
+                );
+                setNewDeck({ title: '', subject: '' });
+                setIsCreatingDeck(false);
+                fetchDecks();
+            } catch (retryError) {
+                console.error('Error creating deck:', retryError);
+            }
         }
     };
 
     const deleteDeck = async (deckId) => {
         try {
-            const jwt_token = sessionStorage.getItem('jwt_token');
-            await axios.delete(`${api}flashcards/deck/delete/${deckId}`, {
-                headers: {
-                    'Authorization': `Bearer ${jwt_token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
+            const headers = await getAuthHeader();
+            await axios.delete(`${api}flashcards/deck/delete/${deckId}`, { headers });
             if (selectedDeck?.id === deckId) {
                 setSelectedDeck(null);
                 setCards([]);
             }
             fetchDecks();
         } catch (error) {
-            console.error('Error deleting deck:', error);
+            try {
+                await handleApiError(error);
+                // Retry the request with new token
+                const newHeaders = await getAuthHeader();
+                await axios.delete(`${api}flashcards/deck/delete/${deckId}`, { headers: newHeaders });
+                if (selectedDeck?.id === deckId) {
+                    setSelectedDeck(null);
+                    setCards([]);
+                }
+                fetchDecks();
+            } catch (retryError) {
+                console.error('Error deleting deck:', retryError);
+            }
         }
     };
 
@@ -125,8 +147,7 @@ const DeckManager = () => {
         if (!newCard.front.trim() || !newCard.back.trim()) return;
         
         try {
-            const jwt_token = sessionStorage.getItem('jwt_token');
-            // Ensure the date is in YYYY-MM-DD format and adjust for timezone
+            const headers = await getAuthHeader();
             const scheduledDate = newCard.scheduled_date ? 
                 new Date(newCard.scheduled_date + 'T00:00:00').toISOString().split('T')[0] : 
                 null;
@@ -138,19 +159,14 @@ const DeckManager = () => {
                 "scheduled_date": scheduledDate
             };
             
-            console.log('Creating card with data:', cardData); // Debug log
+            console.log('Creating card with data:', cardData);
             
             const response = await axios.post(`${api}flashcards/cards/`,
                 cardData,
-                {
-                    headers: {
-                        'Authorization': `Bearer ${jwt_token}`,
-                        'Content-Type': 'application/json'
-                    }
-                }
+                { headers }
             );
             
-            console.log('Card creation response:', response.data); // Debug log
+            console.log('Card creation response:', response.data);
             
             setNewCard({ 
                 front: '', 
@@ -160,22 +176,54 @@ const DeckManager = () => {
             setIsCreatingCard(false);
             fetchCards(selectedDeck.id);
         } catch (error) {
-            console.error('Error creating card:', error);
+            try {
+                await handleApiError(error);
+                // Retry the request with new token
+                const newHeaders = await getAuthHeader();
+                const scheduledDate = newCard.scheduled_date ? 
+                    new Date(newCard.scheduled_date + 'T00:00:00').toISOString().split('T')[0] : 
+                    null;
+
+                const cardData = {
+                    "answer": newCard.back,
+                    "question": newCard.front,
+                    "deck_id": selectedDeck.id,
+                    "scheduled_date": scheduledDate
+                };
+                
+                const response = await axios.post(`${api}flashcards/cards/`,
+                    cardData,
+                    { headers: newHeaders }
+                );
+                
+                setNewCard({ 
+                    front: '', 
+                    back: '',
+                    scheduled_date: new Date().toISOString().split('T')[0]
+                });
+                setIsCreatingCard(false);
+                fetchCards(selectedDeck.id);
+            } catch (retryError) {
+                console.error('Error creating card:', retryError);
+            }
         }
     };
 
     const deleteCard = async (deckId, cardId) => {
         try {
-            const jwt_token = sessionStorage.getItem('jwt_token');
-            await axios.delete(`${api}flashcards/cards/delete/${deckId}/${cardId}`, {
-                headers: {
-                    'Authorization': `Bearer ${jwt_token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
+            const headers = await getAuthHeader();
+            await axios.delete(`${api}flashcards/cards/delete/${deckId}/${cardId}`, { headers });
             fetchCards(selectedDeck.id);
         } catch (error) {
-            console.error('Error deleting card:', error);
+            try {
+                await handleApiError(error);
+                // Retry the request with new token
+                const newHeaders = await getAuthHeader();
+                await axios.delete(`${api}flashcards/cards/delete/${deckId}/${cardId}`, { headers: newHeaders });
+                fetchCards(selectedDeck.id);
+            } catch (retryError) {
+                console.error('Error deleting card:', retryError);
+            }
         }
     };
 

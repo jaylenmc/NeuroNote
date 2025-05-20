@@ -11,6 +11,8 @@ from zoneinfo import ZoneInfo
 from django.contrib.auth import logout
 from rest_framework import status
 from dashboard.models import UserAchievements, Achievements
+from rest_framework_simplejwt.serializers import TokenRefreshSerializer
+from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 @api_view(['POST'])
@@ -105,10 +107,12 @@ def googleApi(request):
     
 
     response = Response(data_serialized.data, status=status.HTTP_200_OK)
+    print(f'Refresh jwt token: {refresh}')
+    print(f'Access jwt token: {user.jwt_token}')
 
     response.set_cookie(
         key='jwt_token',
-        value=str(refresh.access_token),
+        value=str(refresh),
         httponly=True,
         secure=True,
         samesite='Lax'
@@ -147,3 +151,13 @@ def refreshAccessToken(user):
         return token_info['access_token']
     except Exception as e:
         return Response({"detail": f"Error refreshing access token: {str(e)}"}, status=status.HTTP_400_BAD_REQUEST)
+    
+class CookieTokenRefreshView(TokenRefreshView):
+    def post(self, request, *args, **kwargs):
+        refresh_token = request.COOKIES.get('refresh_token')
+        if not refresh_token:
+            return Response({'detail': 'No refresh token found in cookies'}, status=status.HTTP_401_UNAUTHORIZED)
+        
+        serializer = TokenRefreshSerializer(data={'refresh': refresh_token})
+        serializer.is_valid(raise_exception=True)
+        return Response(serializer.validated_data)

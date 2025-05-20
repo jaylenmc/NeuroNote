@@ -7,13 +7,12 @@
     display: flex;
     width: 100%;
     height: 100vh;
-    background-color: #272727 !important;
+    background-color: #272727;
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: 1;
 }
 
 .dashboard-sidebar {
@@ -32,8 +31,9 @@
 
 .workspace-header {
     display: flex;
-    align-items: center;
-    justify-content: center;
+    align-items: flex-start;
+    justify-content: flex-start;
+    position: relative;
 }
 
 .neuronote-title {
@@ -61,6 +61,86 @@
     border-top: 1px solid #333;
 }
 
+.profile-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    background-color: #1e1e1e;
+    border: 1px solid #333;
+    border-radius: 8px;
+    margin-top: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+}
+
+.dropdown-menu {
+    padding: 4px 0;
+}
+
+.dropdown-item {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 13px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    text-align: left;
+}
+
+.dropdown-item:hover {
+    background-color: #252525;
+}
+
+.dropdown-icon {
+    width: 14px;
+    height: 14px;
+    color: #888;
+}
+
+.dropdown-divider {
+    height: 1px;
+    background-color: #333;
+    margin: 0;
+}
+
+.logout-button {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: none;
+    border: none;
+    outline: none;
+    color: #ff4444;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+    text-align: left;
+}
+
+.logout-button:hover {
+    background-color: #252525;
+}
+
+.logout-button:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+.logout-button .dropdown-icon {
+    color: #ff4444;
+    width: 16px;
+    height: 16px;
+}
+
 .user-profile {
     display: flex;
     align-items: center;
@@ -68,7 +148,8 @@
     padding: 8px;
     border-radius: 6px;
     transition: background-color 0.2s;
-    margin-bottom: 8px;
+    cursor: pointer;
+    width: 100%;
 }
 
 .user-profile:hover {
@@ -105,23 +186,6 @@
 .workspace-name {
     color: #666;
     font-size: 12px;
-}
-
-.logout-button {
-    width: 100%;
-    padding: 8px;
-    background-color: transparent;
-    border: 1px solid #333;
-    border-radius: 6px;
-    color: #fff;
-    font-size: 14px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.logout-button:hover {
-    background-color: #252525;
-    border-color: #444;
 }
 
 .dashboard-content {
