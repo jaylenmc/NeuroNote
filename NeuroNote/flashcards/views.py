@@ -9,6 +9,7 @@ from authentication.models import AuthUser
 from dashboard.models import UserAchievements
 from dashboard.services import knowledge_engineer, memory_architect, deck_destroyer
 from claude_client.client import tutor
+from datetime import datetime
 
 class DeckCollection(APIView):
     permission_classes = [IsAuthenticated]
@@ -32,7 +33,6 @@ class DeckCollection(APIView):
         
         serialized = DeckSerializer(user_collection)
 
-        # Assign Achievement
         deck_destroyer(user=user)
 
         return Response(serialized.data, status=status.HTTP_200_OK)
@@ -62,18 +62,27 @@ class CardCollection(APIView):
         question = request.data.get('question')
         answer = request.data.get('answer')
         deck_id = request.data.get('deck_id')
-        review_date = request.data.get('review_date')
+        scheduled_date = request.data.get('scheduled_date')
 
         user_deck = Deck.objects.filter(user=request.user, id=deck_id).first()
 
         if Card.objects.filter(card_deck=user_deck, question=question).exists():
             return Response({"Message": "Card already exists"}, status=status.HTTP_406_NOT_ACCEPTABLE)
         
+        # Parse the date string to ensure it's in the correct format
+        parsed_date = None
+        if scheduled_date:
+            try:
+                parsed_date = datetime.strptime(scheduled_date, '%Y-%m-%d').date()
+            except ValueError:
+                return Response({"Message": "Invalid date format"}, status=status.HTTP_400_BAD_REQUEST)
+        
         user_card = Card.objects.create(
             question=question,
             answer=answer,
             card_deck=user_deck,
-            )
+            scheduled_date=parsed_date
+        )
                 
         serialized = CardSerializer(user_card)
 
