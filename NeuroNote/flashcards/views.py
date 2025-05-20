@@ -82,7 +82,7 @@ class CardCollection(APIView):
             answer=answer,
             card_deck=user_deck,
             scheduled_date=parsed_date
-        )
+            )
                 
         serialized = CardSerializer(user_card)
 

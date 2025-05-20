@@ -3,6 +3,7 @@ import { useAuth } from '../auth/AuthContext';
 import { FiBook, FiLayers, FiCheckSquare, FiSettings, FiLogOut } from 'react-icons/fi';
 import Calendar from './Calendar';
 import DeckManager from './DeckManager';
+import UpcomingReviews from './UpcomingReviews';
 import './Dashboard.css';
 
 function Dashboard() {
@@ -80,7 +81,13 @@ function Dashboard() {
                     </div>
                 )}
                 {activeTab === 'flashcards' && (
-                    <div className="content-section">
+                    <div className="notion-center-container">
+                        <div className="calendar-upcoming-row">
+                            <div className="calendar-widget">
+                                <Calendar />
+                            </div>
+                            <UpcomingReviews />
+                        </div>
                         <div className="flashcard-tabs">
                             <button 
                                 className={`flashcard-tab ${flashcardTab === 'dashboard' ? 'active' : ''}`}
@@ -104,7 +111,7 @@ function Dashboard() {
                         <div className="flashcard-content">
                             {flashcardTab === 'dashboard' && (
                                 <div className="dashboard-tab">
-                                    <Calendar />
+                                    {/* You can add dashboard-specific content here if needed */}
                                 </div>
                             )}
                             {flashcardTab === 'decks' && (
