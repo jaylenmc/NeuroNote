@@ -18,7 +18,7 @@ export const AuthProvider = ({ children }) => {
       const jwtToken = sessionStorage.getItem('jwt_token');
       
       if (storedUser && storedUser !== 'undefined' && jwtToken) {
-        setUser(JSON.parse(storedUser));
+      setUser(JSON.parse(storedUser));
       } else {
         // Clear any stale data if token is missing
         sessionStorage.removeItem('user');
@@ -34,7 +34,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = (userData) => {
     try {
-      setUser(userData);
+    setUser(userData);
       sessionStorage.setItem('user', JSON.stringify(userData));
     } catch (error) {
       console.error('Error saving user to sessionStorage:', error);
