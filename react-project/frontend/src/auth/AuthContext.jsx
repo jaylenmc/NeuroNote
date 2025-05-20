@@ -11,16 +11,23 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Load user from localStorage (or token logic)
+  // Load user from sessionStorage
   useEffect(() => {
     try {
-      const storedUser = localStorage.getItem('user');
-      if (storedUser && storedUser !== 'undefined') {
+      const storedUser = sessionStorage.getItem('user');
+      const jwtToken = sessionStorage.getItem('jwt_token');
+      
+      if (storedUser && storedUser !== 'undefined' && jwtToken) {
         setUser(JSON.parse(storedUser));
+      } else {
+        // Clear any stale data if token is missing
+        sessionStorage.removeItem('user');
+        setUser(null);
       }
     } catch (error) {
-      console.error('Error loading user from localStorage:', error);
-      localStorage.removeItem('user'); // Clear invalid data
+      console.error('Error loading user from sessionStorage:', error);
+      sessionStorage.removeItem('user');
+      setUser(null);
     }
     setLoading(false);
   }, []);
@@ -28,16 +35,16 @@ export const AuthProvider = ({ children }) => {
   const login = (userData) => {
     try {
       setUser(userData);
-      localStorage.setItem('user', JSON.stringify(userData));
+      sessionStorage.setItem('user', JSON.stringify(userData));
     } catch (error) {
-      console.error('Error saving user to localStorage:', error);
+      console.error('Error saving user to sessionStorage:', error);
     }
   };
 
   const logout = () => {
     setUser(null);
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
+    sessionStorage.removeItem('user');
+    sessionStorage.removeItem('jwt_token');
   };
 
   return (

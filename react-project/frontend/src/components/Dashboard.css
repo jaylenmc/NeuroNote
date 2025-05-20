@@ -182,4 +182,60 @@
     border-radius: 12px;
     padding: 20px;
     min-height: 400px;
+}
+
+.flashcard-tabs {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 24px;
+    border-bottom: 1px solid #333;
+    padding-bottom: 12px;
+}
+
+.flashcard-tab {
+    background: none;
+    border: none;
+    color: #888;
+    font-size: 16px;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.flashcard-tab:hover {
+    color: #fff;
+}
+
+.flashcard-tab.active {
+    color: #fff;
+}
+
+.flashcard-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -13px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background-color: #fff;
+}
+
+.flashcard-content {
+    background-color: #1e1e1e;
+    border-radius: 12px;
+    padding: 24px;
+    min-height: calc(100vh - 200px);
+}
+
+.dashboard-tab,
+.decks-tab,
+.statistics-tab {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.statistics-tab h2 {
+    color: #fff;
+    margin-bottom: 24px;
 } 
