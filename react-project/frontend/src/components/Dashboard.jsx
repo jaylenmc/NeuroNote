@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { FiBook, FiLayers, FiCheckSquare } from 'react-icons/fi';
+import { FiBook, FiLayers, FiCheckSquare, FiSettings, FiLogOut } from 'react-icons/fi';
 import Calendar from './Calendar';
 import DeckManager from './DeckManager';
 import './Dashboard.css';
@@ -9,6 +9,7 @@ function Dashboard() {
     const { user, logout } = useAuth();
     const [activeTab, setActiveTab] = useState('notes');
     const [flashcardTab, setFlashcardTab] = useState('dashboard');
+    const [showDropdown, setShowDropdown] = useState(false);
 
     return (
         <div className="dashboard-container">
@@ -16,7 +17,30 @@ function Dashboard() {
             <div className="dashboard-sidebar">
                 <div className="sidebar-top">
                     <div className="workspace-header">
-                        <h2 className="neuronote-title">NEURONOTE</h2>
+                        <div className="user-profile" onClick={() => setShowDropdown(!showDropdown)}>
+                            <div className="user-avatar">
+                                {user?.email?.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="user-info">
+                                <div className="user-email">{user?.email}</div>
+                                <div className="workspace-name">Personal</div>
+                            </div>
+                        </div>
+                        {showDropdown && (
+                            <div className="profile-dropdown">
+                                <div className="dropdown-menu">
+                                    <button className="dropdown-item">
+                                        <FiSettings className="dropdown-icon" />
+                                        Settings
+                                    </button>
+                                    <div className="dropdown-divider"></div>
+                                    <button className="logout-button" onClick={logout}>
+                                        <FiLogOut className="dropdown-icon" />
+                                        Log out of NeuroNote
+                                    </button>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -44,21 +68,6 @@ function Dashboard() {
                         <FiCheckSquare className="nav-icon" />
                         <span>Quizzes</span>
                     </div>
-                </div>
-
-                <div className="sidebar-bottom">
-                    <div className="user-profile">
-                        <div className="user-avatar">
-                            {user?.email?.charAt(0).toUpperCase()}
-                        </div>
-                        <div className="user-info">
-                            <div className="user-email">{user?.email}</div>
-                            <div className="workspace-name">Personal</div>
-                        </div>
-                    </div>
-                    <button onClick={logout} className="logout-button">
-                        Sign Out
-                    </button>
                 </div>
             </div>
 
@@ -95,12 +104,7 @@ function Dashboard() {
                         <div className="flashcard-content">
                             {flashcardTab === 'dashboard' && (
                                 <div className="dashboard-tab">
-                                    <h2>Flashcards</h2>
-                                    <div className="flashcards-container">
-                                        <div className="calendar-section">
-                                            <Calendar />
-                                        </div>
-                                    </div>
+                                    <Calendar />
                                 </div>
                             )}
                             {flashcardTab === 'decks' && (
@@ -110,8 +114,8 @@ function Dashboard() {
                             )}
                             {flashcardTab === 'statistics' && (
                                 <div className="statistics-tab">
-                                    <h2>Flashcard Statistics</h2>
-                                    {/* Statistics content will go here */}
+                                    <h2>Statistics</h2>
+                                    <p>Coming soon...</p>
                                 </div>
                             )}
                         </div>
@@ -119,8 +123,8 @@ function Dashboard() {
                 )}
                 {activeTab === 'quizzes' && (
                     <div className="content-section">
-                        <h2>My Quizzes</h2>
-                        {/* Quizzes content will go here */}
+                        <h2>Quizzes</h2>
+                        <p>Coming soon...</p>
                     </div>
                 )}
             </div>
