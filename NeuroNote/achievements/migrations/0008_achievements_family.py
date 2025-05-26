@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dashboard', '0007_alter_userachievements_achievements_and_more'),
+        ('achievements', '0007_alter_userachievements_achievements_and_more'),
     ]
 
     operations = [

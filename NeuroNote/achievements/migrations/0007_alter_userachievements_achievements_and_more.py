@@ -6,18 +6,18 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dashboard', '0006_alter_achievements_tier_and_more'),
+        ('achievements', '0006_alter_achievements_tier_and_more'),
     ]
 
     operations = [
         migrations.AlterField(
             model_name='userachievements',
             name='achievements',
-            field=models.ManyToManyField(to='dashboard.achievements'),
+            field=models.ManyToManyField(to='achievements.achievements'),
         ),
         migrations.AlterField(
             model_name='userachievements',
             name='badges',
-            field=models.ManyToManyField(to='dashboard.badge'),
+            field=models.ManyToManyField(to='achievements.badge'),
         ),
     ]

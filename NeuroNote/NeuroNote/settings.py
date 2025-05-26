@@ -43,10 +43,11 @@ INSTALLED_APPS = [
     'api',
     'authentication',
     'flashcards',
-    'dashboard',
+    'achievements',
     'tests',
     'claude_client',
     'corsheaders',
+    'folders',
 ]
 
 REST_FRAMEWORK = {

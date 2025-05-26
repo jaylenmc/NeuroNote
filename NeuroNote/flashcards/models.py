@@ -2,11 +2,15 @@ from django.db import models
 from authentication.models import AuthUser
 from datetime import date, timedelta
 import math
+from folders.models import Folder
 
 class Deck(models.Model):
     title = models.TextField()
-    user = models.ForeignKey(AuthUser, on_delete=models.CASCADE, null=True)
     subject = models.CharField(max_length=255, default="No subject provided")
+
+    user = models.ForeignKey(AuthUser, on_delete=models.CASCADE, null=True)
+    folder = models.ForeignKey(Folder, on_delete=models.CASCADE, null=True)
+
     
 class Card(models.Model):
     question = models.TextField()

@@ -10,7 +10,7 @@ from datetime import datetime, timedelta, timezone as dt_timezone
 from zoneinfo import ZoneInfo
 from django.contrib.auth import logout
 from rest_framework import status
-from dashboard.models import UserAchievements, Achievements
+from achievements.models import UserAchievements, Achievements
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
