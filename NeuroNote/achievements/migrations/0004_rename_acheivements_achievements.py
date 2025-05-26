@@ -7,7 +7,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dashboard', '0003_alter_badges_brain_builder_alter_badges_deck_driver_and_more'),
+        ('achievements', '0003_alter_badges_brain_builder_alter_badges_deck_driver_and_more'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 

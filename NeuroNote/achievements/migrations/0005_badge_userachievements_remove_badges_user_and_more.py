@@ -8,7 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dashboard', '0004_rename_acheivements_achievements'),
+        ('achievements', '0004_rename_acheivements_achievements'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
@@ -144,12 +144,12 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='userachievements',
             name='achievements',
-            field=models.ManyToManyField(blank=True, to='dashboard.achievements'),
+            field=models.ManyToManyField(blank=True, to='achievements.achievements'),
         ),
         migrations.AddField(
             model_name='userachievements',
             name='badges',
-            field=models.ManyToManyField(blank=True, to='dashboard.badge'),
+            field=models.ManyToManyField(blank=True, to='achievements.badge'),
         ),
         migrations.AddField(
             model_name='userachievements',

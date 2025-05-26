@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('dashboard', '0005_badge_userachievements_remove_badges_user_and_more'),
+        ('achievements', '0005_badge_userachievements_remove_badges_user_and_more'),
     ]
 
     operations = [
@@ -18,11 +18,11 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='userachievements',
             name='achievements',
-            field=models.ManyToManyField(null=True, to='dashboard.achievements'),
+            field=models.ManyToManyField(null=True, to='achievements.achievements'),
         ),
         migrations.AlterField(
             model_name='userachievements',
             name='badges',
-            field=models.ManyToManyField(null=True, to='dashboard.badge'),
+            field=models.ManyToManyField(null=True, to='achievements.badge'),
         ),
     ]
