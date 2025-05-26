@@ -5,4 +5,5 @@ urlpatterns = [
     path('flashcards/', include('flashcards.urls')),
     path('dashboard/', include('dashboard.urls')),
     path('test/', include('tests.urls')),
+    path('tutor/', include('claude_client.urls')),
 ]
