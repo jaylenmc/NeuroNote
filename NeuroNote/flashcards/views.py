@@ -8,7 +8,6 @@ from rest_framework.permissions import IsAuthenticated
 from authentication.models import AuthUser
 from dashboard.models import UserAchievements
 from dashboard.services import knowledge_engineer, memory_architect, deck_destroyer
-from claude_client.client import tutor
 from datetime import datetime
 
 class DeckCollection(APIView):
