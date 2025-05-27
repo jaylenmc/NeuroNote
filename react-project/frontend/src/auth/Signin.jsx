@@ -22,6 +22,7 @@ function Signin() {
     const handleGoogleSignIn = () => {
         const state = generateState();
         sessionStorage.setItem('oauth_state', state);
+        const api = import.meta.env.VITE_API_URL;
 
         const OAUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth?' +
         new URLSearchParams({
