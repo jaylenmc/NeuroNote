@@ -6,4 +6,5 @@ urlpatterns = [
     path('achievements/', include('achievements.urls')),
     path('test/', include('tests.urls')),
     path('tutor/', include('claude_client.urls')),
+    path('folders/', include('folders.urls')),
 ]
