@@ -13,24 +13,23 @@
 
 .dashboard-sidebar {
     width: 250px;
-    height: calc(100vh - 24px); /* Subtract top and bottom margins from viewport height */
-    background-color: rgba(30, 30, 30, 0.3); /* Very transparent background */
+    height: calc(100vh - 24px);
+    background-color: rgba(30, 30, 30, 0.3);
     display: flex;
     flex-direction: column;
-    border: 1px solid rgba(255, 255, 255, 0.15); /* Light gray outline */
+    border: 1px solid rgba(255, 255, 255, 0.15);
     flex-shrink: 0;
-    position: relative; /* Keep sidebar in normal flow but as a flex item */
-    z-index: 20; /* Ensure sidebar is above content */
-    overflow-y: auto; /* Allow sidebar content to scroll if it overflows */
-    border-radius: 12px; /* Rounded corners */
-    margin: 12px; /* Margin on all sides */
-    backdrop-filter: blur(12px); /* Increased blur effect */
-    -webkit-backdrop-filter: blur(12px); /* For Safari support */
+    position: relative;
+    z-index: 20;
+    border-radius: 12px;
+    margin: 12px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    overflow: hidden; /* Prevent sidebar overflow */
 }
 
 .sidebar-top {
     padding: 20px;
-    /* Removed border-bottom */
 }
 
 .workspace-header {
@@ -59,6 +58,9 @@
 .sidebar-content {
     flex: 1;
     padding: 16px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Prevent content overflow */
 }
 
 .sidebar-bottom {
@@ -770,13 +772,40 @@
     margin-top: 24px;
     padding: 16px;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden; /* Prevent horizontal scroll */
+    max-height: calc(100vh - 200px);
+    padding-right: 10px; /* Space for scrollbar */
+    margin-right: -10px; /* Compensate for padding */
+}
+
+.folders-section::-webkit-scrollbar {
+    width: 6px;
+    margin-right: 2px;
+}
+
+.folders-section::-webkit-scrollbar-track {
+    background: transparent;
+    margin: 4px 0;
+}
+
+.folders-section::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.folders-section::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
 }
 
 .folders-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 16px;
+    margin-bottom: 15px;
+    padding-right: 10px;
 }
 
 .folders-header h3 {
@@ -814,7 +843,7 @@
 .folders-list {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 5px;
 }
 
 .folder-item {

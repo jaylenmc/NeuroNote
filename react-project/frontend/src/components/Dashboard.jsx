@@ -6,6 +6,7 @@ import openFolderIcon from '../assets/OpenFolder.svg';
 import deckIcon from '../assets/deck.svg';
 import testIcon from '../assets/test.svg';
 import './Dashboard.css';
+import QuizView from './QuizView';
 
 function Dashboard() {
     const { user, logout } = useAuth();
@@ -83,8 +84,11 @@ function Dashboard() {
     const [showQuizView, setShowQuizView] = useState(false);
     const [showNewQuestionModal, setShowNewQuestionModal] = useState(false);
     const [newQuestion, setNewQuestion] = useState({
-        question: '',
-        answer: ''
+        question_input: '',
+        question_type: 'MC',
+        answers: [
+            { answer_input: '', is_correct: false }
+        ]
     });
 
     const [isMounted, setIsMounted] = useState(true);
@@ -338,6 +342,18 @@ function Dashboard() {
             if (response.ok) {
                 setFolders(folders.filter(f => f.id !== folderId));
                 showNotification(`${folder.name} successfully deleted`);
+                
+                // If we're currently viewing the deleted folder, go back to the last visited page
+                if (selectedFolder?.id === folderId) {
+                    // Find the last valid navigation state
+                    for (let i = navHistory.length - 1; i >= 0; i--) {
+                        const prevState = navHistory[i];
+                        if (prevState.view !== 'folder' || prevState.folder?.id !== folderId) {
+                            handleNavigation(prevState.view, prevState.folder, prevState.deck);
+                            break;
+                        }
+                    }
+                }
             } else {
                 console.error('Failed to delete folder:', await response.text());
             }
@@ -352,17 +368,10 @@ function Dashboard() {
         const isFirstLogin = !lastLogin;
         
         setIsNewUser(isFirstLogin);
-        setShowWelcome(true);
+        showNotification(isFirstLogin ? `Welcome ${user?.email?.split('@')[0]}` : 'Welcome Back!');
 
         // Store the current login time
         localStorage.setItem('lastLogin', new Date().toISOString());
-
-        // Hide welcome message after 3 seconds
-        const timer = setTimeout(() => {
-            setShowWelcome(false);
-        }, 3000);
-
-        return () => clearTimeout(timer);
     }, []);
 
     const handleAddItem = (folderId, itemType) => {
@@ -450,21 +459,40 @@ function Dashboard() {
         }
     };
 
-    const handleQuizClick = async (quizId) => {
+    const handleQuizClick = async (quizId, e) => {
         try {
+            // Start transition
+            setIsTransitioning(true);
+            
+            // Wait for transition
+            await new Promise(resolve => setTimeout(resolve, 300));
+            
             const response = await makeAuthenticatedRequest(`${import.meta.env.VITE_API_URL}test/quiz/${quizId}/`);
             if (!response) return;
 
             if (response.ok) {
                 const quizData = await response.json();
                 setSelectedQuiz(quizData);
-                setShowQuizView(true);
-                setActiveView('quiz');
+                
+                // Fetch questions for the quiz
+                const questions = await fetchQuizQuestions(quizId);
+                if (questions) {
+                    setQuizQuestions(questions);
+                }
+                
+                handleNavigation('quiz', selectedFolder, null, quizData);
+                
+                // End transition
+                setTimeout(() => {
+                    setIsTransitioning(false);
+                }, 50);
             } else {
                 console.error('Failed to fetch quiz:', await response.text());
+                setIsTransitioning(false);
             }
         } catch (error) {
             console.error('Error fetching quiz:', error);
+            setIsTransitioning(false);
         }
     };
 
@@ -472,22 +500,184 @@ function Dashboard() {
         setEditingQuestion(question);
     };
 
-    const handleSaveQuestion = (updatedQuestion) => {
-        setQuizQuestions(questions => 
-            questions.map(q => q.id === updatedQuestion.id ? updatedQuestion : q)
-        );
-        setEditingQuestion(null);
+    const handleSaveQuestion = async (updatedQuestion) => {
+        try {
+            // Update the question
+            const questionResponse = await makeAuthenticatedRequest(
+                `${import.meta.env.VITE_API_URL}test/quiz/question/${selectedQuiz.id}/${updatedQuestion.id}/`,
+                {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        question_input: updatedQuestion.question,
+                        question_type: "MC", // Changed to match model choices
+                        quiz_id: selectedQuiz.id
+                    })
+                }
+            );
+
+            if (!questionResponse || !questionResponse.ok) {
+                const errorText = await questionResponse.text();
+                console.error('Failed to update question:', errorText);
+                showNotification('Failed to update question: ' + errorText);
+                return;
+            }
+
+            // Update each answer
+            for (const option of updatedQuestion.options) {
+                const answerResponse = await makeAuthenticatedRequest(
+                    `${import.meta.env.VITE_API_URL}test/quiz/answer/${selectedQuiz.id}/${updatedQuestion.id}/`,
+                    {
+                        method: 'PUT',
+                        body: JSON.stringify({
+                            answer_input: option,
+                            answer_is_correct: option === updatedQuestion.correctAnswer,
+                            question_id: updatedQuestion.id,
+                            quiz_id: selectedQuiz.id
+                        })
+                    }
+                );
+
+                if (!answerResponse || !answerResponse.ok) {
+                    const errorText = await answerResponse.text();
+                    console.error('Failed to update answer:', errorText);
+                    showNotification('Failed to update answer: ' + errorText);
+                }
+            }
+
+            // Refresh the quiz data
+            const quizResponse = await makeAuthenticatedRequest(
+                `${import.meta.env.VITE_API_URL}test/quiz/${selectedQuiz.id}/`
+            );
+
+            if (quizResponse && quizResponse.ok) {
+                const updatedQuiz = await quizResponse.json();
+                setSelectedQuiz(updatedQuiz);
+                setEditingQuestion(null);
+                showNotification('Question updated successfully');
+            }
+        } catch (error) {
+            console.error('Error updating question:', error);
+            showNotification('Error updating question: ' + error.message);
+        }
     };
 
     const handleAddQuestion = () => {
-        const newQuestion = {
-            id: Date.now(),
-            question: "New Question",
-            options: ["Option 1", "Option 2", "Option 3", "Option 4"],
-            correctAnswer: "Option 1"
-        };
-        setQuizQuestions([...quizQuestions, newQuestion]);
-        setEditingQuestion(newQuestion);
+        setNewQuestion({
+            question_input: '',
+            question_type: 'MC',
+            answers: [
+                { answer_input: '', is_correct: false }
+            ]
+        });
+        setShowNewQuestionModal(true);
+    };
+
+    const handleAddAnswer = () => {
+        setNewQuestion(prev => ({
+            ...prev,
+            answers: [...prev.answers, { answer_input: '', is_correct: false }]
+        }));
+    };
+
+    const handleRemoveAnswer = (index) => {
+        setNewQuestion(prev => ({
+            ...prev,
+            answers: prev.answers.filter((_, i) => i !== index)
+        }));
+    };
+
+    const handleAnswerChange = (index, field, value) => {
+        setNewQuestion(prev => ({
+            ...prev,
+            answers: prev.answers.map((answer, i) => 
+                i === index ? { ...answer, [field]: value } : answer
+            )
+        }));
+    };
+
+    const handleCreateQuestion = async () => {
+        try {
+            // Validate question
+            if (!newQuestion.question_input.trim()) {
+                showNotification('Please enter a question');
+                return;
+            }
+
+            // Validate answers
+            if (newQuestion.answers.length === 0) {
+                showNotification('Please add at least one answer');
+                return;
+            }
+
+            if (newQuestion.answers.some(answer => !answer.answer_input.trim())) {
+                showNotification('Please fill in all answers');
+                return;
+            }
+
+            if (!newQuestion.answers.some(answer => answer.is_correct)) {
+                showNotification('Please mark at least one answer as correct');
+                return;
+            }
+
+            // Create the question
+            const questionResponse = await makeAuthenticatedRequest(
+                `${import.meta.env.VITE_API_URL}test/quiz/question/`,
+                {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        question_input: newQuestion.question_input,
+                        question_type: newQuestion.question_type,
+                        quiz_id: selectedQuiz.id
+                    })
+                }
+            );
+
+            if (!questionResponse || !questionResponse.ok) {
+                const errorText = await questionResponse.text();
+                console.error('Failed to create question:', errorText);
+                showNotification('Failed to create question: ' + errorText);
+                return;
+            }
+
+            const questionData = await questionResponse.json();
+            
+            // Create answers
+            for (const answer of newQuestion.answers) {
+                const answerResponse = await makeAuthenticatedRequest(
+                    `${import.meta.env.VITE_API_URL}test/quiz/answer/`,
+                    {
+                        method: 'POST',
+                        body: JSON.stringify({
+                            answer_input: answer.answer_input,
+                            answer_is_correct: answer.is_correct,
+                            question_id: questionData.id,
+                            quiz_id: selectedQuiz.id
+                        })
+                    }
+                );
+
+                if (!answerResponse || !answerResponse.ok) {
+                    const errorText = await answerResponse.text();
+                    console.error('Failed to create answer:', errorText);
+                    showNotification('Failed to create answer: ' + errorText);
+                }
+            }
+
+            // Refresh the quiz data
+            const quizResponse = await makeAuthenticatedRequest(
+                `${import.meta.env.VITE_API_URL}test/quiz/${selectedQuiz.id}/`
+            );
+
+            if (quizResponse && quizResponse.ok) {
+                const updatedQuiz = await quizResponse.json();
+                setSelectedQuiz(updatedQuiz);
+                setShowNewQuestionModal(false);
+                showNotification('Question added successfully');
+            }
+        } catch (error) {
+            console.error('Error creating question:', error);
+            showNotification('Error creating question: ' + error.message);
+        }
     };
 
     const handleContextMenu = (e, type, id) => {
@@ -584,7 +774,10 @@ function Dashboard() {
         }
     };
 
-    const handleFolderClick = (folderId) => {
+    const handleFolderClick = (folderId, e) => {
+        // Prevent handling if this is a double click
+        if (e.detail > 1) return;
+        
         const folder = folders.find(f => f.id === folderId);
         
         // Start transition
@@ -603,14 +796,7 @@ function Dashboard() {
         setTransitionTimeout(timeout);
         
         // Update the selected folder with all its items
-        setSelectedFolder(folder);
-        setActiveView('folder');
-        
-        // Update navigation history
-        const newHistory = navHistory.slice(0, currentNavIndex + 1);
-        newHistory.push({ view: 'folder', folder: folder, deck: null });
-        setNavHistory(newHistory);
-        setCurrentNavIndex(newHistory.length - 1);
+        handleNavigation('folder', folder, null, null);
     };
 
     // Add useEffect to fetch folder contents when selected folder changes
@@ -628,7 +814,7 @@ function Dashboard() {
                     body: JSON.stringify({
                         title: newDeckName.trim(),
                         subject: newDeckSubject.trim(),
-                        folder: selectedFolder.id
+                        folder_id: selectedFolder.id
                     })
                 });
                 
@@ -697,9 +883,16 @@ function Dashboard() {
             if (!response) return;
 
             if (response.ok) {
-                // If we're in the deck view, navigate back to the folder view first
-                if (activeView === 'deck') {
-                    handleNavigation('folder', selectedFolder, null);
+                // If we're in the deck view, navigate back to the last visited page
+                if (activeView === 'deck' && selectedDeck?.id === deckId) {
+                    // Find the last valid navigation state
+                    for (let i = navHistory.length - 1; i >= 0; i--) {
+                        const prevState = navHistory[i];
+                        if (prevState.view !== 'deck' || prevState.deck?.id !== deckId) {
+                            handleNavigation(prevState.view, prevState.folder, prevState.deck);
+                            break;
+                        }
+                    }
                 }
                 // Refresh the folder contents to show updated deck list
                 await fetchFolderDecks(selectedFolder.id);
@@ -730,7 +923,10 @@ function Dashboard() {
         }
     };
 
-    const handleDeckClick = async (deckId) => {
+    const handleDeckClick = async (deckId, e) => {
+        // Prevent handling if this is a double click
+        if (e.detail > 1) return;
+        
         // Start transition
         setIsTransitioning(true);
         
@@ -760,15 +956,8 @@ function Dashboard() {
             }
 
             // Update the view and selected deck immediately
-            setActiveView('deck');
-            setSelectedDeck(targetDeck);
+            handleNavigation('deck', targetFolder, targetDeck, null);
             
-            // Update navigation history
-            const newHistory = navHistory.slice(0, currentNavIndex + 1);
-            newHistory.push({ view: 'deck', folder: targetFolder, deck: targetDeck });
-            setNavHistory(newHistory);
-            setCurrentNavIndex(newHistory.length - 1);
-
             // Set transition timeout immediately
             const timeout = setTimeout(() => {
                 setIsTransitioning(false);
@@ -839,16 +1028,17 @@ function Dashboard() {
     };
 
     // Function to handle navigation
-    const handleNavigation = (view, folder = null, deck = null) => {
+    const handleNavigation = (view, folder = null, deck = null, quiz = null) => {
         // If we're not at the end of the history, remove future entries
         const newHistory = navHistory.slice(0, currentNavIndex + 1);
         // Add new navigation state
-        newHistory.push({ view, folder, deck });
+        newHistory.push({ view, folder, deck, quiz });
         setNavHistory(newHistory);
         setCurrentNavIndex(newHistory.length - 1);
         setActiveView(view);
         setSelectedFolder(folder);
         setSelectedDeck(deck);
+        setSelectedQuiz(quiz);
     };
 
     // Function to go back
@@ -859,6 +1049,7 @@ function Dashboard() {
             setActiveView(prevState.view);
             setSelectedFolder(prevState.folder);
             setSelectedDeck(prevState.deck);
+            setSelectedQuiz(prevState.quiz);
             
             // If we're going back to a folder view, ensure we have all items
             if (prevState.view === 'folder' && prevState.folder) {
@@ -878,6 +1069,7 @@ function Dashboard() {
             setActiveView(nextState.view);
             setSelectedFolder(nextState.folder);
             setSelectedDeck(nextState.deck);
+            setSelectedQuiz(nextState.quiz);
             
             // If we're going forward to a folder view, ensure we have all items
             if (nextState.view === 'folder' && nextState.folder) {
@@ -947,7 +1139,7 @@ function Dashboard() {
                     body: JSON.stringify({
                         topic: newQuiz.topic.trim(),
                         subject: newQuiz.subject.trim(),
-                        folder: selectedFolder.id
+                        folder_id: selectedFolder.id
                     })
                 });
                 
@@ -1024,6 +1216,18 @@ function Dashboard() {
             if (!response) return;
 
             if (response.ok) {
+                // If we're currently viewing the quiz, go back to the last visited page
+                if (activeView === 'quiz' && selectedQuiz?.id === quizId) {
+                    // Find the last valid navigation state
+                    for (let i = navHistory.length - 1; i >= 0; i--) {
+                        const prevState = navHistory[i];
+                        if (prevState.view !== 'quiz' || prevState.quiz?.id !== quizId) {
+                            handleNavigation(prevState.view, prevState.folder, prevState.deck);
+                            break;
+                        }
+                    }
+                }
+
                 // Update the folder's items to remove the deleted quiz
                 setSelectedFolder(prevFolder => ({
                     ...prevFolder,
@@ -1057,19 +1261,31 @@ function Dashboard() {
         }
     };
 
+    // Add this function to fetch questions for a quiz
+    const fetchQuizQuestions = async (quizId) => {
+        try {
+            const response = await makeAuthenticatedRequest(
+                `${import.meta.env.VITE_API_URL}test/quiz/question/${quizId}/`
+            );
+
+            if (response && response.ok) {
+                const questionsData = await response.json();
+                console.log('Fetched questions:', questionsData); // Debug log
+                return questionsData;
+            }
+        } catch (error) {
+            console.error('Error fetching questions:', error);
+            showNotification('Error fetching questions: ' + error.message);
+        }
+        return null;
+    };
+
     return (
         <div className="dashboard-container">
             {/* Notification */}
             {notification.show && (
                 <div className="notification">
                     {notification.message}
-                </div>
-            )}
-
-            {/* Welcome Message */}
-            {showWelcome && (
-                <div className={`welcome-message ${isNewUser ? 'new-user' : 'returning-user'}`}>
-                    {isNewUser ? `Welcome ${user?.email?.split('@')[0]}` : 'Welcome Back!'}
                 </div>
             )}
 
@@ -1128,7 +1344,7 @@ function Dashboard() {
                                 <div key={folder.id}>
                                     <div 
                                         className={`folder-item ${selectedFolder?.id === folder.id && activeView === 'folder' ? 'active' : ''}`}
-                                        onClick={() => handleFolderClick(folder.id)}
+                                        onClick={(e) => handleFolderClick(folder.id, e)}
                                         onContextMenu={(e) => handleContextMenu(e, 'folder', folder.id)}
                                     >
                                         <button 
@@ -1151,9 +1367,24 @@ function Dashboard() {
                                                 folder.items.map(item => (
                                                     <div 
                                                         key={item.id} 
-                                                        className={`folder-content-item ${selectedDeck?.id === item.id && activeView === 'deck' ? 'active' : ''}`}
-                                                        onClick={() => item.type === 'deck' ? handleDeckClick(item.id) : handleQuizClick(item.id)}
-                                                        onContextMenu={(e) => handleContextMenu(e, item.type, item.id)}
+                                                        className={`folder-content-item ${
+                                                            (item.type === 'deck' && selectedDeck?.id === item.id && activeView === 'deck') ||
+                                                            (item.type === 'quiz' && selectedQuiz?.id === item.id && activeView === 'quiz')
+                                                                ? 'active' 
+                                                                : ''
+                                                        }`}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (item.type === 'deck') {
+                                                                handleDeckClick(item.id, e);
+                                                            } else {
+                                                                handleQuizClick(item.id, e);
+                                                            }
+                                                        }}
+                                                        onContextMenu={(e) => {
+                                                            e.stopPropagation();
+                                                            handleContextMenu(e, item.type, item.id);
+                                                        }}
                                                     >
                                                         {item.type === 'deck' ? (
                                                             <FiLayers className="content-icon" />
@@ -1161,24 +1392,6 @@ function Dashboard() {
                                                             <FiFileText className="content-icon" />
                                                         )}
                                                         <span className="content-name">{item.type === 'deck' ? item.name : item.topic}</span>
-                                                        <button 
-                                                            className="delete-btn"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                if (item.type === 'quiz') {
-                                                                    if (item.id) {
-                                                                        handleDeleteQuiz(item.id);
-                                                                    } else {
-                                                                        console.error('Invalid quiz item:', item);
-                                                                        showNotification('Error: Invalid quiz data');
-                                                                    }
-                                                                } else {
-                                                                    handleDeleteDeck(item.id);
-                                                                }
-                                                            }}
-                                                        >
-                                                            Delete
-                                                        </button>
                                                     </div>
                                                 ))
                                             ) : (
@@ -1444,7 +1657,7 @@ function Dashboard() {
                                             <div 
                                                 key={item.id} 
                                                 className={`deck-item ${selectedDeck?.id === item.id && activeView === 'deck' ? 'active' : ''}`} 
-                                                onClick={() => handleDeckClick(item.id)}
+                                                onClick={(e) => handleDeckClick(item.id, e)}
                                                 onContextMenu={(e) => handleContextMenu(e, 'deck', item.id)}
                                             >
                                                 <FiLayers className="deck-icon white-icon" />
@@ -1468,7 +1681,7 @@ function Dashboard() {
                                             <div 
                                                 key={item.id} 
                                                 className={`deck-item ${selectedQuiz?.id === item.id && activeView === 'quiz' ? 'active' : ''}`}
-                                                onClick={() => handleQuizClick(item.id)}
+                                                onClick={(e) => handleQuizClick(item.id, e)}
                                                 onContextMenu={(e) => handleContextMenu(e, 'quiz', item.id)}
                                             >
                                                 <FiFileText className="deck-icon white-icon" />
@@ -1564,6 +1777,32 @@ function Dashboard() {
                                         <p>No cards yet. Create your first card to get started!</p>
                                     </div>
                                 )}
+                            </div>
+                        )}
+                    </div>
+                )}
+
+                {activeView === 'quiz' && (
+                    <div className={`content-section ${isTransitioning ? 'transitioning' : ''}`}>
+                        {selectedQuiz && (
+                            <div className={`quiz-view ${isTransitioning ? 'transitioning' : ''}`}>
+                                <QuizView 
+                                    quiz={selectedQuiz} 
+                                    onClose={() => {
+                                        setIsTransitioning(true);
+                                        setTimeout(() => {
+                                            // Find the last valid navigation state
+                                            for (let i = navHistory.length - 1; i >= 0; i--) {
+                                                const prevState = navHistory[i];
+                                                if (prevState.view !== 'quiz') {
+                                                    handleNavigation(prevState.view, prevState.folder, prevState.deck);
+                                                    break;
+                                                }
+                                            }
+                                            setIsTransitioning(false);
+                                        }, 300);
+                                    }}
+                                />
                             </div>
                         )}
                     </div>
@@ -1829,6 +2068,143 @@ function Dashboard() {
                             >
                                 Cancel
                             </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Add New Question Modal */}
+            {showNewQuestionModal && (
+                <div className="modal-overlay show">
+                    <div className="modal-content question-modal">
+                        <h3>Create New Question</h3>
+                        <div className="question-form">
+                            {/* Question Input */}
+                            <div className="form-group">
+                                <label>Question</label>
+                                <textarea
+                                    value={newQuestion.question_input}
+                                    onChange={(e) => setNewQuestion(prev => ({ ...prev, question_input: e.target.value }))}
+                                    placeholder="Enter your question"
+                                    rows={3}
+                                    className="question-input"
+                                />
+                            </div>
+
+                            {/* Question Type Selection */}
+                            <div className="form-group">
+                                <label>Question Type</label>
+                                <div className="question-type-options">
+                                    <label className="radio-option">
+                                        <input
+                                            type="radio"
+                                            value="MC"
+                                            checked={newQuestion.question_type === 'MC'}
+                                            onChange={(e) => {
+                                                setNewQuestion(prev => ({
+                                                    ...prev,
+                                                    question_type: e.target.value,
+                                                    answers: e.target.value === 'MC' ? 
+                                                        [{ answer_input: '', is_correct: false }] : 
+                                                        [{ answer_input: '', is_correct: true }]
+                                                }));
+                                            }}
+                                        />
+                                        <span>Multiple Choice</span>
+                                    </label>
+                                    <label className="radio-option">
+                                        <input
+                                            type="radio"
+                                            value="WR"
+                                            checked={newQuestion.question_type === 'WR'}
+                                            onChange={(e) => {
+                                                setNewQuestion(prev => ({
+                                                    ...prev,
+                                                    question_type: e.target.value,
+                                                    answers: [{ answer_input: '', is_correct: true }]
+                                                }));
+                                            }}
+                                        />
+                                        <span>Written</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            {/* Answers Section */}
+                            <div className="answers-section">
+                                <label>Answers</label>
+                                {newQuestion.question_type === 'MC' ? (
+                                    // Multiple Choice Answers
+                                    <div className="mc-answers">
+                                        {newQuestion.answers.map((answer, index) => (
+                                            <div key={index} className="answer-row">
+                                                <input
+                                                    type="radio"
+                                                    name="correct-answer"
+                                                    checked={answer.is_correct}
+                                                    onChange={() => {
+                                                        setNewQuestion(prev => ({
+                                                            ...prev,
+                                                            answers: prev.answers.map((a, i) => ({
+                                                                ...a,
+                                                                is_correct: i === index
+                                                            }))
+                                                        }));
+                                                    }}
+                                                    className="correct-answer-radio"
+                                                />
+                                                <input
+                                                    type="text"
+                                                    value={answer.answer_input}
+                                                    onChange={(e) => handleAnswerChange(index, 'answer_input', e.target.value)}
+                                                    placeholder={`Answer ${index + 1}`}
+                                                    className="answer-input"
+                                                />
+                                                {newQuestion.answers.length > 1 && (
+                                                    <button
+                                                        className="remove-answer-btn"
+                                                        onClick={() => handleRemoveAnswer(index)}
+                                                    >
+                                                        ×
+                                                    </button>
+                                                )}
+                                            </div>
+                                        ))}
+                                        <button
+                                            className="add-answer-btn"
+                                            onClick={handleAddAnswer}
+                                        >
+                                            + Add Answer
+                                        </button>
+                                    </div>
+                                ) : (
+                                    // Written Answer
+                                    <div className="written-answer">
+                                        <textarea
+                                            value={newQuestion.answers[0].answer_input}
+                                            onChange={(e) => handleAnswerChange(0, 'answer_input', e.target.value)}
+                                            placeholder="Enter the correct answer"
+                                            rows={3}
+                                            className="answer-input"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="modal-actions">
+                                <button 
+                                    className="create-btn" 
+                                    onClick={handleCreateQuestion}
+                                >
+                                    Create Question
+                                </button>
+                                <button 
+                                    className="cancel-btn" 
+                                    onClick={() => setShowNewQuestionModal(false)}
+                                >
+                                    Cancel
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </div>
