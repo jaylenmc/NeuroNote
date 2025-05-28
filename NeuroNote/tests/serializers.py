@@ -1,7 +1,17 @@
 from rest_framework import serializers
-from .models import Quiz
+from .models import Quiz, Question, Answer
 
 class QuizSerilizer(serializers.ModelSerializer):
     class Meta:
-        fields = '__all__'
+        fields = ['topic', 'subject', 'folder', 'id']
         model = Quiz
+
+class QuestionSerializer(serializers.ModelSerializer):
+    class Meta:
+        fields = ['question_input', 'question_type']
+        model = Question
+
+class AnswerSerializer(serializers.ModelSerializer):
+    class Meta:
+        fields = ['answer_input', 'is_correct']
+        model = Answer

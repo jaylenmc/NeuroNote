@@ -22,7 +22,7 @@ function Dashboard() {
     const [showQuizModal, setShowQuizModal] = useState(false);
     const [quizQuestions, setQuizQuestions] = useState([]);
     const [editingQuestion, setEditingQuestion] = useState(null);
-    const [contextMenu, setContextMenu] = useState({ show: false, x: 0, y: 0, folderId: null });
+    const [contextMenu, setContextMenu] = useState({ show: false, x: 0, y: 0, type: null, id: null });
     const [showNewDeckModal, setShowNewDeckModal] = useState(false);
     const [newDeckName, setNewDeckName] = useState('');
     const [newDeckSubject, setNewDeckSubject] = useState('');
@@ -40,11 +40,16 @@ function Dashboard() {
     const [showSettingsDropdown, setShowSettingsDropdown] = useState(false);
     const [notification, setNotification] = useState({ show: false, message: '' });
     const [isLoading, setIsLoading] = useState({
+        initialLoad: true,
         folders: false,
         decks: false,
         cards: false,
         delete: false
     });
+
+    // Add transition states
+    const [isTransitioning, setIsTransitioning] = useState(false);
+    const [transitionTimeout, setTransitionTimeout] = useState(null);
 
     // Mock data for progress tracking
     const [reviewProgress] = useState({
@@ -68,6 +73,21 @@ function Dashboard() {
             { name: 'Physics', score: 65, needsWork: true }
         ]
     });
+
+    const [showNewQuizModal, setShowNewQuizModal] = useState(false);
+    const [newQuiz, setNewQuiz] = useState({
+        topic: '',
+        subject: ''
+    });
+    const [quizzes, setQuizzes] = useState([]);
+    const [showQuizView, setShowQuizView] = useState(false);
+    const [showNewQuestionModal, setShowNewQuestionModal] = useState(false);
+    const [newQuestion, setNewQuestion] = useState({
+        question: '',
+        answer: ''
+    });
+
+    const [isMounted, setIsMounted] = useState(true);
 
     // Function to check if token is expired
     const isTokenExpired = (token) => {
@@ -144,36 +164,103 @@ function Dashboard() {
         return response;
     };
 
-    // Fetch folders on component mount
-    useEffect(() => {
-        fetchFolders();
-    }, []);
+    // Split fetchFolders into smaller functions
+    const fetchAllDecks = async () => {
+        const response = await makeAuthenticatedRequest(`${import.meta.env.VITE_API_URL}flashcards/deck/`);
+        if (!response || !response.ok) return [];
+        return await response.json();
+    };
+
+    const fetchAllQuizzes = async () => {
+        const response = await makeAuthenticatedRequest(`${import.meta.env.VITE_API_URL}test/quiz/`);
+        if (!response || !response.ok) return [];
+        return await response.json();
+    };
+
+    const processFolderItems = (folder, allDecks, allQuizzes) => {
+        const folderDecks = allDecks.filter(deck => deck.folder === folder.id);
+        const folderQuizzes = allQuizzes.filter(quiz => quiz.folder === folder.id);
+        
+        const items = [
+            ...folderDecks.map(deck => ({
+                id: deck.id,
+                type: 'deck',
+                name: deck.title,
+                subject: deck.subject
+            })),
+            ...folderQuizzes.map(quiz => ({
+                id: quiz.id,
+                type: 'quiz',
+                topic: quiz.topic,
+                subject: quiz.subject,
+                folder: quiz.folder
+            }))
+        ];
+        
+        return {
+            ...folder,
+            deckCount: folderDecks.length,
+            quizCount: folderQuizzes.length,
+            items: items
+        };
+    };
 
     const fetchFolders = async () => {
-        setIsLoading(prev => ({ ...prev, folders: true }));
+        if (isLoading.initialLoad) {
+            setIsLoading(prev => ({ ...prev, folders: true }));
+        }
         try {
             const response = await makeAuthenticatedRequest(`${import.meta.env.VITE_API_URL}folders/user/`);
-            if (!response) return;
+            if (!response || !isMounted) return;
 
             if (response.ok) {
                 const foldersData = await response.json();
                 
-                // Fetch all decks to get counts
-                const decksResponse = await makeAuthenticatedRequest(`${import.meta.env.VITE_API_URL}flashcards/deck/`);
-                if (!decksResponse) return;
+                // Fetch all decks and quizzes in parallel
+                const [allDecks, allQuizzes] = await Promise.all([
+                    fetchAllDecks(),
+                    fetchAllQuizzes()
+                ]);
 
-                if (decksResponse.ok) {
-                    const allDecks = await decksResponse.json();
+                if (!isMounted) return;
+
+                // Process folders with their items
+                const foldersWithCounts = foldersData.map(folder => {
+                    const folderDecks = allDecks.filter(deck => deck.folder === folder.id);
+                    const folderQuizzes = allQuizzes.filter(quiz => quiz.folder === folder.id);
                     
-                    // Update folders with deck counts
-                    const foldersWithCounts = foldersData.map(folder => ({
+                    const items = [
+                        ...folderDecks.map(deck => ({
+                            id: deck.id,
+                            type: 'deck',
+                            name: deck.title,
+                            subject: deck.subject
+                        })),
+                        ...folderQuizzes.map(quiz => ({
+                            id: quiz.id,
+                            type: 'quiz',
+                            topic: quiz.topic,
+                            subject: quiz.subject,
+                            folder: quiz.folder
+                        }))
+                    ];
+                    
+                    return {
                         ...folder,
-                        deckCount: allDecks.filter(deck => deck.folder === folder.id).length
-                    }));
+                        deckCount: folderDecks.length,
+                        quizCount: folderQuizzes.length,
+                        items: items
+                    };
+                });
 
-                    setFolders(foldersWithCounts);
-                } else {
-                    console.error('Failed to fetch decks:', await decksResponse.text());
+                setFolders(foldersWithCounts);
+
+                // Update selected folder if needed
+                if (selectedFolder && isMounted) {
+                    const updatedSelectedFolder = foldersWithCounts.find(f => f.id === selectedFolder.id);
+                    if (updatedSelectedFolder) {
+                        setSelectedFolder(updatedSelectedFolder);
+                    }
                 }
             } else {
                 console.error('Failed to fetch folders:', await response.text());
@@ -181,9 +268,36 @@ function Dashboard() {
         } catch (error) {
             console.error('Error fetching folders:', error);
         } finally {
-            setIsLoading(prev => ({ ...prev, folders: false }));
+            if (isMounted) {
+                setIsLoading(prev => ({ ...prev, folders: false, initialLoad: false }));
+            }
         }
     };
+
+    // Add cleanup for useEffect
+    useEffect(() => {
+        setIsMounted(true);
+        fetchFolders();
+        
+        return () => {
+            setIsMounted(false);
+        };
+    }, []);
+
+    // Add cleanup for other useEffects
+    useEffect(() => {
+        document.addEventListener('click', handleClick);
+        return () => {
+            document.removeEventListener('click', handleClick);
+        };
+    }, []);
+
+    useEffect(() => {
+        document.addEventListener('click', handleClickOutside);
+        return () => {
+            document.removeEventListener('click', handleClickOutside);
+        };
+    }, []);
 
     const handleCreateFolder = async () => {
         if (newFolderName.trim()) {
@@ -254,13 +368,22 @@ function Dashboard() {
     const handleAddItem = (folderId, itemType) => {
         setFolders(folders.map(folder => {
             if (folder.id === folderId) {
+                const newItem = itemType === 'deck' ? {
+                    id: Date.now(),
+                    type: 'deck',
+                    name: `New deck`,
+                    subject: ''
+                } : {
+                    id: Date.now(), // Temporary ID; in real use, backend should provide this
+                    type: 'quiz',
+                    topic: 'New quiz',
+                    subject: '',
+                    folder: folderId
+                };
+    
                 return {
                     ...folder,
-                    items: [...folder.items, {
-                        id: Date.now(),
-                        type: itemType,
-                        name: `New ${itemType}`
-                    }]
+                    items: [...folder.items, newItem]
                 };
             }
             return folder;
@@ -269,22 +392,22 @@ function Dashboard() {
 
     // Placeholder handlers for the new icons
     const handleShare = () => {
-        console.log('Share clicked');
+        
         // Implement share functionality
     };
 
     const handleStar = () => {
-        console.log('Star clicked');
+        
         // Implement star functionality
     };
 
     const handleSettings = () => {
-        console.log('Settings clicked');
+        
         // Implement settings functionality
     };
 
     const handleCollab = () => {
-        console.log('Collaborate clicked');
+        
         // Implement collaboration functionality
     };
 
@@ -309,28 +432,40 @@ function Dashboard() {
 
         // If we're expanding the folder, fetch its contents
         if (!expandedFolders[folderId]) {
-            await fetchFolderDecks(folderId);
+            const folder = folders.find(f => f.id === folderId);
+            if (folder) {
+                // Update the folder's items directly from the folders state
+                setFolders(prevFolders => 
+                    prevFolders.map(f => {
+                        if (f.id === folderId) {
+                            return {
+                                ...f,
+                                items: f.items || []
+                            };
+                        }
+                        return f;
+                    })
+                );
+            }
         }
     };
 
-    const handleQuizClick = (quiz) => {
-        setSelectedQuiz(quiz);
-        setShowQuizModal(true);
-        // Load quiz questions (mock data for now)
-        setQuizQuestions([
-            {
-                id: 1,
-                question: "What is the capital of France?",
-                options: ["London", "Berlin", "Paris", "Madrid"],
-                correctAnswer: "Paris"
-            },
-            {
-                id: 2,
-                question: "Which planet is known as the Red Planet?",
-                options: ["Venus", "Mars", "Jupiter", "Saturn"],
-                correctAnswer: "Mars"
+    const handleQuizClick = async (quizId) => {
+        try {
+            const response = await makeAuthenticatedRequest(`${import.meta.env.VITE_API_URL}test/quiz/${quizId}/`);
+            if (!response) return;
+
+            if (response.ok) {
+                const quizData = await response.json();
+                setSelectedQuiz(quizData);
+                setShowQuizView(true);
+                setActiveView('quiz');
+            } else {
+                console.error('Failed to fetch quiz:', await response.text());
             }
-        ]);
+        } catch (error) {
+            console.error('Error fetching quiz:', error);
+        }
     };
 
     const handleEditQuestion = (question) => {
@@ -355,35 +490,35 @@ function Dashboard() {
         setEditingQuestion(newQuestion);
     };
 
-    const handleContextMenu = (e, folderId) => {
+    const handleContextMenu = (e, type, id) => {
         e.preventDefault();
         setContextMenu({
             show: true,
             x: e.clientX,
             y: e.clientY,
-            folderId
+            type,
+            id
         });
     };
 
     const handleClick = () => {
-        setContextMenu({ show: false, x: 0, y: 0, folderId: null });
+        setContextMenu({ show: false, x: 0, y: 0, type: null, id: null });
     };
 
-    useEffect(() => {
-        document.addEventListener('click', handleClick);
-        return () => {
-            document.removeEventListener('click', handleClick);
-        };
-    }, []);
-
     const fetchFolderDecks = async (folderId) => {
-        setIsLoading(prev => ({ ...prev, decks: true }));
+        if (isLoading.initialLoad) {
+            setIsLoading(prev => ({ ...prev, decks: true }));
+        }
         try {
             const folder = folders.find(f => f.id === folderId);
             if (!folder) {
                 console.error('Folder not found');
                 return;
             }
+
+            // Get existing items from the folder
+            const existingItems = folder.items || [];
+            const existingQuizzes = existingItems.filter(item => item.type === 'quiz');
 
             const response = await makeAuthenticatedRequest(`${import.meta.env.VITE_API_URL}flashcards/deck/`);
             
@@ -403,6 +538,7 @@ function Dashboard() {
                     const allCards = await cardsResponse.json();
                     setCards(allCards);
 
+                    // Map decks with their card counts
                     const mappedDecks = folderDecks.map(deck => ({
                         id: deck.id,
                         type: 'deck',
@@ -411,28 +547,34 @@ function Dashboard() {
                         cardCount: allCards.filter(card => card.card_deck === deck.id).length
                     }));
 
-                    setSelectedFolder(prevFolder => ({
-                        ...prevFolder,
-                        items: mappedDecks
-                    }));
+                    // Combine decks and existing quizzes
+                    const updatedItems = [...mappedDecks, ...existingQuizzes];
 
-                    setFolders(prevFolders => {
-                        return prevFolders.map(f => {
-                            const folderDeckCount = allDecks.filter(deck => deck.folder === f.id).length;
-                            
+                    // Update selected folder while preserving existing items
+                    setSelectedFolder(prevFolder => {
+                        if (prevFolder && prevFolder.id === folderId) {
+                            return {
+                                ...prevFolder,
+                                items: updatedItems,
+                                deckCount: folderDecks.length
+                            };
+                        }
+                        return prevFolder;
+                    });
+
+                    // Update folders state while preserving existing items
+                    setFolders(prevFolders => 
+                        prevFolders.map(f => {
                             if (f.id === folderId) {
                                 return {
                                     ...f,
-                                    items: mappedDecks,
-                                    deckCount: folderDeckCount
+                                    items: updatedItems,
+                                    deckCount: folderDecks.length
                                 };
                             }
-                            return {
-                                ...f,
-                                deckCount: folderDeckCount
-                            };
-                        });
-                    });
+                            return f;
+                        })
+                    );
                 }
             }
         } catch (error) {
@@ -444,10 +586,39 @@ function Dashboard() {
 
     const handleFolderClick = (folderId) => {
         const folder = folders.find(f => f.id === folderId);
-        console.log('Selected folder:', folder);
-        handleNavigation('folder', folder);
-        fetchFolderDecks(folderId);
+        
+        // Start transition
+        setIsTransitioning(true);
+        
+        // Clear any existing timeout
+        if (transitionTimeout) {
+            clearTimeout(transitionTimeout);
+        }
+        
+        // Set new timeout
+        const timeout = setTimeout(() => {
+            setIsTransitioning(false);
+        }, 300); // 300ms transition
+        
+        setTransitionTimeout(timeout);
+        
+        // Update the selected folder with all its items
+        setSelectedFolder(folder);
+        setActiveView('folder');
+        
+        // Update navigation history
+        const newHistory = navHistory.slice(0, currentNavIndex + 1);
+        newHistory.push({ view: 'folder', folder: folder, deck: null });
+        setNavHistory(newHistory);
+        setCurrentNavIndex(newHistory.length - 1);
     };
+
+    // Add useEffect to fetch folder contents when selected folder changes
+    useEffect(() => {
+        if (selectedFolder && activeView === 'folder') {
+            fetchFolderDecks(selectedFolder.id);
+        }
+    }, [selectedFolder?.id, activeView]);
 
     const handleCreateDeck = async () => {
         if (newDeckName.trim() && newDeckSubject.trim()) {
@@ -457,23 +628,61 @@ function Dashboard() {
                     body: JSON.stringify({
                         title: newDeckName.trim(),
                         subject: newDeckSubject.trim(),
-                        folder_name: selectedFolder.name
+                        folder: selectedFolder.id
                     })
                 });
                 
-                if (!response) return; // Request failed due to auth issues
+                if (!response) return;
 
                 if (response.ok) {
-                    // After successful creation, fetch updated decks
-                    await fetchFolderDecks(selectedFolder.id);
+                    const createdDeck = await response.json();
+                    console.log('Created deck response:', createdDeck);
+
+                    // Create the deck item with all necessary fields
+                    const newDeckItem = {
+                        id: createdDeck.id,
+                        type: 'deck',
+                        name: createdDeck.title,
+                        subject: createdDeck.subject,
+                        cardCount: 0
+                    };
+
+                    // Update the folder's items to include the new deck
+                    setSelectedFolder(prevFolder => {
+                        const updatedItems = [...(prevFolder.items || []), newDeckItem];
+                        return {
+                            ...prevFolder,
+                            items: updatedItems,
+                            deckCount: (prevFolder.deckCount || 0) + 1
+                        };
+                    });
+
+                    // Update folders state
+                    setFolders(prevFolders => 
+                        prevFolders.map(folder => {
+                            if (folder.id === selectedFolder.id) {
+                                return {
+                                    ...folder,
+                                    items: [...(folder.items || []), newDeckItem],
+                                    deckCount: (folder.deckCount || 0) + 1
+                                };
+                            }
+                            return folder;
+                        })
+                    );
+
                     setNewDeckName('');
                     setNewDeckSubject('');
                     setShowNewDeckModal(false);
+                    showNotification('Deck created successfully');
                 } else {
-                    console.error('Failed to create deck:', await response.text());
+                    const errorText = await response.text();
+                    console.error('Failed to create deck:', errorText);
+                    showNotification('Failed to create deck: ' + errorText);
                 }
             } catch (error) {
                 console.error('Error creating deck:', error);
+                showNotification('Error creating deck');
             }
         }
     };
@@ -488,6 +697,11 @@ function Dashboard() {
             if (!response) return;
 
             if (response.ok) {
+                // If we're in the deck view, navigate back to the folder view first
+                if (activeView === 'deck') {
+                    handleNavigation('folder', selectedFolder, null);
+                }
+                // Refresh the folder contents to show updated deck list
                 await fetchFolderDecks(selectedFolder.id);
                 showNotification(`${deck.name} successfully deleted`);
             } else {
@@ -517,29 +731,61 @@ function Dashboard() {
     };
 
     const handleDeckClick = async (deckId) => {
-        // First ensure we have the folder's decks loaded
-        if (!selectedFolder?.items) {
-            await fetchFolderDecks(selectedFolder.id);
+        // Start transition
+        setIsTransitioning(true);
+        
+        // Clear any existing timeout
+        if (transitionTimeout) {
+            clearTimeout(transitionTimeout);
         }
         
-        const deck = selectedFolder.items.find(item => item.id === deckId);
-        if (!deck) {
-            console.error('Deck not found');
-            return;
+        try {
+            // Find the deck in any folder
+            let targetFolder = null;
+            let targetDeck = null;
+            
+            // Search through all folders to find the deck
+            for (const folder of folders) {
+                const deck = folder.items?.find(item => item.id === deckId);
+                if (deck) {
+                    targetFolder = folder;
+                    targetDeck = deck;
+                    break;
+                }
+            }
+            
+            if (!targetDeck || !targetFolder) {
+                console.error('Deck not found');
+                return;
+            }
+
+            // Update the view and selected deck immediately
+            setActiveView('deck');
+            setSelectedDeck(targetDeck);
+            
+            // Update navigation history
+            const newHistory = navHistory.slice(0, currentNavIndex + 1);
+            newHistory.push({ view: 'deck', folder: targetFolder, deck: targetDeck });
+            setNavHistory(newHistory);
+            setCurrentNavIndex(newHistory.length - 1);
+
+            // Set transition timeout immediately
+            const timeout = setTimeout(() => {
+                setIsTransitioning(false);
+            }, 300); // 300ms transition
+            
+            setTransitionTimeout(timeout);
+            
+            // Fetch data after transition starts
+            if (selectedFolder?.id !== targetFolder.id) {
+                await fetchFolderDecks(targetFolder.id);
+            }
+            await fetchDeckCards(deckId);
+            
+        } catch (error) {
+            console.error('Error switching to deck:', error);
+            setIsTransitioning(false);
         }
-        
-        // Always update the view and selected deck, even if we're in the same folder
-        setActiveView('deck');
-        setSelectedDeck(deck);
-        
-        // Fetch the cards for the new deck
-        await fetchDeckCards(deckId);
-        
-        // Update navigation history
-        const newHistory = navHistory.slice(0, currentNavIndex + 1);
-        newHistory.push({ view: 'deck', folder: selectedFolder, deck });
-        setNavHistory(newHistory);
-        setCurrentNavIndex(newHistory.length - 1);
     };
 
     const handleCreateCard = async () => {
@@ -613,8 +859,13 @@ function Dashboard() {
             setActiveView(prevState.view);
             setSelectedFolder(prevState.folder);
             setSelectedDeck(prevState.deck);
-            if (prevState.folder) {
-                fetchFolderDecks(prevState.folder.id);
+            
+            // If we're going back to a folder view, ensure we have all items
+            if (prevState.view === 'folder' && prevState.folder) {
+                const updatedFolder = folders.find(f => f.id === prevState.folder.id);
+                if (updatedFolder) {
+                    setSelectedFolder(updatedFolder);
+                }
             }
         }
     };
@@ -627,8 +878,13 @@ function Dashboard() {
             setActiveView(nextState.view);
             setSelectedFolder(nextState.folder);
             setSelectedDeck(nextState.deck);
-            if (nextState.folder) {
-                fetchFolderDecks(nextState.folder.id);
+            
+            // If we're going forward to a folder view, ensure we have all items
+            if (nextState.view === 'folder' && nextState.folder) {
+                const updatedFolder = folders.find(f => f.id === nextState.folder.id);
+                if (updatedFolder) {
+                    setSelectedFolder(updatedFolder);
+                }
             }
         }
     };
@@ -656,13 +912,6 @@ function Dashboard() {
         }
     };
 
-    useEffect(() => {
-        document.addEventListener('click', handleClickOutside);
-        return () => {
-            document.removeEventListener('click', handleClickOutside);
-        };
-    }, []);
-
     // Function to show notification
     const showNotification = (message) => {
         setNotification({ show: true, message });
@@ -687,6 +936,124 @@ function Dashboard() {
         } finally {
             setIsLoading(prev => ({ ...prev, delete: false }));
             setShowSettingsDropdown(false);
+        }
+    };
+
+    const handleCreateQuiz = async () => {
+        if (newQuiz.topic.trim() && newQuiz.subject.trim()) {
+            try {
+                const response = await makeAuthenticatedRequest(`${import.meta.env.VITE_API_URL}test/quiz/`, {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        topic: newQuiz.topic.trim(),
+                        subject: newQuiz.subject.trim(),
+                        folder: selectedFolder.id
+                    })
+                });
+                
+                if (!response) return;
+
+                if (response.ok) {
+                    const createdQuiz = await response.json();
+                    console.log('Created quiz response:', createdQuiz);
+                    
+                    // Create the quiz item with all necessary fields
+                    const newQuizItem = {
+                        id: createdQuiz.id,
+                        type: 'quiz',
+                        topic: createdQuiz.topic,
+                        subject: createdQuiz.subject,
+                        folder: createdQuiz.folder
+                    };
+
+                    // Update the selected folder
+                    setSelectedFolder(prevFolder => {
+                        const updatedItems = [...(prevFolder.items || []), newQuizItem];
+                        return {
+                            ...prevFolder,
+                            items: updatedItems,
+                            quizCount: (prevFolder.quizCount || 0) + 1
+                        };
+                    });
+
+                    // Update the folders state
+                    setFolders(prevFolders => 
+                        prevFolders.map(folder => {
+                            if (folder.id === selectedFolder.id) {
+                                const updatedItems = [...(folder.items || []), newQuizItem];
+                                return {
+                                    ...folder,
+                                    items: updatedItems,
+                                    quizCount: (folder.quizCount || 0) + 1
+                                };
+                            }
+                            return folder;
+                        })
+                    );
+
+                    // Clear the form and close modal
+                    setNewQuiz({ topic: '', subject: '' });
+                    setShowNewQuizModal(false);
+                    showNotification('Quiz created successfully');
+                } else {
+                    const errorText = await response.text();
+                    console.error('Failed to create quiz:', errorText);
+                    showNotification('Failed to create quiz: ' + errorText);
+                }
+            } catch (error) {
+                console.error('Error creating quiz:', error);
+                showNotification('Error creating quiz');
+            }
+        }
+    };
+
+    // Add handleDeleteQuiz function
+    const handleDeleteQuiz = async (quizId) => {
+        if (!quizId) {
+            console.error('No quiz ID provided for deletion');
+            showNotification('Error: No quiz ID provided');
+            return;
+        }
+
+        try {
+            console.log('Attempting to delete quiz with ID:', quizId);
+            const response = await makeAuthenticatedRequest(`${import.meta.env.VITE_API_URL}test/quiz/${quizId}/`, {
+                method: 'DELETE'
+            });
+            
+            if (!response) return;
+
+            if (response.ok) {
+                // Update the folder's items to remove the deleted quiz
+                setSelectedFolder(prevFolder => ({
+                    ...prevFolder,
+                    items: prevFolder.items.filter(item => item.id !== quizId),
+                    quizCount: (prevFolder.quizCount || 0) - 1
+                }));
+
+                // Update folders state
+                setFolders(prevFolders => 
+                    prevFolders.map(folder => {
+                        if (folder.id === selectedFolder.id) {
+                            return {
+                                ...folder,
+                                items: folder.items.filter(item => item.id !== quizId),
+                                quizCount: (folder.quizCount || 0) - 1
+                            };
+                        }
+                        return folder;
+                    })
+                );
+
+                showNotification('Quiz deleted successfully');
+            } else {
+                const errorText = await response.text();
+                console.error('Failed to delete quiz:', errorText);
+                showNotification('Failed to delete quiz: ' + errorText);
+            }
+        } catch (error) {
+            console.error('Error deleting quiz:', error);
+            showNotification('Error deleting quiz');
         }
     };
 
@@ -762,14 +1129,11 @@ function Dashboard() {
                                     <div 
                                         className={`folder-item ${selectedFolder?.id === folder.id && activeView === 'folder' ? 'active' : ''}`}
                                         onClick={() => handleFolderClick(folder.id)}
-                                        onContextMenu={(e) => handleContextMenu(e, folder.id)}
+                                        onContextMenu={(e) => handleContextMenu(e, 'folder', folder.id)}
                                     >
                                         <button 
                                             className={`folder-expand-btn ${expandedFolders[folder.id] ? 'expanded' : ''}`}
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                toggleFolder(folder.id, e);
-                                            }}
+                                            onClick={(e) => toggleFolder(folder.id, e)}
                                         >
                                             &gt;
                                         </button>
@@ -779,39 +1143,63 @@ function Dashboard() {
                                             className="folder-icon"
                                         />
                                         <span className="folder-name" title={folder.name}>{folder.name}</span>
-                                        <span className="folder-count">{folder.deckCount || 0}</span>
+                                        <span className="folder-count">{folder.deckCount + folder.quizCount || 0}</span>
                                     </div>
-                                    {expandedFolders[folder.id] && folder.items && (
-                                        <div className="folder-contents">
-                                            {folder.items.map(item => (
-                                                <div 
-                                                    key={item.id} 
-                                                    className={`folder-content-item ${selectedDeck?.id === item.id && activeView === 'deck' ? 'active' : ''}`}
-                                                    onClick={async () => {
-                                                        // Update UI state immediately
-                                                        setSelectedFolder(folder);
-                                                        setActiveView('deck');
-                                                        setSelectedDeck(item);
-                                                        
-                                                        // Update navigation history immediately
-                                                        const newHistory = navHistory.slice(0, currentNavIndex + 1);
-                                                        newHistory.push({ view: 'deck', folder: folder, deck: item });
-                                                        setNavHistory(newHistory);
-                                                        setCurrentNavIndex(newHistory.length - 1);
-                                                        
-                                                        // Fetch data in the background
-                                                        Promise.all([
-                                                            fetchFolderDecks(folder.id),
-                                                            fetchDeckCards(item.id)
-                                                        ]).catch(error => {
-                                                            console.error('Error fetching data:', error);
-                                                        });
-                                                    }}
-                                                >
-                                                    <FiLayers className="content-icon" />
-                                                    <span className="content-name">{item.name}</span>
+                                    {expandedFolders[folder.id] && (
+                                        <div className={`folder-contents ${expandedFolders[folder.id] ? 'expanded' : ''}`}>
+                                            {folder.items && folder.items.length > 0 ? (
+                                                folder.items.map(item => (
+                                                    <div 
+                                                        key={item.id} 
+                                                        className={`folder-content-item ${selectedDeck?.id === item.id && activeView === 'deck' ? 'active' : ''}`}
+                                                        onClick={() => item.type === 'deck' ? handleDeckClick(item.id) : handleQuizClick(item.id)}
+                                                        onContextMenu={(e) => handleContextMenu(e, item.type, item.id)}
+                                                    >
+                                                        {item.type === 'deck' ? (
+                                                            <FiLayers className="content-icon" />
+                                                        ) : (
+                                                            <FiFileText className="content-icon" />
+                                                        )}
+                                                        <span className="content-name">{item.type === 'deck' ? item.name : item.topic}</span>
+                                                        <button 
+                                                            className="delete-btn"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                if (item.type === 'quiz') {
+                                                                    if (item.id) {
+                                                                        handleDeleteQuiz(item.id);
+                                                                    } else {
+                                                                        console.error('Invalid quiz item:', item);
+                                                                        showNotification('Error: Invalid quiz data');
+                                                                    }
+                                                                } else {
+                                                                    handleDeleteDeck(item.id);
+                                                                }
+                                                            }}
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="empty-folder-content">
+                                                    <p>No items in this folder</p>
+                                                    <div className="empty-folder-actions">
+                                                        <button 
+                                                            className="add-item-btn"
+                                                            onClick={() => setShowNewDeckModal(true)}
+                                                        >
+                                                            <FiLayers /> Add Deck
+                                                        </button>
+                                                        <button 
+                                                            className="add-item-btn"
+                                                            onClick={() => setShowNewQuizModal(true)}
+                                                        >
+                                                            <FiFileText /> Add Quiz
+                                                        </button>
+                                                    </div>
                                                 </div>
-                                            ))}
+                                            )}
                                         </div>
                                     )}
                                 </div>
@@ -852,14 +1240,30 @@ function Dashboard() {
                             >
                                 <FiMoreVertical />
                             </button>
-                            {showSettingsDropdown && (activeView === 'folder' || activeView === 'deck') && (
-                                <div className="settings-dropdown">
-                                    <button 
-                                        className="dropdown-item delete-option"
-                                        onClick={handleDelete}
-                                    >
-                                        Delete {activeView === 'folder' ? 'Folder' : 'Deck'}
-                                    </button>
+                            {showSettingsDropdown && (
+                                <div className="settings-dropdown show">
+                                    {activeView === 'folder' && selectedFolder && (
+                                        <button 
+                                            className="dropdown-item delete-option"
+                                            onClick={() => {
+                                                handleDeleteFolder(selectedFolder.id);
+                                                setShowSettingsDropdown(false);
+                                            }}
+                                        >
+                                            Delete Folder
+                                        </button>
+                                    )}
+                                    {activeView === 'deck' && selectedDeck && (
+                                        <button 
+                                            className="dropdown-item delete-option"
+                                            onClick={() => {
+                                                handleDeleteDeck(selectedDeck.id);
+                                                setShowSettingsDropdown(false);
+                                            }}
+                                        >
+                                            Delete Deck
+                                        </button>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -868,8 +1272,8 @@ function Dashboard() {
                 </div>
 
                 {activeView === 'dashboard' && (
-                    <div className="content-section">
-                        {isLoading.folders ? (
+                    <div className={`content-section ${isTransitioning ? 'transitioning' : ''}`}>
+                        {isLoading.initialLoad ? (
                             <div className="loading-container">
                                 <div className="loading-spinner"></div>
                             </div>
@@ -1011,7 +1415,7 @@ function Dashboard() {
                 )}
 
                 {activeView === 'folder' && selectedFolder && (
-                    <div className="content-section">
+                    <div className={`content-section ${isTransitioning ? 'transitioning' : ''}`}>
                         <div className="folder-content-header">
                             <div className="add-item-buttons">
                                 <button 
@@ -1022,25 +1426,26 @@ function Dashboard() {
                                 </button>
                                 <button 
                                     className="add-item-btn"
-                                    onClick={() => handleAddItem(selectedFolder.id, 'quiz')}
+                                    onClick={() => setShowNewQuizModal(true)}
                                 >
                                     <FiFileText /> Add Quiz
                                 </button>
                             </div>
                         </div>
-                        {isLoading.decks ? (
+                        {isLoading.initialLoad ? (
                             <div className="loading-container">
                                 <div className="loading-spinner"></div>
                             </div>
                         ) : (
                             <div className="folder-items">
-                                {selectedFolder.items && selectedFolder.items.length > 0 ? (
-                                    selectedFolder.items.map(item => (
-                                        item.type === 'deck' ? (
+                                {selectedFolder && selectedFolder.items && selectedFolder.items.length > 0 ? (
+                                    selectedFolder.items.map(item => {
+                                        return item.type === 'deck' ? (
                                             <div 
                                                 key={item.id} 
                                                 className={`deck-item ${selectedDeck?.id === item.id && activeView === 'deck' ? 'active' : ''}`} 
                                                 onClick={() => handleDeckClick(item.id)}
+                                                onContextMenu={(e) => handleContextMenu(e, 'deck', item.id)}
                                             >
                                                 <FiLayers className="deck-icon white-icon" />
                                                 <div className="deck-info">
@@ -1060,18 +1465,56 @@ function Dashboard() {
                                                 </button>
                                             </div>
                                         ) : (
-                                            <div key={item.id} className="quiz-item">
-                                                <FiFileText className="quiz-icon" />
-                                                <div className="quiz-info">
-                                                    <div className="quiz-name">{item.name}</div>
-                                                    <div className="quiz-stats">0 questions • No attempts yet</div>
+                                            <div 
+                                                key={item.id} 
+                                                className={`deck-item ${selectedQuiz?.id === item.id && activeView === 'quiz' ? 'active' : ''}`}
+                                                onClick={() => handleQuizClick(item.id)}
+                                                onContextMenu={(e) => handleContextMenu(e, 'quiz', item.id)}
+                                            >
+                                                <FiFileText className="deck-icon white-icon" />
+                                                <div className="deck-info">
+                                                    <div className="deck-name">{item.topic}</div>
+                                                    <div className="deck-stats">
+                                                        {item.subject} • Quiz
+                                                    </div>
                                                 </div>
+                                                <button 
+                                                    className="delete-btn"
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (item && item.id) {
+                                                            handleDeleteQuiz(item.id);
+                                                        } else {
+                                                            console.error('Invalid quiz item:', item);
+                                                            showNotification('Error: Invalid quiz data');
+                                                        }
+                                                    }}
+                                                >
+                                                    Delete
+                                                </button>
                                             </div>
-                                        )
-                                    ))
+                                        );
+                                    })
                                 ) : (
-                                    <div className="empty-state">
-                                        <p>No decks or quizzes yet. Create one to get started!</p>
+                                    <div className="empty-folder-state">
+                                        <div className="empty-folder-message">
+                                            <h3>This folder is empty</h3>
+                                            <p>Add a deck or quiz to get started</p>
+                                        </div>
+                                        <div className="empty-folder-actions">
+                                            <button 
+                                                className="add-item-btn"
+                                                onClick={() => setShowNewDeckModal(true)}
+                                            >
+                                                <FiLayers /> Add Deck
+                                            </button>
+                                            <button 
+                                                className="add-item-btn"
+                                                onClick={() => setShowNewQuizModal(true)}
+                                            >
+                                                <FiFileText /> Add Quiz
+                                            </button>
+                                        </div>
                                     </div>
                                 )}
                             </div>
@@ -1080,7 +1523,7 @@ function Dashboard() {
                 )}
 
                 {activeView === 'deck' && selectedDeck && (
-                    <div className="content-section">
+                    <div className={`content-section ${isTransitioning ? 'transitioning' : ''}`}>
                         <div className="deck-content-header">
                             <div className="deck-info-header">
                                 <h2>{selectedDeck.name}</h2>
@@ -1093,7 +1536,7 @@ function Dashboard() {
                                 <FiPlus /> Add Card
                             </button>
                         </div>
-                        {isLoading.cards ? (
+                        {isLoading.initialLoad ? (
                             <div className="loading-container">
                                 <div className="loading-spinner"></div>
                             </div>
@@ -1129,7 +1572,7 @@ function Dashboard() {
 
             {/* New Folder Modal */}
             {showNewFolderModal && (
-                <div className="modal-overlay">
+                <div className="modal-overlay show">
                     <div className="modal-content">
                         <h3>Create New Folder</h3>
                         <input
@@ -1138,10 +1581,25 @@ function Dashboard() {
                             value={newFolderName}
                             onChange={(e) => setNewFolderName(e.target.value)}
                             placeholder="Enter folder name"
+                            autoFocus
                         />
                         <div className="modal-actions">
-                            <button className="create-btn" onClick={handleCreateFolder}>Create</button>
-                            <button className="cancel-btn" onClick={() => setShowNewFolderModal(false)}>Cancel</button>
+                            <button 
+                                className="create-btn" 
+                                onClick={handleCreateFolder}
+                                disabled={!newFolderName.trim()}
+                            >
+                                Create
+                            </button>
+                            <button 
+                                className="cancel-btn" 
+                                onClick={() => {
+                                    setShowNewFolderModal(false);
+                                    setNewFolderName('');
+                                }}
+                            >
+                                Cancel
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1245,7 +1703,7 @@ function Dashboard() {
 
             {/* New Deck Modal */}
             {showNewDeckModal && (
-                <div className="modal-overlay">
+                <div className="modal-overlay show">
                     <div className="modal-content">
                         <h3>Create New Deck</h3>
                         <input
@@ -1254,6 +1712,7 @@ function Dashboard() {
                             value={newDeckName}
                             onChange={(e) => setNewDeckName(e.target.value)}
                             placeholder="Enter deck name"
+                            autoFocus
                         />
                         <input
                             type="text"
@@ -1263,8 +1722,23 @@ function Dashboard() {
                             placeholder="Enter subject"
                         />
                         <div className="modal-actions">
-                            <button className="create-btn" onClick={handleCreateDeck}>Create</button>
-                            <button className="cancel-btn" onClick={() => setShowNewDeckModal(false)}>Cancel</button>
+                            <button 
+                                className="create-btn" 
+                                onClick={handleCreateDeck}
+                                disabled={!newDeckName.trim() || !newDeckSubject.trim()}
+                            >
+                                Create
+                            </button>
+                            <button 
+                                className="cancel-btn" 
+                                onClick={() => {
+                                    setShowNewDeckModal(false);
+                                    setNewDeckName('');
+                                    setNewDeckSubject('');
+                                }}
+                            >
+                                Cancel
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1272,7 +1746,7 @@ function Dashboard() {
 
             {/* New Card Modal */}
             {showNewCardModal && (
-                <div className="modal-overlay">
+                <div className="modal-overlay show">
                     <div className="modal-content">
                         <h3>Create New Card</h3>
                         <input
@@ -1281,6 +1755,7 @@ function Dashboard() {
                             value={newCard.question}
                             onChange={(e) => setNewCard({ ...newCard, question: e.target.value })}
                             placeholder="Enter question"
+                            autoFocus
                         />
                         <input
                             type="text"
@@ -1296,8 +1771,64 @@ function Dashboard() {
                             onChange={(e) => setNewCard({ ...newCard, scheduled_date: e.target.value })}
                         />
                         <div className="modal-actions">
-                            <button className="create-btn" onClick={handleCreateCard}>Create</button>
-                            <button className="cancel-btn" onClick={() => setShowNewCardModal(false)}>Cancel</button>
+                            <button 
+                                className="create-btn" 
+                                onClick={handleCreateCard}
+                                disabled={!newCard.question.trim() || !newCard.answer.trim()}
+                            >
+                                Create
+                            </button>
+                            <button 
+                                className="cancel-btn" 
+                                onClick={() => {
+                                    setShowNewCardModal(false);
+                                    setNewCard({ question: '', answer: '', scheduled_date: '' });
+                                }}
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* New Quiz Modal */}
+            {showNewQuizModal && (
+                <div className="modal-overlay show">
+                    <div className="modal-content">
+                        <h3>Create New Quiz</h3>
+                        <input
+                            type="text"
+                            className="folder-input"
+                            value={newQuiz.topic}
+                            onChange={(e) => setNewQuiz({ ...newQuiz, topic: e.target.value })}
+                            placeholder="Enter quiz topic"
+                            autoFocus
+                        />
+                        <input
+                            type="text"
+                            className="folder-input"
+                            value={newQuiz.subject}
+                            onChange={(e) => setNewQuiz({ ...newQuiz, subject: e.target.value })}
+                            placeholder="Enter subject"
+                        />
+                        <div className="modal-actions">
+                            <button 
+                                className="create-btn" 
+                                onClick={handleCreateQuiz}
+                                disabled={!newQuiz.topic.trim() || !newQuiz.subject.trim()}
+                            >
+                                Create
+                            </button>
+                            <button 
+                                className="cancel-btn" 
+                                onClick={() => {
+                                    setShowNewQuizModal(false);
+                                    setNewQuiz({ topic: '', subject: '' });
+                                }}
+                            >
+                                Cancel
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -1313,13 +1844,19 @@ function Dashboard() {
                     }}
                 >
                     <button 
-                        className="context-menu-item"
+                        className="context-menu-item delete-option"
                         onClick={() => {
-                            handleDeleteFolder(contextMenu.folderId);
-                            setContextMenu({ show: false, x: 0, y: 0, folderId: null });
+                            if (contextMenu.type === 'folder') {
+                                handleDeleteFolder(contextMenu.id);
+                            } else if (contextMenu.type === 'deck') {
+                                handleDeleteDeck(contextMenu.id);
+                            } else if (contextMenu.type === 'quiz') {
+                                handleDeleteQuiz(contextMenu.id);
+                            }
+                            setContextMenu({ show: false, x: 0, y: 0, type: null, id: null });
                         }}
                     >
-                        Delete Folder
+                        Delete {contextMenu.type === 'folder' ? 'Folder' : contextMenu.type === 'deck' ? 'Deck' : 'Quiz'}
                     </button>
                 </div>
             )}
