@@ -24,7 +24,7 @@ class DeckCollection(APIView):
         title = request.data.get('title')
         user = AuthUser.objects.filter(email=request.user).first()
         subject = request.data.get('subject')
-        folder = Folder.objects.filter(name=request.data.get('folder_name')).first()
+        folder = Folder.objects.filter(user=user, id=request.data.get('folder_id')).first()
 
         if Deck.objects.filter(title=title).exists():
             return Response({"Message": "Already have card with title"}, status=status.HTTP_400_BAD_REQUEST)

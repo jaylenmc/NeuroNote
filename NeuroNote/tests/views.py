@@ -11,17 +11,27 @@ from django.core.exceptions import ValidationError
 class QuizView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request):
+    def get(self, request, quiz_id=None):
         user_p = AuthUser.objects.filter(email=request.user).first()
-        quizzes = Quiz.objects.filter(user=user_p)
-        serilized = QuizSerilizer(quizzes, many=True)
-        print(serilized.data)
-        return Response(serilized.data, status=status.HTTP_200_OK)
+        
+        if quiz_id:
+            quiz = Quiz.objects.filter(user=user_p, id=quiz_id).first()
+            if not quiz:
+                return Response({'Detail': 'Quiz not found'}, status=status.HTTP_404_NOT_FOUND)
+            serialized = QuizSerilizer(quiz)
+            return Response(serialized.data, status=status.HTTP_200_OK)
+        else:
+            quizzes = Quiz.objects.filter(user=user_p)
+            serialized = QuizSerilizer(quizzes, many=True)
+            return Response(serialized.data, status=status.HTTP_200_OK)
     
     def post(self, request):
         topic = request.data.get('topic')
         subject = request.data.get('subject')
         folder_id = request.data.get('folder_id')
+
+        if Quiz.objects.filter(user=request.user, topic=topic).exists():
+            return Response({"Message": "Quiz already exists"}, status=status.HTTP_406_NOT_ACCEPTABLE)
 
         if not topic:
             return Response({'Message': 'No topic provided'}, status=status.HTTP_400_BAD_REQUEST)
@@ -50,17 +60,26 @@ class QuizView(APIView):
 class QuizQuestions(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, quiz_id):
+    def get(self, request, quiz_id=None):
         user_p = AuthUser.objects.filter(email=request.user).first()
-        quiz = Quiz.objects.filter(user=user_p, id=quiz_id).first()
-        questions = Question.objects.filter(quiz=quiz)
-        quiz_details_dict = {}
-
-        for question in questions:
-            answer = Answer.objects.filter(question=question)
-            quiz_details_dict[question.question_input] = AnswerSerializer(answer, many=True).data
         
-        return Response(quiz_details_dict, status=status.HTTP_200_OK)
+        if quiz_id:
+            quiz = Quiz.objects.filter(user=user_p, id=quiz_id).first()
+            if not quiz:
+                return Response({'Detail': 'Quiz not found'}, status=status.HTTP_404_NOT_FOUND)
+                
+            questions = Question.objects.filter(quiz=quiz)
+            quiz_details_dict = {}
+
+            for question in questions:
+                answer = Answer.objects.filter(question=question)
+                q_serialized = QuestionSerializer(question).data
+                quiz_details_dict[q_serialized.get('id')] = AnswerSerializer(answer, many=True).data
+            return Response(quiz_details_dict, status=status.HTTP_200_OK)
+        else:
+            # Return all questions for the user
+            questions = Question.objects.filter(quiz__user=user_p)
+            return Response(QuestionSerializer(questions, many=True).data, status=status.HTTP_200_OK)
     
     def post(self, request):
         question_input = request.data.get('question_input')
@@ -90,14 +109,15 @@ class QuizQuestions(APIView):
         return Response(serialized, status=status.HTTP_200_OK)
     
     def delete(self, request, quiz_id, question_id):
-        user_p = AuthUser.objects.filter(email=user).first()
+        user_p = AuthUser.objects.filter(email=request.user).first()
         question = Question.objects.filter(
             quiz__user=user_p,
             quiz__id=quiz_id,
             id=question_id).first()
-        question.delete()
-
-        return Response({"Message": "Question successfully deleted"}, status=status.HTTP_200_OK)
+        if question:
+            question.delete()
+            return Response({"Message": "Question successfully deleted"}, status=status.HTTP_200_OK)
+        return Response({"Message": "Question not found"}, status=status.HTTP_404_NOT_FOUND)
     
 
 class QuizAnswers(APIView):
@@ -110,6 +130,7 @@ class QuizAnswers(APIView):
             id=question_id
             ).first()
         answers = Answer.objects.filter(question=question)
+        print(f'Answers: {answers}')
 
         return Response(AnswerSerializer(answers, many=True).data, status=status.HTTP_200_OK)
     
