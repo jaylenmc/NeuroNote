@@ -1,22 +1,26 @@
 .calendar-widget {
-    background-color: #1e1e1e;
+    background: rgba(30, 30, 30, 0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     border-radius: 12px;
-    padding: 20px;
+    padding: 32px;
     width: 100%;
-    max-width: 400px;
+    max-width: 800px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    outline: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .calendar-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    margin-bottom: 32px;
 }
 
 .calendar-header h3 {
     color: #ffffff;
-    font-size: 1.2rem;
+    font-size: 1.5rem;
     font-weight: 500;
     margin: 0;
 }
@@ -26,12 +30,13 @@
     border: none;
     color: #ffffff;
     cursor: pointer;
-    padding: 8px;
-    border-radius: 6px;
+    padding: 12px;
+    border-radius: 8px;
     display: flex;
     align-items: center;
     justify-content: center;
     transition: background-color 0.2s;
+    font-size: 1.2rem;
 }
 
 .month-nav-btn:hover {
@@ -41,21 +46,21 @@
 .calendar-weekdays {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 8px;
-    margin-bottom: 10px;
+    gap: 12px;
+    margin-bottom: 16px;
 }
 
 .calendar-weekdays div {
     color: #888888;
-    font-size: 0.9rem;
+    font-size: 1rem;
     text-align: center;
-    padding: 8px 0;
+    padding: 12px 0;
 }
 
 .calendar-days {
     display: grid;
     grid-template-columns: repeat(7, 1fr);
-    gap: 8px;
+    gap: 12px;
 }
 
 .calendar-day {
@@ -65,11 +70,12 @@
     align-items: center;
     justify-content: center;
     color: #ffffff;
-    font-size: 0.9rem;
-    border-radius: 6px;
+    font-size: 1.1rem;
+    border-radius: 8px;
     cursor: pointer;
     transition: background-color 0.2s;
     overflow: visible;
+    min-height: 80px;
 }
 
 .calendar-day:hover:not(.empty) {
@@ -87,16 +93,58 @@
 
 .card-indicator {
     position: absolute;
-    top: -4px;
-    right: -4px;
-    width: 18px;
-    height: 18px;
-    background-color: #4CAF50;
-    color: white;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 8px;
+    height: 8px;
+    background-color: #0CBABA;
     border-radius: 50%;
-    font-size: 11px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
     z-index: 1;
+}
+
+.upcoming-reviews {
+    margin-top: 32px;
+    padding-top: 32px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.upcoming-reviews h3 {
+    color: #ffffff;
+    font-size: 1.2rem;
+    font-weight: 500;
+    margin-bottom: 16px;
+}
+
+.upcoming-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.upcoming-card {
+    background: rgba(40, 40, 40, 0.5);
+    border-radius: 8px;
+    padding: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.card-date {
+    color: #0CBABA;
+    font-size: 0.9rem;
+    margin-bottom: 8px;
+}
+
+.card-content {
+    color: #ffffff;
+}
+
+.card-question {
+    font-size: 1rem;
+    margin-bottom: 4px;
+}
+
+.card-answer {
+    font-size: 0.9rem;
+    color: #888888;
 } 

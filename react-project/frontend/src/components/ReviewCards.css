@@ -1,0 +1,415 @@
+.review-cards-container {
+    padding: 32px;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+    min-height: calc(100vh - 64px);
+}
+
+.flashcard-tabs {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 32px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: 12px;
+}
+
+.flashcard-tab {
+    background: none;
+    border: none;
+    color: #888;
+    font-size: 16px;
+    padding: 8px 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+}
+
+.flashcard-tab:hover {
+    color: #fff;
+}
+
+.flashcard-tab.active {
+    color: #fff;
+}
+
+.flashcard-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -13px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background-color: #fff;
+}
+
+.flashcard-content {
+    width: 100%;
+}
+
+.flashcards-section {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.flashcards-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    width: 100%;
+}
+
+.flashcards-header h2 {
+    color: #ffffff;
+    font-size: 24px;
+    margin: 0;
+}
+
+.view-toggle {
+    display: flex;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 4px;
+    border-radius: 8px;
+    margin-left: auto;
+}
+
+.view-toggle-btn {
+    background: none;
+    border: none;
+    color: #888;
+    padding: 8px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.view-toggle-btn:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.view-toggle-btn.active {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.flashcards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 24px;
+    width: 100%;
+}
+
+.flashcards-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    width: 100%;
+}
+
+.flashcard-item {
+    background: rgba(30, 30, 30, 0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 24px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.flashcards-grid .flashcard-item {
+    cursor: pointer;
+}
+
+.flashcards-grid .flashcard-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.deck-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 16px;
+}
+
+.deck-header h3 {
+    color: #ffffff;
+    font-size: 20px;
+    margin: 0;
+}
+
+.deck-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.action-btn {
+    background: none;
+    border: none;
+    color: #888;
+    padding: 8px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.action-btn:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.action-btn.study:hover {
+    color: #4CAF50;
+}
+
+.action-btn.edit:hover {
+    color: #2196F3;
+}
+
+.action-btn.share:hover {
+    color: #9C27B0;
+}
+
+.action-btn.delete:hover {
+    color: #F44336;
+}
+
+.deck-info {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+    color: #888;
+    font-size: 14px;
+}
+
+.progress-section {
+    margin-top: 16px;
+}
+
+.progress-label {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    color: #888;
+    font-size: 14px;
+}
+
+.progress-bar {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4CAF50, #8BC34A);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+}
+
+/* List view specific styles */
+.flashcards-list .flashcard-item {
+    display: flex;
+    align-items: center;
+    padding: 16px 24px;
+}
+
+.flashcards-list .deck-header {
+    flex: 1;
+    margin-bottom: 0;
+    margin-right: 24px;
+}
+
+.flashcards-list .deck-info {
+    flex: 1;
+    margin-bottom: 0;
+    margin-right: 24px;
+}
+
+.flashcards-list .progress-section {
+    width: 200px;
+    margin-top: 0;
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+    .review-cards-container {
+        padding: 16px;
+    }
+
+    .flashcards-grid {
+        grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+        gap: 16px;
+    }
+
+    .flashcards-list .flashcard-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .flashcards-list .deck-header,
+    .flashcards-list .deck-info {
+        margin-right: 0;
+        margin-bottom: 16px;
+    }
+
+    .flashcards-list .progress-section {
+        width: 100%;
+    }
+
+    .flashcard-tabs {
+        gap: 12px;
+        margin-bottom: 24px;
+    }
+
+    .flashcard-tab {
+        font-size: 14px;
+        padding: 6px 12px;
+    }
+}
+
+@media (max-width: 768px) {
+    .flashcards-header {
+        flex-direction: column;
+        gap: 16px;
+        align-items: flex-start;
+    }
+
+    .view-toggle {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+.add-deck-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    border-radius: 8px;
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 14px;
+}
+
+.add-deck-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.add-deck-btn:active {
+    transform: scale(0.98);
+}
+
+/* Modal Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 99999;
+}
+
+.modal-content {
+    background: #1e1e1e;
+    padding: 24px;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 500px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    position: relative;
+    z-index: 100000;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.modal-content h2 {
+    color: #fff;
+    margin: 0 0 24px 0;
+    font-size: 24px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    color: #888;
+    margin-bottom: 8px;
+    font-size: 14px;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    color: #fff;
+    font-size: 16px;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+.modal-buttons {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 24px;
+}
+
+.submit-btn, .cancel-btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.submit-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.submit-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.cancel-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.cancel-btn:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.error-message {
+    background: rgba(244, 67, 54, 0.1);
+    border: 1px solid rgba(244, 67, 54, 0.3);
+    color: #ff6b6b;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 16px;
+    font-size: 14px;
+} 

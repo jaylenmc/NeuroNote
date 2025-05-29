@@ -29,8 +29,8 @@ function Navbar() {
   const location = useLocation();
   
   // Hide navbar on these routes
-  const hideNavbarRoutes = ['/dashboard', '/signin', '/auth/callback/'];  // Added trailing slash to match exact path
-  if (hideNavbarRoutes.includes(location.pathname)) {
+  const hideNavbarRoutes = ['/dashboard', '/signin', '/auth/callback/'];
+  if (hideNavbarRoutes.some(route => location.pathname.startsWith(route))) {
     return null;
   }
   
@@ -60,21 +60,23 @@ function Navbar() {
 // AppContent wrapper to use location
 function AppContent() {
   const location = useLocation();
-  const showNavbar = !['/dashboard', '/signin', '/auth/callback/'].includes(location.pathname);
+  const showNavbar = !['/dashboard', '/signin', '/auth/callback/'].some(route => 
+    location.pathname.startsWith(route)
+  );
 
   return (
     <>
       {showNavbar && <Navbar />}
       <main className="main-content">
         <Routes>
-          <Route path='/auth/callback/' element={<Authentication />}></Route>
+          <Route path='/auth/callback/' element={<Authentication />} />
           <Route path="/" element={<Home />} /> {/* Home page route */}
           <Route path="/about" element={<About />} /> {/* About page route */}
           <Route path="/features" element={<div>Features Page</div>} />
           <Route path="/pricing" element={<div>Pricing Page</div>} />
           <Route path="/signup" element={<div>Sign Up Page</div>} />
           <Route 
-            path="/dashboard" 
+            path="/dashboard/*" 
             element={
               <ProtectedRoute>
                 <Dashboard />
@@ -82,6 +84,7 @@ function AppContent() {
             } 
           />
           <Route path='/signin' element={ <Signin /> }/>
+          <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </main>
     </>

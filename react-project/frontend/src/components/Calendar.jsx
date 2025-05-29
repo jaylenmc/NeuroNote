@@ -6,6 +6,7 @@ import './Calendar.css';
 function Calendar() {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [scheduledCards, setScheduledCards] = useState({});
+    const [upcomingCards, setUpcomingCards] = useState([]);
     const api = import.meta.env.VITE_API_URL;
 
     useEffect(() => {
@@ -24,6 +25,9 @@ function Calendar() {
                 
                 // Group cards by scheduled date
                 const cardsByDate = {};
+                const today = new Date();
+                const upcoming = [];
+
                 response.data.forEach(card => {
                     if (card.scheduled_date) {
                         const date = card.scheduled_date;
@@ -31,8 +35,21 @@ function Calendar() {
                             cardsByDate[date] = [];
                         }
                         cardsByDate[date].push(card);
+
+                        // Add to upcoming if the date is in the future
+                        const cardDate = new Date(date);
+                        if (cardDate >= today) {
+                            upcoming.push({
+                                ...card,
+                                scheduled_date: date
+                            });
+                        }
                     }
                 });
+
+                // Sort upcoming cards by date
+                upcoming.sort((a, b) => new Date(a.scheduled_date) - new Date(b.scheduled_date));
+                setUpcomingCards(upcoming);
                 setScheduledCards(cardsByDate);
             } catch (error) {
                 console.error('Error fetching cards:', error);
@@ -69,6 +86,15 @@ function Calendar() {
         return `${year}-${paddedMonth}-${paddedDay}`;
     };
 
+    const formatDisplayDate = (dateString) => {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('en-US', { 
+            weekday: 'long',
+            month: 'long',
+            day: 'numeric'
+        });
+    };
+
     const renderCalendarDays = () => {
         const daysInMonth = getDaysInMonth(currentDate);
         const firstDayOfMonth = getFirstDayOfMonth(currentDate);
@@ -95,11 +121,7 @@ function Calendar() {
                     className={`calendar-day ${isToday ? 'today' : ''}`}
                 >
                     {day}
-                    {hasCards && (
-                        <div className="card-indicator">
-                            {scheduledCards[dateString].length}
-                        </div>
-                    )}
+                    {hasCards && <div className="card-indicator" />}
                 </div>
             );
         }
@@ -129,6 +151,20 @@ function Calendar() {
             </div>
             <div className="calendar-days">
                 {renderCalendarDays()}
+            </div>
+            <div className="upcoming-reviews">
+                <h3>Upcoming Reviews</h3>
+                <div className="upcoming-cards">
+                    {upcomingCards.slice(0, 5).map((card, index) => (
+                        <div key={index} className="upcoming-card">
+                            <div className="card-date">{formatDisplayDate(card.scheduled_date)}</div>
+                            <div className="card-content">
+                                <div className="card-question">{card.question}</div>
+                                <div className="card-answer">{card.answer}</div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
             </div>
         </div>
     );

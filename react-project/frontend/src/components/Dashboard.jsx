@@ -7,6 +7,10 @@ import deckIcon from '../assets/deck.svg';
 import testIcon from '../assets/test.svg';
 import './Dashboard.css';
 import QuizView from './QuizView';
+import ReviewCards from './ReviewCards';
+import Calendar from './Calendar';
+import ReviewMode from './ReviewMode';
+import ReviewCardsDashboard from './ReviewCardsDashboard';
 
 function Dashboard() {
     const { user, logout } = useAuth();
@@ -18,6 +22,7 @@ function Dashboard() {
     const [newFolderName, setNewFolderName] = useState('');
     const [selectedFolder, setSelectedFolder] = useState(null);
     const [activeView, setActiveView] = useState('dashboard');
+    const [selectedTab, setSelectedTab] = useState(null);
     const [expandedFolders, setExpandedFolders] = useState({});
     const [selectedQuiz, setSelectedQuiz] = useState(null);
     const [showQuizModal, setShowQuizModal] = useState(false);
@@ -92,6 +97,8 @@ function Dashboard() {
     });
 
     const [isMounted, setIsMounted] = useState(true);
+
+    const [selectedReview, setSelectedReview] = useState(null);
 
     // Function to check if token is expired
     const isTokenExpired = (token) => {
@@ -1326,9 +1333,15 @@ function Dashboard() {
                         onClick={() => handleSidebarNav('dashboard')}
                     >
                         <FiHome className="nav-icon" />
-                        <span>Dashboard</span>
+                        <span>Home</span>
                     </div>
-
+                    <div 
+                        className={`nav-item ${activeView === 'flashcards' ? 'active' : ''}`}
+                        onClick={() => handleSidebarNav('flashcards')}
+                    >
+                        <FiBook className="nav-icon" />
+                        <span>Flashcards</span>
+                    </div>
                     <div className="folders-section">
                         <div className="folders-header">
                             <h3>Folders</h3>
@@ -1522,7 +1535,6 @@ function Dashboard() {
                                         </div>
                                     </div>
                                 </div>
-
                                 {/* Detailed Review Stats Widget */}
                                 <div className="widget detailed-stats">
                                     <h3>Detailed Review Stats</h3>
@@ -1552,7 +1564,6 @@ function Dashboard() {
                                         </ul>
                                     </div>
                                 </div>
-
                                 {/* Upcoming Reviews Widget */}
                                 <div className="widget upcoming-reviews">
                                     <h3>Upcoming Reviews</h3>
@@ -1807,7 +1818,45 @@ function Dashboard() {
                         )}
                     </div>
                 )}
+
+                {activeView === 'flashcards' && (
+                    <div className="content-section">
+                        <div className="flashcard-tabs">
+                            <button 
+                                className={`flashcard-tab ${activeView === 'flashcards' && !selectedTab ? 'active' : ''}`}
+                                onClick={() => setSelectedTab(null)}
+                            >
+                                My Flashcards
+                            </button>
+                            <button 
+                                className={`flashcard-tab ${selectedTab === 'review' ? 'active' : ''}`}
+                                onClick={() => setSelectedTab('review')}
+                            >
+                                Review Cards
+                            </button>
+                        </div>
+                        <div className="flashcard-content">
+                            {!selectedTab ? (
+                                <ReviewCards />
+                            ) : selectedTab === 'review' && (
+                                <ReviewCardsDashboard 
+                                    onStartReview={(review) => {
+                                        setSelectedReview(review);
+                                    }}
+                                />
+                            )}
+                        </div>
+                    </div>
+                )}
             </div>
+
+            {/* Review Mode Modal - Moved outside of tab content */}
+            {selectedReview && (
+                <ReviewMode 
+                    review={selectedReview}
+                    onBack={() => setSelectedReview(null)}
+                />
+            )}
 
             {/* New Folder Modal */}
             {showNewFolderModal && (
