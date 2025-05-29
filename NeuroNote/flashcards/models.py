@@ -9,7 +9,6 @@ class Deck(models.Model):
     subject = models.CharField(max_length=255, default="No subject provided")
 
     user = models.ForeignKey(AuthUser, on_delete=models.CASCADE, null=True)
-    folder = models.ForeignKey(Folder, on_delete=models.CASCADE, null=True)
 
     
 class Card(models.Model):
