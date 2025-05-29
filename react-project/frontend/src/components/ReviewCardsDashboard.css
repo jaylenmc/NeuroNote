@@ -1,0 +1,196 @@
+.review-dashboard {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  padding: 2rem;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  margin-top: 64px;
+}
+
+/* Stats Widget */
+.stats-widget {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  padding: 2rem;
+}
+
+.stats-widget h2 {
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+  color: #fff;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  transition: transform 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+}
+
+.stat-icon {
+  font-size: 2rem;
+  color: #0CBABA;
+}
+
+.stat-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #fff;
+}
+
+.stat-label {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Weekly Progress */
+.weekly-progress {
+  margin-top: 2rem;
+}
+
+.weekly-progress h3 {
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+  color: #fff;
+}
+
+.progress-bars {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  height: 200px;
+  padding: 1rem 0;
+}
+
+.progress-bar-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  flex: 1;
+}
+
+.progress-bar {
+  width: 100%;
+  max-width: 40px;
+  background: #0CBABA;
+  border-radius: 4px 4px 0 0;
+  transition: height 0.3s ease;
+}
+
+.day-label {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Upcoming Reviews Widget */
+.upcoming-reviews-widget {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 16px;
+  padding: 2rem;
+}
+
+.upcoming-reviews-widget h2 {
+  margin-bottom: 1.5rem;
+  font-size: 1.5rem;
+  color: #fff;
+}
+
+.upcoming-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1.5rem;
+}
+
+.review-card {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.review-card:hover:not(.locked) {
+  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.review-card.locked {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.deck-name {
+  font-size: 1.1rem;
+  font-weight: 500;
+  color: #fff;
+}
+
+.lock-icon {
+  font-size: 1.2rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.card-question {
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0;
+}
+
+.review-date {
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .review-dashboard {
+    padding: 1rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .upcoming-cards {
+    grid-template-columns: 1fr;
+  }
+
+  .progress-bars {
+    height: 150px;
+  }
+} 
