@@ -48,14 +48,8 @@ class Card(models.Model):
         interval = int(10 * math.log(self.stability + 1)) 
         interval = max(1, min(interval, 365))
         self.scheduled_date = today + timedelta(days=interval) 
-       
-        ReviewLog.objects.create(
-            card=self,
-            rating=rating,
-            stability=self.stability,
-            difficulty=self.difficulty,
-            scheduled_review=self.scheduled_date,
-        )
+    
+        ReviewLog.objects.create(card=self)
 
         self.save()
 
@@ -63,7 +57,3 @@ class Card(models.Model):
 
 class ReviewLog(models.Model):
     card = models.ForeignKey(Card, on_delete=models.CASCADE)
-    reviewed_at = models.DateTimeField(auto_now_add=True)
-    rating = models.IntegerField()
-    stability = models.FloatField()
-    difficulty = models.FloatField()
