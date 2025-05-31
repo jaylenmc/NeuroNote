@@ -10,6 +10,7 @@ from achievements.models import UserAchievements
 from achievements.services import knowledge_engineer, memory_architect, deck_destroyer
 from datetime import datetime
 from folders.models import Folder
+from .services import check_past_week_cards
 
 class DeckCollection(APIView):
     permission_classes = [IsAuthenticated]
@@ -22,7 +23,7 @@ class DeckCollection(APIView):
     
     def post(self, request):
         title = request.data.get('title')
-        user = AuthUser.objects.filter(email=request.user).first()
+        user = AuthUser.objects.filter(email=request.user.email).first()
         subject = request.data.get('subject')
 
         if Deck.objects.filter(title=title).exists():
@@ -119,6 +120,7 @@ def review_card(request):
     except (TypeError, ValueError):
         return Response({"Message": "Invalid quality rating"}, status=status.HTTP_400_BAD_REQUEST)
     
+    
     card.update_sm21(quality)
 
     # Assigning Achievements
@@ -126,4 +128,9 @@ def review_card(request):
     # knowledge_engineer(user=user, deck=deck)
     memory_architect(user=user, deck=deck)
 
-    return Response({"Message": "Card reviewed and updated successfully"}, status=status.HTTP_200_OK)
+    reviewed_cards = check_past_week_cards()
+    finalized_data = {
+        'Message': 'Card reviewed and updated successfully',
+        'reviewed_dates': reviewed_cards
+    }
+    return Response(finalized_data, status=status.HTTP_200_OK)
