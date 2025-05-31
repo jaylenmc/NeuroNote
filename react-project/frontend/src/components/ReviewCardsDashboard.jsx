@@ -46,6 +46,37 @@ const ReviewCardsDashboard = ({ onStartReview }) => {
 
   return (
     <div className="review-dashboard">
+      {/* Upcoming Reviews Widget */}
+      <div className="upcoming-reviews-widget">
+        <h2>Upcoming Reviews</h2>
+        <div className="upcoming-cards">
+          {upcomingReviews.map(review => (
+            <div 
+              key={review.id} 
+              className={`review-card ${review.isLocked ? 'locked' : ''}`}
+              onClick={() => !review.isLocked && onStartReview(review)}
+            >
+              <div className="card-header">
+                <span className="deck-name">{review.deck}</span>
+                {review.isLocked ? (
+                  <FiLock className="lock-icon" />
+                ) : (
+                  <FiUnlock className="lock-icon" />
+                )}
+              </div>
+              <div className="card-content">
+                <p className="card-question">{review.card}</p>
+                <span className="review-date">
+                  {review.isLocked 
+                    ? `Available ${review.scheduledDate.toLocaleDateString()}`
+                    : 'Available Now'}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {/* Weekly Stats Widget */}
       <div className="stats-widget">
         <h2>Weekly Review Stats</h2>
@@ -92,37 +123,6 @@ const ReviewCardsDashboard = ({ onStartReview }) => {
               </div>
             ))}
           </div>
-        </div>
-      </div>
-
-      {/* Upcoming Reviews Widget */}
-      <div className="upcoming-reviews-widget">
-        <h2>Upcoming Reviews</h2>
-        <div className="upcoming-cards">
-          {upcomingReviews.map(review => (
-            <div 
-              key={review.id} 
-              className={`review-card ${review.isLocked ? 'locked' : ''}`}
-              onClick={() => !review.isLocked && onStartReview(review)}
-            >
-              <div className="card-header">
-                <span className="deck-name">{review.deck}</span>
-                {review.isLocked ? (
-                  <FiLock className="lock-icon" />
-                ) : (
-                  <FiUnlock className="lock-icon" />
-                )}
-              </div>
-              <div className="card-content">
-                <p className="card-question">{review.card}</p>
-                <span className="review-date">
-                  {review.isLocked 
-                    ? `Available ${review.scheduledDate.toLocaleDateString()}`
-                    : 'Available Now'}
-                </span>
-              </div>
-            </div>
-          ))}
         </div>
       </div>
     </div>

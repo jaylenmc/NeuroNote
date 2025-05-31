@@ -9,7 +9,6 @@ import './Dashboard.css';
 import QuizView from './QuizView';
 import ReviewCards from './ReviewCards';
 import Calendar from './Calendar';
-import ReviewMode from './ReviewMode';
 import ReviewCardsDashboard from './ReviewCardsDashboard';
 
 function Dashboard() {
@@ -99,6 +98,8 @@ function Dashboard() {
     const [isMounted, setIsMounted] = useState(true);
 
     const [selectedReview, setSelectedReview] = useState(null);
+
+    const [showFlashcardTabs, setShowFlashcardTabs] = useState(true);
 
     // Function to check if token is expired
     const isTokenExpired = (token) => {
@@ -1287,6 +1288,10 @@ function Dashboard() {
         return null;
     };
 
+    const handleReviewCardsViewModeChange = (viewMode, selectedDeck) => {
+        setShowFlashcardTabs(viewMode !== 'deck-details');
+    };
+
     return (
         <div className="dashboard-container">
             {/* Notification */}
@@ -1821,23 +1826,25 @@ function Dashboard() {
 
                 {activeView === 'flashcards' && (
                     <div className="content-section">
-                        <div className="flashcard-tabs">
-                            <button 
-                                className={`flashcard-tab ${activeView === 'flashcards' && !selectedTab ? 'active' : ''}`}
-                                onClick={() => setSelectedTab(null)}
-                            >
-                                My Flashcards
-                            </button>
-                            <button 
-                                className={`flashcard-tab ${selectedTab === 'review' ? 'active' : ''}`}
-                                onClick={() => setSelectedTab('review')}
-                            >
-                                Review Cards
-                            </button>
-                        </div>
+                        {showFlashcardTabs && (
+                          <div className="flashcard-tabs">
+                              <button 
+                                  className={`flashcard-tab ${activeView === 'flashcards' && !selectedTab ? 'active' : ''}`}
+                                  onClick={() => setSelectedTab(null)}
+                              >
+                                  My Flashcards
+                              </button>
+                              <button 
+                                  className={`flashcard-tab ${selectedTab === 'review' ? 'active' : ''}`}
+                                  onClick={() => setSelectedTab('review')}
+                              >
+                                  Review Cards
+                              </button>
+                          </div>
+                        )}
                         <div className="flashcard-content">
                             {!selectedTab ? (
-                                <ReviewCards />
+                                <ReviewCards onViewModeChange={handleReviewCardsViewModeChange} />
                             ) : selectedTab === 'review' && (
                                 <ReviewCardsDashboard 
                                     onStartReview={(review) => {
