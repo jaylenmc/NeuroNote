@@ -6,7 +6,7 @@ class Quiz(models.Model):
     topic = models.CharField(max_length=255, null=True)
     subject = models.CharField(max_length=255, null=True, blank=True)
     user = models.ForeignKey(AuthUser, on_delete=models.CASCADE, null=True)
-    folder = models.ForeignKey(Folder, on_delete=models.CASCADE, null=True)
+    folder = models.ForeignKey(Folder, on_delete=models.CASCADE, null=True, related_name='quiz')
 
 class Question(models.Model):
     QUESTION_TYPE_CHOICES = [
