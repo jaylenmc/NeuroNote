@@ -2,7 +2,6 @@ from django.db import models
 from authentication.models import AuthUser
 from datetime import date, timedelta
 import math
-from folders.models import Folder
 
 class Deck(models.Model):
     title = models.TextField()
