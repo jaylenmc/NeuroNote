@@ -1,0 +1,93 @@
+.document-editor {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background-color: #1e1e1e;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.document-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    background-color: #2d3748;
+    border-bottom: 1px solid #4a5568;
+}
+
+.document-title {
+    flex: 1;
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 1.5rem;
+    font-weight: 500;
+    padding: 8px;
+    margin-right: 16px;
+}
+
+.document-title:focus {
+    outline: none;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+.document-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.save-btn, .close-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.save-btn {
+    background-color: #4299e1;
+    color: #fff;
+}
+
+.save-btn:hover {
+    background-color: #3182ce;
+}
+
+.save-btn:disabled {
+    background-color: #4a5568;
+    cursor: not-allowed;
+}
+
+.close-btn {
+    background-color: transparent;
+    color: #a0aec0;
+}
+
+.close-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+.document-notes {
+    flex: 1;
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 1rem;
+    line-height: 1.6;
+    padding: 24px;
+    resize: none;
+}
+
+.document-notes:focus {
+    outline: none;
+}
+
+.document-notes::placeholder {
+    color: #718096;
+} 

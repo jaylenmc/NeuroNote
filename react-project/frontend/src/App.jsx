@@ -7,6 +7,7 @@ import './App.css'; // Import the CSS file
 import Signin from './auth/signin';
 import Authentication from './api/OAuthSuccess';
 import Dashboard from './components/Dashboard';
+import StudyRoom from './components/StudyRoom';
 import { useAuth, AuthProvider } from './auth/AuthContext'; // or wherever it's defined
 
 // Protected Route component
@@ -29,7 +30,7 @@ function Navbar() {
   const location = useLocation();
   
   // Hide navbar on these routes
-  const hideNavbarRoutes = ['/dashboard', '/signin', '/auth/callback/'];
+  const hideNavbarRoutes = ['/dashboard', '/signin', '/auth/callback/', '/study-room'];
   if (hideNavbarRoutes.some(route => location.pathname.startsWith(route))) {
     return null;
   }
@@ -80,6 +81,14 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <Dashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/study-room" 
+            element={
+              <ProtectedRoute>
+                <StudyRoom />
               </ProtectedRoute>
             } 
           />
