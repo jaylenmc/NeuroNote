@@ -9,6 +9,7 @@ import Authentication from './api/OAuthSuccess';
 import Dashboard from './components/Dashboard';
 import StudyRoom from './components/StudyRoom';
 import { useAuth, AuthProvider } from './auth/AuthContext'; // or wherever it's defined
+import { ThemeProvider } from './contexts/ThemeContext';
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
@@ -102,13 +103,13 @@ function AppContent() {
 
 function App() {
   return (
-    <div className="app">
+    <ThemeProvider>
       <AuthProvider>
         <Router>
           <AppContent />
         </Router>
       </AuthProvider>
-    </div>
+    </ThemeProvider>
   );
 }
 

@@ -1,0 +1,318 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+.study-room {
+    min-height: 100vh;
+    padding: 2rem;
+    position: relative;
+    overflow: hidden;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    transition: all 0.3s ease;
+}
+
+.particles-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+}
+
+.study-room-header {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.study-room-header h1 {
+    font-size: 2rem;
+    font-weight: 600;
+    margin: 0;
+}
+
+.header-controls {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.theme-toggle,
+.study-mode-toggle {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--text-primary);
+    transition: all 0.3s ease;
+}
+
+.theme-toggle:hover,
+.study-mode-toggle:hover {
+    background: var(--bg-secondary);
+    transform: translateY(-2px);
+}
+
+.study-tools {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.tool-card {
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    cursor: pointer;
+    border-radius: 1rem;
+    transition: all 0.3s ease;
+}
+
+.tool-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 0 20px var(--shadow-color);
+}
+
+.tool-icon {
+    color: var(--tool-color);
+    transition: transform 0.3s ease;
+}
+
+.tool-card:hover .tool-icon {
+    transform: scale(1.1);
+}
+
+.timer-section {
+    position: relative;
+    z-index: 1;
+    padding: 2rem;
+    text-align: center;
+    margin-bottom: 2rem;
+    border-radius: 1rem;
+}
+
+.timer {
+    font-size: 3rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    transition: all 0.3s ease;
+}
+
+.timer-active {
+    animation: timerPulse 2s infinite;
+}
+
+.timer-controls {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.timer-controls button {
+    background: var(--accent-primary);
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.timer-controls button:hover {
+    background: var(--accent-secondary);
+    transform: translateY(-2px);
+}
+
+.ambient-sound {
+    position: relative;
+    z-index: 1;
+    padding: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    border-radius: 1rem;
+}
+
+.sound-toggle {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    color: var(--text-primary);
+    transition: all 0.3s ease;
+}
+
+.sound-toggle:hover {
+    transform: scale(1.1);
+}
+
+.sound-wave {
+    display: flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.sound-wave-bar {
+    width: 3px;
+    height: 15px;
+    background: var(--text-primary);
+    animation: soundWave 1s infinite;
+}
+
+.sound-wave-bar:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.sound-wave-bar:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+.volume-slider {
+    flex: 1;
+    height: 4px;
+    -webkit-appearance: none;
+    background: var(--bg-secondary);
+    border-radius: 2px;
+    outline: none;
+}
+
+.volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px;
+    height: 16px;
+    background: var(--accent-primary);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.volume-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+}
+
+.candle {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    width: 60px;
+    height: 60px;
+    background: radial-gradient(circle at center, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0) 70%);
+    border-radius: 50%;
+    opacity: 0.8;
+    animation: candleFlicker 2s infinite;
+    pointer-events: none;
+    z-index: 0;
+}
+
+@keyframes timerPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.02); }
+    100% { transform: scale(1); }
+}
+
+@keyframes soundWave {
+    0% { transform: scaleY(0.5); }
+    50% { transform: scaleY(1); }
+    100% { transform: scaleY(0.5); }
+}
+
+@keyframes candleFlicker {
+    0% { transform: scale(1); opacity: 0.8; }
+    50% { transform: scale(1.05); opacity: 1; }
+    100% { transform: scale(1); opacity: 0.8; }
+}
+
+/* Glassmorphism */
+.glass-card {
+    background: var(--card-bg);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--border-color);
+    transition: all 0.3s ease;
+}
+
+.glass-card:hover {
+    background: var(--bg-secondary);
+    transform: translateY(-4px);
+    box-shadow: 0 0 20px var(--shadow-color);
+}
+
+/* Ambient glow animation */
+@keyframes ambientGlow {
+    0% {
+        box-shadow: 0 0 20px rgba(124, 131, 253, 0.2);
+    }
+    50% {
+        box-shadow: 0 0 30px rgba(124, 131, 253, 0.4);
+    }
+    100% {
+        box-shadow: 0 0 20px rgba(124, 131, 253, 0.2);
+    }
+}
+
+.study-mode-active {
+    animation: ambientGlow 3s infinite;
+}
+
+/* Study mode transition */
+.study-mode-transition {
+    transition: all 0.5s ease;
+}
+
+/* Dark mode adjustments */
+.dark-mode {
+    background: #1a1a1a;
+    color: #ffffff;
+}
+
+.dark-mode .glass-card {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.1);
+}
+
+.dark-mode .glass-card:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.study-room-container {
+    min-height: 100vh;
+    padding: 2rem;
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    transition: all 0.3s ease;
+}
+
+.study-room-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.back-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    color: var(--text-primary);
+    transition: all 0.3s ease;
+}
+
+.back-button:hover {
+    background: var(--bg-secondary);
+    transform: translateX(-4px);
+} 

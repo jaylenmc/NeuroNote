@@ -13,6 +13,8 @@ import ReviewCardsDashboard from './ReviewCardsDashboard';
 import DocumentEditor from './DocumentEditor';
 import bookshelfImg from '../assets/bookshelf.jpg';
 import { useNavigate } from 'react-router-dom';
+import DashboardHome from './DashboardHome';
+import './DashboardHome.css';
 
 function Dashboard() {
     const navigate = useNavigate(); // <-- Move here, top level
@@ -108,6 +110,7 @@ function Dashboard() {
     const [selectedDocument, setSelectedDocument] = useState(null);
     const [documents, setDocuments] = useState([]);
     const [showDocumentEditor, setShowDocumentEditor] = useState(false);
+    const [decks, setDecks] = useState([]); // <-- Add this line
 
     // Function to check if token is expired
     const isTokenExpired = (token) => {
@@ -1201,10 +1204,10 @@ function Dashboard() {
                 console.error('Error fetching folder content:', error);
             }
         } else {
-            setActiveView(view);
-            setSelectedFolder(folder);
-            setSelectedDeck(deck);
-            setSelectedQuiz(quiz);
+        setActiveView(view);
+        setSelectedFolder(folder);
+        setSelectedDeck(deck);
+        setSelectedQuiz(quiz);
             setSelectedDocument(null);
         }
     };
@@ -1302,7 +1305,7 @@ function Dashboard() {
     const handleCreateDocument = async () => {
         if (!selectedFolder) return;
 
-        try {
+            try {
             const response = await makeAuthenticatedRequest(
                 `${import.meta.env.VITE_API_URL}documents/notes/${selectedFolder.id}/`,
                 {
@@ -1317,10 +1320,10 @@ function Dashboard() {
                     })
                 }
             );
+                
+                if (!response) return;
 
-            if (!response) return;
-
-            if (response.ok) {
+                if (response.ok) {
                 const newDocument = await response.json();
                 
                 // Fetch updated folder data
@@ -1380,10 +1383,10 @@ function Dashboard() {
 
             if (response.ok) {
                 const createdQuiz = await response.json();
-                
-                // Clear the form and close modal
-                setNewQuiz({ topic: '', subject: '' });
-                setShowNewQuizModal(false);
+
+                    // Clear the form and close modal
+                    setNewQuiz({ topic: '', subject: '' });
+                    setShowNewQuizModal(false);
 
                 // Fetch updated folder data
                 const folderResponse = await makeAuthenticatedRequest(
@@ -1401,15 +1404,15 @@ function Dashboard() {
 
                         // Navigate back to folder view
                         handleNavigation('folder', updatedFolder);
-                        showNotification('Quiz created successfully');
+                    showNotification('Quiz created successfully');
                     }
                 }
-            } else {
+                } else {
                 console.error('Failed to create quiz:', await response.text());
-            }
-        } catch (error) {
-            console.error('Error creating quiz:', error);
-            showNotification('Error creating quiz');
+                }
+            } catch (error) {
+                console.error('Error creating quiz:', error);
+                showNotification('Error creating quiz');
         }
     };
 
@@ -1514,29 +1517,29 @@ function Dashboard() {
         if (!folder.items || folder.items.length === 0) {
             console.log('No items in folder');
             return (
-                <div className="empty-folder-content">
-                    <p>No items in this folder</p>
-                    <div className="empty-folder-actions">
-                        <button 
-                            className="add-item-btn"
+                                                <div className="empty-folder-content">
+                                                    <p>No items in this folder</p>
+                                                    <div className="empty-folder-actions">
+                                                        <button 
+                                                            className="add-item-btn"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 handleCreateDocument();
                             }}
-                        >
+                                                        >
                             <FiFileText /> Add Document
-                        </button>
-                        <button 
-                            className="add-item-btn"
+                                                        </button>
+                                                        <button 
+                                                            className="add-item-btn"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 setShowNewQuizModal(true);
                             }}
-                        >
-                            <FiFileText /> Add Quiz
-                        </button>
-                    </div>
-                </div>
+                                                        >
+                                                            <FiFileText /> Add Quiz
+                                                        </button>
+                                                    </div>
+                                                </div>
             );
         }
 
@@ -1553,7 +1556,7 @@ function Dashboard() {
                         <FiFileText className="content-icon" />
                         <span className="content-name">{item.title}</span>
                         <div className="item-actions">
-                            <button 
+                        <button 
                                 className="delete-btn"
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -1561,8 +1564,8 @@ function Dashboard() {
                                 }}
                             >
                                 ×
-                            </button>
-                        </div>
+                        </button>
+                    </div>
                     </div>
                 );
             } else if (item.type === 'quiz') {
@@ -1626,7 +1629,7 @@ function Dashboard() {
                 <div className={`content-section ${isTransitioning ? 'transitioning' : ''}`}>
                     <div className="folder-content-header">
                         <div className="add-item-buttons">
-                            <button 
+                                        <button 
                                 className="add-item-btn"
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -1634,8 +1637,8 @@ function Dashboard() {
                                 }}
                             >
                                 <FiFileText /> Add Document
-                            </button>
-                            <button 
+                                        </button>
+                                        <button 
                                 className="add-item-btn"
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -1643,102 +1646,290 @@ function Dashboard() {
                                 }}
                             >
                                 <FiFileText /> Add Quiz
-                            </button>
+                                        </button>
+                                </div>
                         </div>
-                    </div>
                     {isLoading.initialLoad ? (
                         <div className="loading-container">
                             <div className="loading-spinner"></div>
-                        </div>
+                    </div>
                     ) : (
                         <div className="folder-items">
                             {renderFolderItems(selectedFolder)}
-                        </div>
+                </div>
                     )}
                 </div>
             );
         }
 
-        if (activeView === 'dashboard') {
+        if (activeView === 'dashboard' || activeView === 'Home') {
             return (
-                <div className={`content-section ${isTransitioning ? 'transitioning' : ''}`}>
-                    {isLoading.initialLoad ? (
-                        <div className="loading-container">
-                            <div className="loading-spinner"></div>
-                        </div>
-                    ) : (
-                        <div className="dashboard-widgets">
-                            {/* Review Stats Widget */}
-                            <div className="widget review-stats">
-                                <h3>Review Activity</h3>
-                                <div className="graph-container">
-                                    <div className="graph">
-                                        <div className="graph-bars">
-                                            {[65, 80, 45, 90, 70, 85, 60].map((height, index) => (
-                                                <div key={index} className="bar" style={{ height: `${height}%` }}>
-                                                    <span className="bar-value">{height}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                        <div className="graph-labels">
-                                            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => (
-                                                <span key={index} className="day-label">{day}</span>
-                                            ))}
-                                        </div>
-                                    </div>
-                                </div>
-                                <div className="stats-summary">
-                                    <div className="stat-item">
-                                        <span className="stat-value">7</span>
-                                        <span className="stat-label">Day Streak</span>
-                                    </div>
-                                    <div className="stat-item">
-                                        <span className="stat-value">85%</span>
-                                        <span className="stat-label">Goal Progress</span>
-                                    </div>
-                                </div>
-                            </div>
-                            {/* Detailed Review Stats Widget */}
-                            <div className="widget detailed-stats">
-                                <h3>Detailed Review Stats</h3>
-                                <div className="time-studied">
-                                    <h4>Time Studied This Week</h4>
-                                    <div className="time-value">12h 45m</div>
-                                </div>
-                                <div className="cards-reviewed">
-                                    <h4>Cards Reviewed</h4>
-                                    <div className="cards-value">245</div>
-                                </div>
-                                <div className="needs-work">
-                                    <h4>Cards Needing Work</h4>
-                                    <ul>
-                                        {reviewProgress.needsReview.map((item, index) => (
-                                            <li key={index}>
-                                                <span className="subject">{item.topic}</span>
-                                                <span className="count">{item.count} cards</span>
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
+                <DashboardHome />
             );
         }
 
         if (activeView === 'flashcards') {
+            console.log('Current decks state:', decks);
             return (
-                <div className="flashcards-blur-bg">
-                    <div className="flashcards-blur-img" style={{ backgroundImage: `url(${bookshelfImg})` }} />
-                    <div className="flashcards-vignette" />
-                    <div className="content-section" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
-                        <button
-                            className="enter-study-room-btn"
+                <div className="content-section" style={{ 
+                    padding: '32px',
+                    position: 'relative',
+                    minHeight: '100vh',
+                    background: 'transparent'
+                }}>
+                    {/* Header Section */}
+                    <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'space-between', 
+                        alignItems: 'center',
+                        marginBottom: '32px',
+                        padding: '24px',
+                        background: 'rgba(255, 255, 255, 0.1)',
+                        backdropFilter: 'blur(10px)',
+                        borderRadius: '16px',
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        position: 'relative',
+                        zIndex: 1
+                    }}>
+                        <div>
+                            <h2 style={{ margin: 0, fontSize: '1.75rem', color: 'white' }}>Welcome to Flashcards</h2>
+                            <p style={{ margin: '8px 0 0 0', opacity: 0.9, color: 'white' }}>Ready to boost your learning?</p>
+                        </div>
+                        <button 
                             onClick={() => navigate('/study-room')}
+                            style={{
+                                background: 'rgba(255, 255, 255, 0.1)',
+                                color: '#ffffff',
+                                border: '1px solid rgba(255, 255, 255, 0.2)',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '8px',
+                                fontSize: '1rem',
+                                cursor: 'pointer',
+                                padding: '12px 24px',
+                                borderRadius: '12px',
+                                transition: 'all 0.3s ease',
+                                backdropFilter: 'blur(10px)'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
+                                e.currentTarget.style.transform = 'translateX(4px)';
+                                e.currentTarget.style.boxShadow = '0 0 20px rgba(124, 131, 253, 0.5)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                e.currentTarget.style.transform = 'translateX(0)';
+                                e.currentTarget.style.boxShadow = 'none';
+                            }}
                         >
                             Enter Study Room
+                            <svg 
+                                width="20" 
+                                height="20" 
+                                viewBox="0 0 24 24" 
+                                fill="none" 
+                                stroke="currentColor" 
+                                strokeWidth="2" 
+                                strokeLinecap="round" 
+                                strokeLinejoin="round"
+                            >
+                                <path d="M5 12h14M12 5l7 7-7 7"/>
+                            </svg>
                         </button>
+                    </div>
+
+                    {/* Stats Section - Sticky Notes Style */}
+                    <div style={{ 
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(4, 1fr)',
+                        gap: '16px',
+                        marginBottom: '32px',
+                        position: 'relative',
+                        zIndex: 1
+                    }}>
+                        {[
+                            { label: 'Total Decks', value: decks?.length || 0, icon: '📚', color: '#FFE5D4' },
+                            { label: 'Total Cards', value: '0', icon: '🎴', color: '#D4F1F4' },
+                            { label: 'Due Today', value: '0', icon: '⏰', color: '#E2ECE9' },
+                            { label: 'Current Streak', value: '0 days', icon: '🔥', color: '#FFE5D4' }
+                        ].map((stat, index) => (
+                            <div key={index} style={{
+                                padding: '20px',
+                                background: stat.color,
+                                borderRadius: '4px',
+                                boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                alignItems: 'center',
+                                transform: `rotate(${Math.random() * 4 - 2}deg)`,
+                                transition: 'all 0.3s ease',
+                                cursor: 'pointer'
+                            }}
+                            onMouseEnter={(e) => {
+                                e.currentTarget.style.transform = `rotate(0deg) scale(1.05)`;
+                                e.currentTarget.style.boxShadow = '0 8px 12px rgba(0,0,0,0.15)';
+                            }}
+                            onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = `rotate(${Math.random() * 4 - 2}deg)`;
+                                e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
+                            }}>
+                                <span style={{ fontSize: '24px', marginBottom: '8px' }}>{stat.icon}</span>
+                                <span style={{ fontSize: '24px', fontWeight: 'bold', color: '#1f2937' }}>{stat.value}</span>
+                                <span style={{ color: '#6b7280', fontSize: '14px' }}>{stat.label}</span>
+                            </div>
+                        ))}
+                    </div>
+
+                    {/* Recently Used Decks - Glassy Cards */}
+                    <div style={{ marginBottom: '32px', position: 'relative', zIndex: 1 }}>
+                        <h3 style={{ marginBottom: '16px', color: 'white' }}>Recently Used Decks</h3>
+                        <div style={{ 
+                            display: 'flex', 
+                            gap: '16px', 
+                            overflowX: 'auto',
+                            padding: '8px 0',
+                            scrollbarWidth: 'none',
+                            msOverflowStyle: 'none'
+                        }}>
+                            {decks && decks.length > 0 ? (
+                                decks.map(deck => (
+                                    <div 
+                                        key={deck.id} 
+                                        style={{ 
+                                            minWidth: '280px',
+                                            padding: '24px',
+                                            background: 'rgba(255, 255, 255, 0.1)',
+                                            backdropFilter: 'blur(10px)',
+                                            borderRadius: '16px',
+                                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                                            transition: 'all 0.3s ease',
+                                            position: 'relative',
+                                            overflow: 'hidden',
+                                            cursor: 'pointer'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                                            e.currentTarget.style.transform = 'translateY(-4px)';
+                                            e.currentTarget.style.boxShadow = '0 0 20px rgba(124, 131, 253, 0.3)';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                            e.currentTarget.style.transform = 'translateY(0)';
+                                            e.currentTarget.style.boxShadow = 'none';
+                                        }}
+                                    >
+                                        <div style={{
+                                            position: 'absolute',
+                                            top: 0,
+                                            left: 0,
+                                            right: 0,
+                                            height: '4px',
+                                            background: 'linear-gradient(90deg, #7C83FD 0%, #4ADEDE 100%)',
+                                            borderTopLeftRadius: '16px',
+                                            borderTopRightRadius: '16px'
+                                        }} />
+                                        <h3 style={{ 
+                                            fontSize: '1.25rem',
+                                            fontWeight: '600',
+                                            marginBottom: '8px',
+                                            color: 'white'
+                                        }}>{deck.title}</h3>
+                                        <p style={{ 
+                                            color: 'rgba(255, 255, 255, 0.8)',
+                                            fontSize: '0.875rem',
+                                            marginBottom: '16px'
+                                        }}>{deck.subject}</p>
+                                    </div>
+                                ))
+                            ) : (
+                                <p style={{
+                                    color: 'rgba(255, 255, 255, 0.8)',
+                                    fontSize: '1.125rem',
+                                    textAlign: 'center',
+                                    width: '100%',
+                                    padding: '32px'
+                                }}>No decks found. Create your first deck to get started!</p>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Upcoming Reviews - Glassy Card */}
+                    <div style={{ 
+                        marginBottom: '32px',
+                        padding: '24px',
+                        background: 'rgba(255, 255, 255, 0.1)',
+                        backdropFilter: 'blur(10px)',
+                        borderRadius: '16px',
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        position: 'relative',
+                        zIndex: 1
+                    }}>
+                        <h3 style={{ marginBottom: '16px', color: 'white' }}>Upcoming Reviews</h3>
+                        <p style={{ color: 'rgba(255, 255, 255, 0.8)' }}>No cards due for review today.</p>
+                    </div>
+
+                    {/* Study Tip - Gradient Glassy Card */}
+                    <div style={{ 
+                        marginBottom: '32px',
+                        padding: '24px',
+                        background: 'rgba(124, 131, 253, 0.1)',
+                        backdropFilter: 'blur(10px)',
+                        borderRadius: '16px',
+                        border: '1px solid rgba(124, 131, 253, 0.2)',
+                        position: 'relative',
+                        zIndex: 1
+                    }}>
+                        <h3 style={{ marginBottom: '16px', color: 'white' }}>Study Tip of the Day</h3>
+                        <p style={{ margin: 0, color: 'rgba(255, 255, 255, 0.9)' }}>
+                            "The best way to learn is to teach. Try explaining your flashcards to someone else or even to yourself out loud."
+                        </p>
+                    </div>
+
+                    {/* Shortcuts / Tools - Glassy Buttons */}
+                    <div style={{ 
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(3, 1fr)',
+                        gap: '16px',
+                        position: 'relative',
+                        zIndex: 1
+                    }}>
+                        {[
+                            { label: 'Create New Deck', icon: '➕', action: () => setShowNewDeckModal(true) },
+                            { label: 'Quick Review', icon: '⚡', action: () => {} },
+                            { label: 'View Statistics', icon: '📊', action: () => {} }
+                        ].map((tool, index) => (
+                            <button 
+                                key={index}
+                                onClick={tool.action}
+                                style={{
+                                    padding: '16px',
+                                    background: 'rgba(255, 255, 255, 0.1)',
+                                    backdropFilter: 'blur(10px)',
+                                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                                    borderRadius: '12px',
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.3s ease',
+                                    color: 'white'
+                                }}
+                                onMouseEnter={(e) => {
+                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                                    e.currentTarget.style.transform = 'translateY(-4px)';
+                                    e.currentTarget.style.boxShadow = '0 0 20px rgba(124, 131, 253, 0.3)';
+                                }}
+                                onMouseLeave={(e) => {
+                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
+                                    e.currentTarget.style.transform = 'translateY(0)';
+                                    e.currentTarget.style.boxShadow = 'none';
+                                }}
+                            >
+                                <span style={{ fontSize: '24px' }}>{tool.icon}</span>
+                                <span style={{ fontSize: '14px' }}>{tool.label}</span>
+                            </button>
+                        ))}
                     </div>
                 </div>
             );
@@ -1793,17 +1984,85 @@ function Dashboard() {
         }
     };
 
+    useEffect(() => {
+        const fetchDecks = async () => {
+            const token = sessionStorage.getItem('jwt_token');
+            if (!token) return;
+
+            try {
+                const response = await fetch('http://localhost:8000/api/flashcards/deck/', {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Fetched decks:', data); // Debug log
+                    setDecks(data);
+                } else {
+                    const errorText = await response.text();
+                    console.error('Failed to fetch decks:', errorText);
+                }
+            } catch (error) {
+                console.error('Error fetching decks:', error);
+            }
+        };
+
+        fetchDecks();
+    }, []);
+
+    // Add useEffect to handle background changes
+    useEffect(() => {
+        const body = document.body;
+        if (activeView === 'flashcards') {
+            body.style.background = 'linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url("https://images.unsplash.com/photo-1507842217343-583bb7270b66?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80")';
+            body.style.backgroundSize = 'cover';
+            body.style.backgroundPosition = 'center';
+            body.style.backgroundAttachment = 'fixed';
+            body.style.transition = 'background 0.3s ease';
+            body.style.minHeight = '100vh';
+            body.style.margin = '0';
+            body.style.padding = '0';
+        } else {
+            body.style.background = '';
+            body.style.minHeight = '';
+            body.style.margin = '';
+            body.style.padding = '';
+        }
+
+        // Cleanup function
+        return () => {
+            body.style.background = '';
+            body.style.minHeight = '';
+            body.style.margin = '';
+            body.style.padding = '';
+        };
+    }, [activeView]);
+
     return (
-        <div className="dashboard-container">
+        <div className="dashboard-container" style={{ 
+            minHeight: '100vh',
+            ...(activeView === 'flashcards' && {
+                background: 'linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url("https://images.unsplash.com/photo-1507842217343-583bb7270b66?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80")',
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
+                backgroundAttachment: 'fixed'
+            })
+        }}>
             {/* Notification */}
             {notification.show && (
-                <div className="notification">
+                <div className="notification" style={{ backgroundColor: notification.type === 'success' ? '#4CAF50' : '#f44336' }}>
                     {notification.message}
                 </div>
             )}
 
             {/* Left Sidebar */}
-            <div className="dashboard-sidebar">
+            <div className="dashboard-sidebar" style={{
+                ...(activeView === 'flashcards' && {
+                    background: 'transparent'
+                })
+            }}>
                 <div className="sidebar-top">
                     <div className="workspace-header">
                         <div className="user-profile" onClick={() => setShowDropdown(!showDropdown)}>
@@ -1890,14 +2149,31 @@ function Dashboard() {
             </div>
 
             {/* Main Content Area Wrapper */}
-            <div className="main-area">
+            <div className="main-area" style={{
+                ...(activeView === 'flashcards' && {
+                    background: 'transparent'
+                })
+            }}>
                 {/* Horizontal Navbar */}
-                <div className="main-horizontal-navbar">
+                <div className="main-horizontal-navbar" style={{
+                    ...(activeView === 'flashcards' && {
+                        background: 'transparent',
+                        backdropFilter: 'blur(8px)',
+                        borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
+                    })
+                }}>
                     <div className="navbar-left">
                         <button 
                             className={`action-icon-button ${currentNavIndex <= 0 ? 'disabled' : ''}`}
                             onClick={handleBack}
                             disabled={currentNavIndex <= 0}
+                            style={{
+                                ...(activeView === 'flashcards' && {
+                                    color: 'white',
+                                    backgroundColor: 'transparent',
+                                    border: 'none'
+                                })
+                            }}
                         >
                             &lt;
                         </button>
@@ -1905,29 +2181,70 @@ function Dashboard() {
                             className={`action-icon-button ${currentNavIndex >= navHistory.length - 1 ? 'disabled' : ''}`}
                             onClick={handleForward}
                             disabled={currentNavIndex >= navHistory.length - 1}
+                            style={{
+                                ...(activeView === 'flashcards' && {
+                                    color: 'white',
+                                    backgroundColor: 'transparent',
+                                    border: 'none'
+                                })
+                            }}
                         >
                             &gt;
                         </button>
-                        <div className="navbar-title">{getCurrentViewTitle()}</div>
+                        <div className="navbar-title" style={{
+                            ...(activeView === 'flashcards' && {
+                                color: 'white'
+                            })
+                        }}>{getCurrentViewTitle()}</div>
                     </div>
                     <div className="dashboard-actions">
-                        <button className="action-icon-button" onClick={handleShare}><FiShare2 /></button>
-                        <button className="action-icon-button" onClick={handleStar}><FiStar /></button>
+                        <button className="action-icon-button" onClick={handleShare} style={{
+                            ...(activeView === 'flashcards' && {
+                                color: 'white',
+                                backgroundColor: 'transparent',
+                                border: 'none'
+                            })
+                        }}><FiShare2 /></button>
+                        <button className="action-icon-button" onClick={handleStar} style={{
+                            ...(activeView === 'flashcards' && {
+                                color: 'white',
+                                backgroundColor: 'transparent',
+                                border: 'none'
+                            })
+                        }}><FiStar /></button>
                         <div className="settings-container">
                             <button 
                                 className="action-icon-button" 
                                 onClick={handleSettingsClick}
+                                style={{
+                                    ...(activeView === 'flashcards' && {
+                                        color: 'white',
+                                        backgroundColor: 'transparent',
+                                        border: 'none'
+                                    })
+                                }}
                             >
                                 <FiMoreVertical />
                             </button>
                             {showSettingsDropdown && (
-                                <div className="settings-dropdown show">
+                                <div className="settings-dropdown show" style={{
+                                    ...(activeView === 'flashcards' && {
+                                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                                        backdropFilter: 'blur(8px)',
+                                        border: '1px solid rgba(255, 255, 255, 0.1)'
+                                    })
+                                }}>
                                     {activeView === 'folder' && selectedFolder && (
                                         <button 
                                             className="dropdown-item delete-option"
                                             onClick={() => {
                                                 handleDeleteFolder(selectedFolder.id);
                                                 setShowSettingsDropdown(false);
+                                            }}
+                                            style={{
+                                                ...(activeView === 'flashcards' && {
+                                                    color: 'white'
+                                                })
                                             }}
                                         >
                                             Delete Folder
@@ -1940,6 +2257,11 @@ function Dashboard() {
                                                 handleDeleteDeck(selectedDeck.id);
                                                 setShowSettingsDropdown(false);
                                             }}
+                                            style={{
+                                                ...(activeView === 'flashcards' && {
+                                                    color: 'white'
+                                                })
+                                            }}
                                         >
                                             Delete Deck
                                         </button>
@@ -1947,466 +2269,18 @@ function Dashboard() {
                                 </div>
                             )}
                         </div>
-                        <button className="action-icon-button" onClick={handleCollab}><FiUsers /></button>
+                        <button className="action-icon-button" onClick={handleCollab} style={{
+                            ...(activeView === 'flashcards' && {
+                                color: 'white',
+                                backgroundColor: 'transparent',
+                                border: 'none'
+                            })
+                        }}><FiUsers /></button>
                     </div>
                 </div>
 
                 {renderContent()}
             </div>
-
-            {/* Review Mode Modal - Moved outside of tab content */}
-            {selectedReview && (
-                <ReviewMode 
-                    review={selectedReview}
-                    onBack={() => setSelectedReview(null)}
-                />
-            )}
-
-            {/* New Folder Modal */}
-            {showNewFolderModal && (
-                <div className="modal-overlay show">
-                    <div className="modal-content">
-                        <h3>Create New Folder</h3>
-                        <input
-                            type="text"
-                            className="folder-input"
-                            value={newFolderName}
-                            onChange={(e) => setNewFolderName(e.target.value)}
-                            placeholder="Enter folder name"
-                            autoFocus
-                        />
-                        <div className="modal-actions">
-                            <button 
-                                className="create-btn" 
-                                onClick={handleCreateFolder}
-                                disabled={!newFolderName.trim()}
-                            >
-                                Create
-                            </button>
-                            <button 
-                                className="cancel-btn" 
-                                onClick={() => {
-                                    setShowNewFolderModal(false);
-                                    setNewFolderName('');
-                                }}
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Quiz Modal */}
-            {showQuizModal && selectedQuiz && (
-                <div className="modal-overlay">
-                    <div className="modal-content quiz-modal">
-                        <div className="quiz-modal-header">
-                            <h3>{selectedQuiz.name}</h3>
-                            <button 
-                                className="close-btn"
-                                onClick={() => setShowQuizModal(false)}
-                            >
-                                ×
-                            </button>
-                        </div>
-                        <div className="quiz-questions">
-                            {quizQuestions.map(question => (
-                                <div key={question.id} className="quiz-question">
-                                    {editingQuestion?.id === question.id ? (
-                                        <div className="edit-question">
-                                            <input
-                                                type="text"
-                                                value={question.question}
-                                                onChange={(e) => handleSaveQuestion({
-                                                    ...question,
-                                                    question: e.target.value
-                                                })}
-                                                className="question-input"
-                                            />
-                                            <div className="options-list">
-                                                {question.options.map((option, index) => (
-                                                    <input
-                                                        key={index}
-                                                        type="text"
-                                                        value={option}
-                                                        onChange={(e) => {
-                                                            const newOptions = [...question.options];
-                                                            newOptions[index] = e.target.value;
-                                                            handleSaveQuestion({
-                                                                ...question,
-                                                                options: newOptions
-                                                            });
-                                                        }}
-                                                        className="option-input"
-                                                    />
-                                                ))}
-                                            </div>
-                                            <select
-                                                value={question.correctAnswer}
-                                                onChange={(e) => handleSaveQuestion({
-                                                    ...question,
-                                                    correctAnswer: e.target.value
-                                                })}
-                                                className="correct-answer-select"
-                                            >
-                                                {question.options.map((option, index) => (
-                                                    <option key={index} value={option}>
-                                                        {option}
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    ) : (
-                                        <>
-                                            <div className="question-content">
-                                                <p>{question.question}</p>
-                                                <button 
-                                                    className="edit-btn"
-                                                    onClick={() => handleEditQuestion(question)}
-                                                >
-                                                    <FiEdit2 />
-                                                </button>
-                                            </div>
-                                            <div className="options-list">
-                                                {question.options.map((option, index) => (
-                                                    <div 
-                                                        key={index}
-                                                        className={`option ${option === question.correctAnswer ? 'correct' : ''}`}
-                                                    >
-                                                        {option}
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </>
-                                    )}
-                                </div>
-                            ))}
-                            <button 
-                                className="add-question-btn"
-                                onClick={handleAddQuestion}
-                            >
-                                Add Question
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* New Deck Modal */}
-            {showNewDeckModal && (
-                <div className="modal-overlay show">
-                    <div className="modal-content">
-                        <h3>Create New Deck</h3>
-                        <input
-                            type="text"
-                            className="folder-input"
-                            value={newDeckName}
-                            onChange={(e) => setNewDeckName(e.target.value)}
-                            placeholder="Enter deck name"
-                            autoFocus
-                        />
-                        <input
-                            type="text"
-                            className="folder-input"
-                            value={newDeckSubject}
-                            onChange={(e) => setNewDeckSubject(e.target.value)}
-                            placeholder="Enter subject"
-                        />
-                        <div className="modal-actions">
-                            <button 
-                                className="create-btn" 
-                                onClick={handleCreateDeck}
-                                disabled={!newDeckName.trim() || !newDeckSubject.trim()}
-                            >
-                                Create
-                            </button>
-                            <button 
-                                className="cancel-btn" 
-                                onClick={() => {
-                                    setShowNewDeckModal(false);
-                                    setNewDeckName('');
-                                    setNewDeckSubject('');
-                                }}
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* New Card Modal */}
-            {showNewCardModal && (
-                <div className="modal-overlay show">
-                    <div className="modal-content">
-                        <h3>Create New Card</h3>
-                        <input
-                            type="text"
-                            className="folder-input"
-                            value={newCard.question}
-                            onChange={(e) => setNewCard({ ...newCard, question: e.target.value })}
-                            placeholder="Enter question"
-                            autoFocus
-                        />
-                        <input
-                            type="text"
-                            className="folder-input"
-                            value={newCard.answer}
-                            onChange={(e) => setNewCard({ ...newCard, answer: e.target.value })}
-                            placeholder="Enter answer"
-                        />
-                        <input
-                            type="date"
-                            className="folder-input"
-                            value={newCard.scheduled_date}
-                            onChange={(e) => setNewCard({ ...newCard, scheduled_date: e.target.value })}
-                        />
-                        <div className="modal-actions">
-                            <button 
-                                className="create-btn" 
-                                onClick={handleCreateCard}
-                                disabled={!newCard.question.trim() || !newCard.answer.trim()}
-                            >
-                                Create
-                            </button>
-                            <button 
-                                className="cancel-btn" 
-                                onClick={() => {
-                                    setShowNewCardModal(false);
-                                    setNewCard({ question: '', answer: '', scheduled_date: '' });
-                                }}
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* New Quiz Modal */}
-            {showNewQuizModal && (
-                <div className="modal-overlay show">
-                    <div className="modal-content">
-                        <h3>Create New Quiz</h3>
-                        <input
-                            type="text"
-                            className="folder-input"
-                            value={newQuiz.topic}
-                            onChange={(e) => setNewQuiz({ ...newQuiz, topic: e.target.value })}
-                            placeholder="Enter quiz topic"
-                            autoFocus
-                        />
-                        <input
-                            type="text"
-                            className="folder-input"
-                            value={newQuiz.subject}
-                            onChange={(e) => setNewQuiz({ ...newQuiz, subject: e.target.value })}
-                            placeholder="Enter subject"
-                        />
-                        <div className="modal-actions">
-                            <button 
-                                className="create-btn" 
-                                onClick={handleCreateQuiz}
-                                disabled={!newQuiz.topic.trim() || !newQuiz.subject.trim()}
-                            >
-                                Create
-                            </button>
-                            <button 
-                                className="cancel-btn" 
-                                onClick={() => {
-                                    setShowNewQuizModal(false);
-                                    setNewQuiz({ topic: '', subject: '' });
-                                }}
-                            >
-                                Cancel
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Add New Question Modal */}
-            {showNewQuestionModal && (
-                <div className="modal-overlay show">
-                    <div className="modal-content question-modal">
-                        <h3>Create New Question</h3>
-                        <div className="question-form">
-                            {/* Question Input */}
-                            <div className="form-group">
-                                <label>Question</label>
-                                <textarea
-                                    value={newQuestion.question_input}
-                                    onChange={(e) => setNewQuestion(prev => ({ ...prev, question_input: e.target.value }))}
-                                    placeholder="Enter your question"
-                                    rows={3}
-                                    className="question-input"
-                                />
-                            </div>
-
-                            {/* Question Type Selection */}
-                            <div className="form-group">
-                                <label>Question Type</label>
-                                <div className="question-type-options">
-                                    <label className="radio-option">
-                                        <input
-                                            type="radio"
-                                            value="MC"
-                                            checked={newQuestion.question_type === 'MC'}
-                                            onChange={(e) => {
-                                                setNewQuestion(prev => ({
-                                                    ...prev,
-                                                    question_type: e.target.value,
-                                                    answers: e.target.value === 'MC' ? 
-                                                        [{ answer_input: '', is_correct: false }] : 
-                                                        [{ answer_input: '', is_correct: true }]
-                                                }));
-                                            }}
-                                        />
-                                        <span>Multiple Choice</span>
-                                    </label>
-                                    <label className="radio-option">
-                                        <input
-                                            type="radio"
-                                            value="WR"
-                                            checked={newQuestion.question_type === 'WR'}
-                                            onChange={(e) => {
-                                                setNewQuestion(prev => ({
-                                                    ...prev,
-                                                    question_type: e.target.value,
-                                                    answers: [{ answer_input: '', is_correct: true }]
-                                                }));
-                                            }}
-                                        />
-                                        <span>Written</span>
-                                    </label>
-                                </div>
-                            </div>
-
-                            {/* Answers Section */}
-                            <div className="answers-section">
-                                <label>Answers</label>
-                                {newQuestion.question_type === 'MC' ? (
-                                    // Multiple Choice Answers
-                                    <div className="mc-answers">
-                                        {newQuestion.answers.map((answer, index) => (
-                                            <div key={index} className="answer-row">
-                                                <input
-                                                    type="radio"
-                                                    name="correct-answer"
-                                                    checked={answer.is_correct}
-                                                    onChange={() => {
-                                                        setNewQuestion(prev => ({
-                                                            ...prev,
-                                                            answers: prev.answers.map((a, i) => ({
-                                                                ...a,
-                                                                is_correct: i === index
-                                                            }))
-                                                        }));
-                                                    }}
-                                                    className="correct-answer-radio"
-                                                />
-                                                <input
-                                                    type="text"
-                                                    value={answer.answer_input}
-                                                    onChange={(e) => handleAnswerChange(index, 'answer_input', e.target.value)}
-                                                    placeholder={`Answer ${index + 1}`}
-                                                    className="answer-input"
-                                                />
-                                                {newQuestion.answers.length > 1 && (
-                                                    <button
-                                                        className="remove-answer-btn"
-                                                        onClick={() => handleRemoveAnswer(index)}
-                                                    >
-                                                        ×
-                                                    </button>
-                                                )}
-                                            </div>
-                                        ))}
-                                        <button
-                                            className="add-answer-btn"
-                                            onClick={handleAddAnswer}
-                                        >
-                                            + Add Answer
-                                        </button>
-                                    </div>
-                                ) : (
-                                    // Written Answer
-                                    <div className="written-answer">
-                                        <textarea
-                                            value={newQuestion.answers[0].answer_input}
-                                            onChange={(e) => handleAnswerChange(0, 'answer_input', e.target.value)}
-                                            placeholder="Enter the correct answer"
-                                            rows={3}
-                                            className="answer-input"
-                                        />
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="modal-actions">
-                                <button 
-                                    className="create-btn" 
-                                    onClick={handleCreateQuestion}
-                                >
-                                    Create Question
-                                </button>
-                                <button 
-                                    className="cancel-btn" 
-                                    onClick={() => setShowNewQuestionModal(false)}
-                                >
-                                    Cancel
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* Context Menu */}
-            {contextMenu.show && (
-                <div 
-                    className="context-menu"
-                    style={{ 
-                        top: contextMenu.y, 
-                        left: contextMenu.x 
-                    }}
-                >
-                    <button 
-                        className="context-menu-item delete-option"
-                        onClick={() => {
-                            if (contextMenu.type === 'folder') {
-                                handleDeleteFolder(contextMenu.id);
-                            } else if (contextMenu.type === 'deck') {
-                                handleDeleteDeck(contextMenu.id);
-                            } else if (contextMenu.type === 'quiz') {
-                                handleDeleteQuiz(contextMenu.id);
-                            } else if (contextMenu.type === 'document') {
-                                handleDeleteDocument(contextMenu.id);
-                            }
-                            setContextMenu({ show: false, x: 0, y: 0, type: null, id: null });
-                        }}
-                    >
-                        Delete {contextMenu.type === 'folder' ? 'Folder' : 
-                               contextMenu.type === 'deck' ? 'Deck' : 
-                               contextMenu.type === 'quiz' ? 'Quiz' : 'Document'}
-                    </button>
-                </div>
-            )}
-
-            {/* Document Editor Modal */}
-            {showDocumentEditor && (
-                <div className="content-section">
-                    <DocumentEditor
-                        folderId={selectedFolder?.id}
-                        onClose={() => {
-                            setShowDocumentEditor(false);
-                            setSelectedDocument(null);
-                        }}
-                        documentId={selectedDocument?.id}
-                    />
-                </div>
-            )}
         </div>
     );
 }
