@@ -457,7 +457,7 @@ const ReviewCards = ({ onViewModeChange }) => {
                     setNewDeckTitle('');
                     setNewDeckSubject('');
                   }}
-                >
+              >
                   Cancel
               </button>
               </div>
@@ -1246,7 +1246,7 @@ const ReviewCards = ({ onViewModeChange }) => {
             {viewMode === 'decks' && renderMyFlashcardsContent()}
             {viewMode === 'cards' && renderReviewCardsContent()}
           </>
-        )}
+      )}
     </div>
   );
 };

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { FiHome, FiSettings, FiLogOut, FiFolder, FiPlus, FiBook, FiLayers, FiCheckSquare, FiTrendingUp, FiAward, FiShare2, FiStar, FiMoreVertical, FiUsers, FiFileText, FiEdit2, FiArrowLeft } from 'react-icons/fi';
+import { FiHome, FiSettings, FiLogOut, FiFolder, FiPlus, FiBook, FiLayers, FiCheckSquare, FiTrendingUp, FiAward, FiShare2, FiStar, FiMoreVertical, FiUsers, FiFileText, FiEdit2, FiArrowLeft, FiChevronRight } from 'react-icons/fi';
 import closedFolderIcon from '../assets/ClosedFolder.svg';
 import openFolderIcon from '../assets/OpenFolder.svg';
 import deckIcon from '../assets/deck.svg';
@@ -10,8 +10,12 @@ import QuizView from './QuizView';
 import ReviewCards from './ReviewCards';
 import Calendar from './Calendar';
 import ReviewCardsDashboard from './ReviewCardsDashboard';
+import DocumentEditor from './DocumentEditor';
+import bookshelfImg from '../assets/bookshelf.jpg';
+import { useNavigate } from 'react-router-dom';
 
 function Dashboard() {
+    const navigate = useNavigate(); // <-- Move here, top level
     const { user, logout } = useAuth();
     const [showDropdown, setShowDropdown] = useState(false);
     const [showWelcome, setShowWelcome] = useState(false);
@@ -100,6 +104,10 @@ function Dashboard() {
     const [selectedReview, setSelectedReview] = useState(null);
 
     const [showFlashcardTabs, setShowFlashcardTabs] = useState(true);
+
+    const [selectedDocument, setSelectedDocument] = useState(null);
+    const [documents, setDocuments] = useState([]);
+    const [showDocumentEditor, setShowDocumentEditor] = useState(false);
 
     // Function to check if token is expired
     const isTokenExpired = (token) => {
@@ -228,40 +236,13 @@ function Dashboard() {
             if (response.ok) {
                 const foldersData = await response.json();
                 
-                // Fetch all decks and quizzes in parallel
-                const [allDecks, allQuizzes] = await Promise.all([
-                    fetchAllDecks(),
-                    fetchAllQuizzes()
-                ]);
-
-                if (!isMounted) return;
-
-                // Process folders with their items
+                // Process folders with their items and content_num
                 const foldersWithCounts = foldersData.map(folder => {
-                    const folderDecks = allDecks.filter(deck => deck.folder === folder.id);
-                    const folderQuizzes = allQuizzes.filter(quiz => quiz.folder === folder.id);
-                    
-                    const items = [
-                        ...folderDecks.map(deck => ({
-                            id: deck.id,
-                            type: 'deck',
-                            name: deck.title,
-                            subject: deck.subject
-                        })),
-                        ...folderQuizzes.map(quiz => ({
-                            id: quiz.id,
-                            type: 'quiz',
-                            topic: quiz.topic,
-                            subject: quiz.subject,
-                            folder: quiz.folder
-                        }))
-                    ];
-                    
                     return {
                         ...folder,
-                        deckCount: folderDecks.length,
-                        quizCount: folderQuizzes.length,
-                        items: items
+                        documentCount: folder.content_num || 0,
+                        deckCount: 0,
+                        quizCount: 0
                     };
                 });
 
@@ -449,20 +430,62 @@ function Dashboard() {
 
         // If we're expanding the folder, fetch its contents
         if (!expandedFolders[folderId]) {
-            const folder = folders.find(f => f.id === folderId);
-            if (folder) {
-                // Update the folder's items directly from the folders state
+            try {
+                // Fetch all necessary data in parallel
+                const [documentsResponse, allDecks, allQuizzes] = await Promise.all([
+                    makeAuthenticatedRequest(`${import.meta.env.VITE_API_URL}documents/notes/`),
+                    fetchAllDecks(),
+                    fetchAllQuizzes()
+                ]);
+
+                if (!isMounted) return;
+
+                // Get all items for the folder
+                let allDocuments = [];
+                if (documentsResponse && documentsResponse.ok) {
+                    allDocuments = await documentsResponse.json();
+                }
+
+                const folderDocuments = allDocuments.filter(doc => doc.folder === folderId);
+                const folderDecks = allDecks.filter(deck => deck.folder === folderId);
+                const folderQuizzes = allQuizzes.filter(quiz => quiz.folder === folderId);
+
+                const items = [
+                    ...folderDocuments.map(doc => ({
+                        id: doc.id,
+                        type: 'document',
+                        title: doc.title,
+                        created_at: doc.created_at
+                    })),
+                    ...folderDecks.map(deck => ({
+                        id: deck.id,
+                        type: 'deck',
+                        name: deck.title,
+                        subject: deck.subject
+                    })),
+                    ...folderQuizzes.map(quiz => ({
+                        id: quiz.id,
+                        type: 'quiz',
+                        topic: quiz.topic,
+                        subject: quiz.subject,
+                        folder: quiz.folder
+                    }))
+                ];
+
+                // Update the folder's items in the folders list
                 setFolders(prevFolders => 
                     prevFolders.map(f => {
                         if (f.id === folderId) {
                             return {
                                 ...f,
-                                items: f.items || []
+                                items: items
                             };
                         }
                         return f;
                     })
                 );
+            } catch (error) {
+                console.error('Error fetching folder contents:', error);
             }
         }
     };
@@ -716,7 +739,7 @@ function Dashboard() {
 
             // Get existing items from the folder
             const existingItems = folder.items || [];
-            const existingQuizzes = existingItems.filter(item => item.type === 'quiz');
+            console.log('Existing items before fetch:', existingItems);
 
             const response = await makeAuthenticatedRequest(`${import.meta.env.VITE_API_URL}flashcards/deck/`);
             
@@ -745,8 +768,10 @@ function Dashboard() {
                         cardCount: allCards.filter(card => card.card_deck === deck.id).length
                     }));
 
-                    // Combine decks and existing quizzes
-                    const updatedItems = [...mappedDecks, ...existingQuizzes];
+                    // Preserve existing items that aren't decks
+                    const existingNonDeckItems = existingItems.filter(item => item.type !== 'deck');
+                    const updatedItems = [...mappedDecks, ...existingNonDeckItems];
+                    console.log('Updated items after fetch:', updatedItems);
 
                     // Update selected folder while preserving existing items
                     setSelectedFolder(prevFolder => {
@@ -782,11 +807,12 @@ function Dashboard() {
         }
     };
 
-    const handleFolderClick = (folderId, e) => {
+    const handleFolderClick = async (folderId, e) => {
         // Prevent handling if this is a double click
         if (e.detail > 1) return;
         
         const folder = folders.find(f => f.id === folderId);
+        console.log('Initial folder state:', folder);
         
         // Start transition
         setIsTransitioning(true);
@@ -796,6 +822,67 @@ function Dashboard() {
             clearTimeout(transitionTimeout);
         }
         
+        try {
+            // Fetch both documents and quizzes in parallel
+            const [documentsResponse, quizzesResponse] = await Promise.all([
+                makeAuthenticatedRequest(`${import.meta.env.VITE_API_URL}documents/notes/${folderId}/`),
+                makeAuthenticatedRequest(`${import.meta.env.VITE_API_URL}test/quiz/`)
+            ]);
+            
+            let folderDocuments = [];
+            let folderQuizzes = [];
+
+            if (documentsResponse && documentsResponse.ok) {
+                folderDocuments = await documentsResponse.json();
+                console.log('Fetched documents:', folderDocuments);
+            }
+
+            if (quizzesResponse && quizzesResponse.ok) {
+                const allQuizzes = await quizzesResponse.json();
+                folderQuizzes = allQuizzes.filter(quiz => quiz.folder === folderId);
+                console.log('Fetched quizzes:', folderQuizzes);
+            }
+
+            // Get existing items that aren't documents or quizzes
+            const existingItems = folder.items || [];
+            const existingNonDocQuizItems = existingItems.filter(item => 
+                item.type !== 'document' && item.type !== 'quiz'
+            );
+
+            // Create the updated folder with all items
+            const updatedFolder = {
+                ...folder,
+                items: [
+                    ...folderDocuments.map(doc => ({
+                        id: doc.id,
+                        type: 'document',
+                        title: doc.title,
+                        created_at: doc.created_at
+                    })),
+                    ...folderQuizzes.map(quiz => ({
+                        id: quiz.id,
+                        type: 'quiz',
+                        topic: quiz.topic,
+                        subject: quiz.subject,
+                        folder: quiz.folder
+                    })),
+                    ...existingNonDocQuizItems
+                ]
+            };
+            console.log('Updated folder with items:', updatedFolder);
+
+            // Update the folders state
+            setFolders(prevFolders => {
+                const newFolders = prevFolders.map(f => {
+                    if (f.id === folderId) {
+                        return updatedFolder;
+                    }
+                    return f;
+                });
+                console.log('New folders state:', newFolders);
+                return newFolders;
+            });
+        
         // Set new timeout
         const timeout = setTimeout(() => {
             setIsTransitioning(false);
@@ -803,13 +890,19 @@ function Dashboard() {
         
         setTransitionTimeout(timeout);
         
-        // Update the selected folder with all its items
-        handleNavigation('folder', folder, null, null);
+            // Update the selected folder and view
+            console.log('Setting selected folder to:', updatedFolder);
+            setSelectedFolder(updatedFolder);
+            setActiveView('folder');
+        } catch (error) {
+            console.error('Error fetching folder contents:', error);
+            setIsTransitioning(false);
+        }
     };
 
-    // Add useEffect to fetch folder contents when selected folder changes
+    // Modify the useEffect to not fetch folder decks when we already have items
     useEffect(() => {
-        if (selectedFolder && activeView === 'folder') {
+        if (selectedFolder && activeView === 'folder' && (!selectedFolder.items || selectedFolder.items.length === 0)) {
             fetchFolderDecks(selectedFolder.id);
         }
     }, [selectedFolder?.id, activeView]);
@@ -1036,17 +1129,84 @@ function Dashboard() {
     };
 
     // Function to handle navigation
-    const handleNavigation = (view, folder = null, deck = null, quiz = null) => {
-        // If we're not at the end of the history, remove future entries
-        const newHistory = navHistory.slice(0, currentNavIndex + 1);
-        // Add new navigation state
-        newHistory.push({ view, folder, deck, quiz });
-        setNavHistory(newHistory);
-        setCurrentNavIndex(newHistory.length - 1);
-        setActiveView(view);
-        setSelectedFolder(folder);
-        setSelectedDeck(deck);
-        setSelectedQuiz(quiz);
+    const handleNavigation = async (view, folder = null, deck = null, quiz = null) => {
+        if (view === 'folder' && folder) {
+            try {
+                // Fetch all necessary data in parallel
+                const [documentsResponse, allDecks, allQuizzes, foldersResponse] = await Promise.all([
+                    makeAuthenticatedRequest(`${import.meta.env.VITE_API_URL}documents/notes/`),
+                    fetchAllDecks(),
+                    fetchAllQuizzes(),
+                    makeAuthenticatedRequest(`${import.meta.env.VITE_API_URL}folders/user/`)
+                ]);
+
+                if (!isMounted) return;
+
+                // Update folders list with server data
+                if (foldersResponse && foldersResponse.ok) {
+                    const foldersData = await foldersResponse.json();
+                    setFolders(foldersData);
+                    
+                    // Get the updated folder from server data
+                    const updatedFolder = foldersData.find(f => f.id === folder.id);
+                    if (updatedFolder) {
+                        setSelectedFolder(updatedFolder);
+                    }
+                }
+
+                // Get all items for the folder
+                let allDocuments = [];
+                if (documentsResponse && documentsResponse.ok) {
+                    allDocuments = await documentsResponse.json();
+                }
+
+                const folderDocuments = allDocuments.filter(doc => doc.folder === folder.id);
+                const folderDecks = allDecks.filter(deck => deck.folder === folder.id);
+                const folderQuizzes = allQuizzes.filter(quiz => quiz.folder === folder.id);
+
+                const items = [
+                    ...folderDocuments.map(doc => ({
+                        id: doc.id,
+                        type: 'document',
+                        title: doc.title,
+                        created_at: doc.created_at
+                    })),
+                    ...folderDecks.map(deck => ({
+                        id: deck.id,
+                        type: 'deck',
+                        name: deck.title,
+                        subject: deck.subject
+                    })),
+                    ...folderQuizzes.map(quiz => ({
+                        id: quiz.id,
+                        type: 'quiz',
+                        topic: quiz.topic,
+                        subject: quiz.subject,
+                        folder: quiz.folder
+                    }))
+                ];
+
+                // Update the selected folder with items but keep server's content_num
+                const updatedFolder = {
+                    ...folder,
+                    items: items
+                };
+
+                setSelectedFolder(updatedFolder);
+                setActiveView('folder');
+                setSelectedDocument(null);
+                setSelectedDeck(null);
+                setSelectedQuiz(null);
+            } catch (error) {
+                console.error('Error fetching folder content:', error);
+            }
+        } else {
+            setActiveView(view);
+            setSelectedFolder(folder);
+            setSelectedDeck(deck);
+            setSelectedQuiz(quiz);
+            setSelectedDocument(null);
+        }
     };
 
     // Function to go back
@@ -1139,71 +1299,117 @@ function Dashboard() {
         }
     };
 
-    const handleCreateQuiz = async () => {
-        if (newQuiz.topic.trim() && newQuiz.subject.trim()) {
-            try {
-                const response = await makeAuthenticatedRequest(`${import.meta.env.VITE_API_URL}test/quiz/`, {
+    const handleCreateDocument = async () => {
+        if (!selectedFolder) return;
+
+        try {
+            const response = await makeAuthenticatedRequest(
+                `${import.meta.env.VITE_API_URL}documents/notes/${selectedFolder.id}/`,
+                {
                     method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        title: 'Untitled',
+                        notes: '',
+                        folder: selectedFolder.id
+                    })
+                }
+            );
+
+            if (!response) return;
+
+            if (response.ok) {
+                const newDocument = await response.json();
+                
+                // Fetch updated folder data
+                const folderResponse = await makeAuthenticatedRequest(
+                    `${import.meta.env.VITE_API_URL}folders/user/`
+                );
+
+                if (folderResponse && folderResponse.ok) {
+                    const foldersData = await folderResponse.json();
+                    const updatedFolder = foldersData.find(f => f.id === selectedFolder.id);
+                    
+                    if (updatedFolder) {
+                        // Update the selected folder with fresh data
+                        setSelectedFolder(updatedFolder);
+                        
+                        // Update the folders list
+                        setFolders(foldersData);
+
+                        // Fetch folder content
+                        await handleFolderClick(selectedFolder.id);
+                        
+                        // Navigate to document view with the new document
+                        setSelectedDocument(newDocument);
+                        setActiveView('document');
+                        showNotification('Document created successfully');
+                    }
+                }
+            } else {
+                console.error('Failed to create document:', await response.text());
+            }
+        } catch (error) {
+            console.error('Error creating document:', error);
+            showNotification('Error creating document');
+        }
+    };
+
+    const handleCreateQuiz = async () => {
+        if (!selectedFolder) return;
+
+        try {
+            const response = await makeAuthenticatedRequest(
+                `${import.meta.env.VITE_API_URL}test/quiz/`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
                     body: JSON.stringify({
                         topic: newQuiz.topic.trim(),
                         subject: newQuiz.subject.trim(),
                         folder_id: selectedFolder.id
                     })
-                });
-                
-                if (!response) return;
-
-                if (response.ok) {
-                    const createdQuiz = await response.json();
-                    console.log('Created quiz response:', createdQuiz);
-                    
-                    // Create the quiz item with all necessary fields
-                    const newQuizItem = {
-                        id: createdQuiz.id,
-                        type: 'quiz',
-                        topic: createdQuiz.topic,
-                        subject: createdQuiz.subject,
-                        folder: createdQuiz.folder
-                    };
-
-                    // Update the selected folder
-                    setSelectedFolder(prevFolder => {
-                        const updatedItems = [...(prevFolder.items || []), newQuizItem];
-                        return {
-                            ...prevFolder,
-                            items: updatedItems,
-                            quizCount: (prevFolder.quizCount || 0) + 1
-                        };
-                    });
-
-                    // Update the folders state
-                    setFolders(prevFolders => 
-                        prevFolders.map(folder => {
-                            if (folder.id === selectedFolder.id) {
-                                const updatedItems = [...(folder.items || []), newQuizItem];
-                                return {
-                                    ...folder,
-                                    items: updatedItems,
-                                    quizCount: (folder.quizCount || 0) + 1
-                                };
-                            }
-                            return folder;
-                        })
-                    );
-
-                    // Clear the form and close modal
-                    setNewQuiz({ topic: '', subject: '' });
-                    setShowNewQuizModal(false);
-                    showNotification('Quiz created successfully');
-                } else {
-                    const errorText = await response.text();
-                    console.error('Failed to create quiz:', errorText);
-                    showNotification('Failed to create quiz: ' + errorText);
                 }
-            } catch (error) {
-                console.error('Error creating quiz:', error);
-                showNotification('Error creating quiz');
+            );
+
+            if (!response) return;
+
+            if (response.ok) {
+                const createdQuiz = await response.json();
+                
+                // Clear the form and close modal
+                setNewQuiz({ topic: '', subject: '' });
+                setShowNewQuizModal(false);
+
+                // Fetch updated folder data
+                const folderResponse = await makeAuthenticatedRequest(
+                    `${import.meta.env.VITE_API_URL}folders/user/`
+                );
+
+                if (folderResponse && folderResponse.ok) {
+                    const foldersData = await folderResponse.json();
+                    const updatedFolder = foldersData.find(f => f.id === selectedFolder.id);
+                    
+                    if (updatedFolder) {
+                        // Update both the selected folder and folders list with server data
+                        setSelectedFolder(updatedFolder);
+                        setFolders(foldersData);
+
+                        // Navigate back to folder view
+                        handleNavigation('folder', updatedFolder);
+                        showNotification('Quiz created successfully');
+                    }
+                }
+            } else {
+                console.error('Failed to create quiz:', await response.text());
             }
+        } catch (error) {
+            console.error('Error creating quiz:', error);
+            showNotification('Error creating quiz');
         }
     };
 
@@ -1292,6 +1498,301 @@ function Dashboard() {
         setShowFlashcardTabs(viewMode !== 'deck-details');
     };
 
+    // Add this function to handle document click
+    const handleDocumentClick = (document) => {
+        // Ensure we have the latest folder data
+        const updatedFolder = folders.find(f => f.id === selectedFolder.id);
+        if (updatedFolder) {
+            setSelectedFolder(updatedFolder);
+        }
+        setSelectedDocument(document);
+        setActiveView('document');
+    };
+
+    const renderFolderItems = (folder) => {
+        console.log('Rendering folder items for:', folder);
+        if (!folder.items || folder.items.length === 0) {
+            console.log('No items in folder');
+            return (
+                <div className="empty-folder-content">
+                    <p>No items in this folder</p>
+                    <div className="empty-folder-actions">
+                        <button 
+                            className="add-item-btn"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                handleCreateDocument();
+                            }}
+                        >
+                            <FiFileText /> Add Document
+                        </button>
+                        <button 
+                            className="add-item-btn"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                setShowNewQuizModal(true);
+                            }}
+                        >
+                            <FiFileText /> Add Quiz
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        console.log('Rendering items:', folder.items);
+        return folder.items.map(item => {
+            if (item.type === 'document') {
+                return (
+                    <div 
+                        key={item.id} 
+                        className={`folder-content-item ${selectedDocument?.id === item.id && activeView === 'document' ? 'active' : ''}`}
+                        onClick={() => handleDocumentClick(item)}
+                        onContextMenu={(e) => handleContextMenu(e, 'document', item.id)}
+                    >
+                        <FiFileText className="content-icon" />
+                        <span className="content-name">{item.title}</span>
+                        <div className="item-actions">
+                            <button 
+                                className="delete-btn"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteDocument(item.id);
+                                }}
+                            >
+                                ×
+                            </button>
+                        </div>
+                    </div>
+                );
+            } else if (item.type === 'quiz') {
+                return (
+                    <div 
+                        key={item.id} 
+                        className={`folder-content-item ${selectedQuiz?.id === item.id && activeView === 'quiz' ? 'active' : ''}`}
+                        onClick={(e) => handleQuizClick(item.id, e)}
+                        onContextMenu={(e) => handleContextMenu(e, 'quiz', item.id)}
+                    >
+                        <FiFileText className="content-icon" />
+                        <span className="content-name">{item.topic}</span>
+                        <div className="item-actions">
+                            <button 
+                                className="delete-btn"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteQuiz(item.id);
+                                }}
+                            >
+                                ×
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+            return null;
+        });
+    };
+
+    // Add useEffect to monitor state changes
+    useEffect(() => {
+        console.log('Selected folder changed:', selectedFolder);
+    }, [selectedFolder]);
+
+    useEffect(() => {
+        console.log('Folders state changed:', folders);
+    }, [folders]);
+
+    const renderContent = () => {
+        console.log('Rendering content with activeView:', activeView);
+        console.log('Selected folder in renderContent:', selectedFolder);
+        
+        if (activeView === 'document' && selectedDocument) {
+            return (
+                <div className={`content-section ${isTransitioning ? 'transitioning' : ''}`}>
+                    <DocumentEditor
+                        folderId={selectedFolder?.id}
+                        onClose={() => {
+                            setActiveView('folder');
+                            setSelectedDocument(null);
+                        }}
+                        documentId={selectedDocument.id}
+                    />
+                </div>
+            );
+        }
+
+        if (activeView === 'folder' && selectedFolder) {
+            return (
+                <div className={`content-section ${isTransitioning ? 'transitioning' : ''}`}>
+                    <div className="folder-content-header">
+                        <div className="add-item-buttons">
+                            <button 
+                                className="add-item-btn"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleCreateDocument();
+                                }}
+                            >
+                                <FiFileText /> Add Document
+                            </button>
+                            <button 
+                                className="add-item-btn"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowNewQuizModal(true);
+                                }}
+                            >
+                                <FiFileText /> Add Quiz
+                            </button>
+                        </div>
+                    </div>
+                    {isLoading.initialLoad ? (
+                        <div className="loading-container">
+                            <div className="loading-spinner"></div>
+                        </div>
+                    ) : (
+                        <div className="folder-items">
+                            {renderFolderItems(selectedFolder)}
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        if (activeView === 'dashboard') {
+            return (
+                <div className={`content-section ${isTransitioning ? 'transitioning' : ''}`}>
+                    {isLoading.initialLoad ? (
+                        <div className="loading-container">
+                            <div className="loading-spinner"></div>
+                        </div>
+                    ) : (
+                        <div className="dashboard-widgets">
+                            {/* Review Stats Widget */}
+                            <div className="widget review-stats">
+                                <h3>Review Activity</h3>
+                                <div className="graph-container">
+                                    <div className="graph">
+                                        <div className="graph-bars">
+                                            {[65, 80, 45, 90, 70, 85, 60].map((height, index) => (
+                                                <div key={index} className="bar" style={{ height: `${height}%` }}>
+                                                    <span className="bar-value">{height}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <div className="graph-labels">
+                                            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => (
+                                                <span key={index} className="day-label">{day}</span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="stats-summary">
+                                    <div className="stat-item">
+                                        <span className="stat-value">7</span>
+                                        <span className="stat-label">Day Streak</span>
+                                    </div>
+                                    <div className="stat-item">
+                                        <span className="stat-value">85%</span>
+                                        <span className="stat-label">Goal Progress</span>
+                                    </div>
+                                </div>
+                            </div>
+                            {/* Detailed Review Stats Widget */}
+                            <div className="widget detailed-stats">
+                                <h3>Detailed Review Stats</h3>
+                                <div className="time-studied">
+                                    <h4>Time Studied This Week</h4>
+                                    <div className="time-value">12h 45m</div>
+                                </div>
+                                <div className="cards-reviewed">
+                                    <h4>Cards Reviewed</h4>
+                                    <div className="cards-value">245</div>
+                                </div>
+                                <div className="needs-work">
+                                    <h4>Cards Needing Work</h4>
+                                    <ul>
+                                        {reviewProgress.needsReview.map((item, index) => (
+                                            <li key={index}>
+                                                <span className="subject">{item.topic}</span>
+                                                <span className="count">{item.count} cards</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        }
+
+        if (activeView === 'flashcards') {
+            return (
+                <div className="flashcards-blur-bg">
+                    <div className="flashcards-blur-img" style={{ backgroundImage: `url(${bookshelfImg})` }} />
+                    <div className="flashcards-vignette" />
+                    <div className="content-section" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh' }}>
+                        <button
+                            className="enter-study-room-btn"
+                            onClick={() => navigate('/study-room')}
+                        >
+                            Enter Study Room
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        return null;
+    };
+
+    // Update the folder count display in the sidebar
+    const getFolderItemCount = (folder) => {
+        if (!folder.items) return 0;
+        return folder.items.length;
+    };
+
+    // Add handleDeleteDocument function
+    const handleDeleteDocument = async (documentId) => {
+        try {
+            const response = await makeAuthenticatedRequest(
+                `${import.meta.env.VITE_API_URL}documents/notes/${selectedFolder.id}/${documentId}/`,
+                { method: 'DELETE' }
+            );
+            
+            if (!response) return;
+
+            if (response.ok) {
+                // Update the folder's items
+                setSelectedFolder(prevFolder => ({
+                    ...prevFolder,
+                    items: prevFolder.items.filter(item => item.id !== documentId)
+                }));
+
+                // Update folders state
+                setFolders(prevFolders => 
+                    prevFolders.map(folder => {
+                        if (folder.id === selectedFolder.id) {
+                            return {
+                                ...folder,
+                                items: folder.items.filter(item => item.id !== documentId)
+                            };
+                        }
+                        return folder;
+                    })
+                );
+
+                showNotification('Document deleted successfully');
+            } else {
+                console.error('Failed to delete document:', await response.text());
+            }
+        } catch (error) {
+            console.error('Error deleting document:', error);
+            showNotification('Error deleting document');
+        }
+    };
+
     return (
         <div className="dashboard-container">
             {/* Notification */}
@@ -1350,10 +1851,7 @@ function Dashboard() {
                     <div className="folders-section">
                         <div className="folders-header">
                             <h3>Folders</h3>
-                            <button 
-                                className="create-folder-btn"
-                                onClick={() => setShowNewFolderModal(true)}
-                            >
+                            <button className="create-folder-btn" onClick={handleCreateFolder}>
                                 <FiPlus />
                             </button>
                         </div>
@@ -1377,60 +1875,11 @@ function Dashboard() {
                                             className="folder-icon"
                                         />
                                         <span className="folder-name" title={folder.name}>{folder.name}</span>
-                                        <span className="folder-count">{folder.deckCount + folder.quizCount || 0}</span>
+                                        <span className="folder-count">{folder.content_num || 0}</span>
                                     </div>
                                     {expandedFolders[folder.id] && (
                                         <div className={`folder-contents ${expandedFolders[folder.id] ? 'expanded' : ''}`}>
-                                            {folder.items && folder.items.length > 0 ? (
-                                                folder.items.map(item => (
-                                                    <div 
-                                                        key={item.id} 
-                                                        className={`folder-content-item ${
-                                                            (item.type === 'deck' && selectedDeck?.id === item.id && activeView === 'deck') ||
-                                                            (item.type === 'quiz' && selectedQuiz?.id === item.id && activeView === 'quiz')
-                                                                ? 'active' 
-                                                                : ''
-                                                        }`}
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            if (item.type === 'deck') {
-                                                                handleDeckClick(item.id, e);
-                                                            } else {
-                                                                handleQuizClick(item.id, e);
-                                                            }
-                                                        }}
-                                                        onContextMenu={(e) => {
-                                                            e.stopPropagation();
-                                                            handleContextMenu(e, item.type, item.id);
-                                                        }}
-                                                    >
-                                                        {item.type === 'deck' ? (
-                                                            <FiLayers className="content-icon" />
-                                                        ) : (
-                                                            <FiFileText className="content-icon" />
-                                                        )}
-                                                        <span className="content-name">{item.type === 'deck' ? item.name : item.topic}</span>
-                                                    </div>
-                                                ))
-                                            ) : (
-                                                <div className="empty-folder-content">
-                                                    <p>No items in this folder</p>
-                                                    <div className="empty-folder-actions">
-                                                        <button 
-                                                            className="add-item-btn"
-                                                            onClick={() => setShowNewDeckModal(true)}
-                                                        >
-                                                            <FiLayers /> Add Deck
-                                                        </button>
-                                                        <button 
-                                                            className="add-item-btn"
-                                                            onClick={() => setShowNewQuizModal(true)}
-                                                        >
-                                                            <FiFileText /> Add Quiz
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            )}
+                                            {renderFolderItems(folder)}
                                         </div>
                                     )}
                                 </div>
@@ -1502,359 +1951,7 @@ function Dashboard() {
                     </div>
                 </div>
 
-                {activeView === 'dashboard' && (
-                    <div className={`content-section ${isTransitioning ? 'transitioning' : ''}`}>
-                        {isLoading.initialLoad ? (
-                            <div className="loading-container">
-                                <div className="loading-spinner"></div>
-                            </div>
-                        ) : (
-                            <div className="dashboard-widgets">
-                                {/* Review Stats Widget */}
-                                <div className="widget review-stats">
-                                    <h3>Review Activity</h3>
-                                    <div className="graph-container">
-                                        <div className="graph">
-                                            <div className="graph-bars">
-                                                {[65, 80, 45, 90, 70, 85, 60].map((height, index) => (
-                                                    <div key={index} className="bar" style={{ height: `${height}%` }}>
-                                                        <span className="bar-value">{height}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                            <div className="graph-labels">
-                                                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day, index) => (
-                                                    <span key={index} className="day-label">{day}</span>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="stats-summary">
-                                        <div className="stat-item">
-                                            <span className="stat-value">7</span>
-                                            <span className="stat-label">Day Streak</span>
-                                        </div>
-                                        <div className="stat-item">
-                                            <span className="stat-value">85%</span>
-                                            <span className="stat-label">Goal Progress</span>
-                                        </div>
-                                    </div>
-                                </div>
-                                {/* Detailed Review Stats Widget */}
-                                <div className="widget detailed-stats">
-                                    <h3>Detailed Review Stats</h3>
-                                    <div className="time-studied">
-                                        <h4>Time Studied This Week</h4>
-                                        <div className="time-value">12h 45m</div>
-                                    </div>
-                                    <div className="cards-reviewed">
-                                        <h4>Cards Reviewed</h4>
-                                        <div className="cards-value">245</div>
-                                    </div>
-                                    <div className="needs-work">
-                                        <h4>Cards Needing Work</h4>
-                                        <ul>
-                                            <li>
-                                                <span className="subject">Biology</span>
-                                                <span className="count">15 cards</span>
-                                            </li>
-                                            <li>
-                                                <span className="subject">Chemistry</span>
-                                                <span className="count">8 cards</span>
-                                            </li>
-                                            <li>
-                                                <span className="subject">Physics</span>
-                                                <span className="count">12 cards</span>
-                                            </li>
-                                        </ul>
-                                    </div>
-                                </div>
-                                {/* Upcoming Reviews Widget */}
-                                <div className="widget upcoming-reviews">
-                                    <h3>Upcoming Reviews</h3>
-                                    <div className="reviews-list">
-                                        <div className="review-item high-priority">
-                                            <div className="review-info">
-                                                <h4>Biology - Cell Structure</h4>
-                                                <p>Due in 2 hours</p>
-                                            </div>
-                                            <div className="priority-badge high">High Priority</div>
-                                        </div>
-                                        <div className="review-item medium-priority">
-                                            <div className="review-info">
-                                                <h4>Chemistry - Atomic Theory</h4>
-                                                <p>Due in 5 hours</p>
-                                            </div>
-                                            <div className="priority-badge medium">Medium Priority</div>
-                                        </div>
-                                        <div className="review-item low-priority">
-                                            <div className="review-info">
-                                                <h4>Physics - Mechanics</h4>
-                                                <p>Due tomorrow</p>
-                                            </div>
-                                            <div className="priority-badge low">Low Priority</div>
-                                        </div>
-                                        <div className="review-item high-priority">
-                                            <div className="review-info">
-                                                <h4>Biology - DNA Replication</h4>
-                                                <p>Due in 3 hours</p>
-                                            </div>
-                                            <div className="priority-badge high">High Priority</div>
-                                        </div>
-                                        <div className="review-item medium-priority">
-                                            <div className="review-info">
-                                                <h4>Chemistry - Chemical Bonds</h4>
-                                                <p>Due in 6 hours</p>
-                                            </div>
-                                            <div className="priority-badge medium">Medium Priority</div>
-                                        </div>
-                                        <div className="review-item low-priority">
-                                            <div className="review-info">
-                                                <h4>Physics - Thermodynamics</h4>
-                                                <p>Due in 2 days</p>
-                                            </div>
-                                            <div className="priority-badge low">Low Priority</div>
-                                        </div>
-                                        <div className="review-item high-priority">
-                                            <div className="review-info">
-                                                <h4>Biology - Photosynthesis</h4>
-                                                <p>Due in 4 hours</p>
-                                            </div>
-                                            <div className="priority-badge high">High Priority</div>
-                                        </div>
-                                        <div className="review-item medium-priority">
-                                            <div className="review-info">
-                                                <h4>Chemistry - Periodic Table</h4>
-                                                <p>Due in 8 hours</p>
-                                            </div>
-                                            <div className="priority-badge medium">Medium Priority</div>
-                                        </div>
-                                        <div className="review-item low-priority">
-                                            <div className="review-info">
-                                                <h4>Physics - Wave Motion</h4>
-                                                <p>Due in 3 days</p>
-                                            </div>
-                                            <div className="priority-badge low">Low Priority</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {activeView === 'folder' && selectedFolder && (
-                    <div className={`content-section ${isTransitioning ? 'transitioning' : ''}`}>
-                        <div className="folder-content-header">
-                            <div className="add-item-buttons">
-                                <button 
-                                    className="add-item-btn"
-                                    onClick={() => setShowNewDeckModal(true)}
-                                >
-                                    <FiLayers /> Add Deck
-                                </button>
-                                <button 
-                                    className="add-item-btn"
-                                    onClick={() => setShowNewQuizModal(true)}
-                                >
-                                    <FiFileText /> Add Quiz
-                                </button>
-                            </div>
-                        </div>
-                        {isLoading.initialLoad ? (
-                            <div className="loading-container">
-                                <div className="loading-spinner"></div>
-                            </div>
-                        ) : (
-                            <div className="folder-items">
-                                {selectedFolder && selectedFolder.items && selectedFolder.items.length > 0 ? (
-                                    selectedFolder.items.map(item => {
-                                        return item.type === 'deck' ? (
-                                            <div 
-                                                key={item.id} 
-                                                className={`deck-item ${selectedDeck?.id === item.id && activeView === 'deck' ? 'active' : ''}`} 
-                                                onClick={(e) => handleDeckClick(item.id, e)}
-                                                onContextMenu={(e) => handleContextMenu(e, 'deck', item.id)}
-                                            >
-                                                <FiLayers className="deck-icon white-icon" />
-                                                <div className="deck-info">
-                                                    <div className="deck-name">{item.name}</div>
-                                                    <div className="deck-stats">
-                                                        {item.subject} • {cards.filter(card => card.card_deck === item.id).length} cards • Not reviewed yet
-                                                    </div>
-                                                </div>
-                                                <button 
-                                                    className="delete-btn"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleDeleteDeck(item.id);
-                                                    }}
-                                                >
-                                                    Delete
-                                                </button>
-                                            </div>
-                                        ) : (
-                                            <div 
-                                                key={item.id} 
-                                                className={`deck-item ${selectedQuiz?.id === item.id && activeView === 'quiz' ? 'active' : ''}`}
-                                                onClick={(e) => handleQuizClick(item.id, e)}
-                                                onContextMenu={(e) => handleContextMenu(e, 'quiz', item.id)}
-                                            >
-                                                <FiFileText className="deck-icon white-icon" />
-                                                <div className="deck-info">
-                                                    <div className="deck-name">{item.topic}</div>
-                                                    <div className="deck-stats">
-                                                        {item.subject} • Quiz
-                                                    </div>
-                                                </div>
-                                                <button 
-                                                    className="delete-btn"
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        if (item && item.id) {
-                                                            handleDeleteQuiz(item.id);
-                                                        } else {
-                                                            console.error('Invalid quiz item:', item);
-                                                            showNotification('Error: Invalid quiz data');
-                                                        }
-                                                    }}
-                                                >
-                                                    Delete
-                                                </button>
-                                            </div>
-                                        );
-                                    })
-                                ) : (
-                                    <div className="empty-folder-state">
-                                        <div className="empty-folder-message">
-                                            <h3>This folder is empty</h3>
-                                            <p>Add a deck or quiz to get started</p>
-                                        </div>
-                                        <div className="empty-folder-actions">
-                                            <button 
-                                                className="add-item-btn"
-                                                onClick={() => setShowNewDeckModal(true)}
-                                            >
-                                                <FiLayers /> Add Deck
-                                            </button>
-                                            <button 
-                                                className="add-item-btn"
-                                                onClick={() => setShowNewQuizModal(true)}
-                                            >
-                                                <FiFileText /> Add Quiz
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {activeView === 'deck' && selectedDeck && (
-                    <div className={`content-section ${isTransitioning ? 'transitioning' : ''}`}>
-                        <div className="deck-content-header">
-                            <div className="deck-info-header">
-                                <h2>{selectedDeck.name}</h2>
-                                <span className="deck-subject">{selectedDeck.subject}</span>
-                            </div>
-                            <button 
-                                className="add-item-btn"
-                                onClick={() => setShowNewCardModal(true)}
-                            >
-                                <FiPlus /> Add Card
-                            </button>
-                        </div>
-                        {isLoading.initialLoad ? (
-                            <div className="loading-container">
-                                <div className="loading-spinner"></div>
-                            </div>
-                        ) : (
-                            <div className="cards-list">
-                                {cards.filter(card => card.card_deck === selectedDeck.id).map(card => (
-                                    <div key={card.id} className="card-item">
-                                        <div className="card-content">
-                                            <div className="card-question">{card.question}</div>
-                                            <div className="card-answer">{card.answer}</div>
-                                            <div className="card-scheduled-date">
-                                                Scheduled: {new Date(card.scheduled_date).toLocaleDateString()}
-                                            </div>
-                                        </div>
-                                        <button 
-                                            className="delete-btn"
-                                            onClick={() => handleDeleteCard(card.id)}
-                                        >
-                                            Delete
-                                        </button>
-                                    </div>
-                                ))}
-                                {cards.filter(card => card.card_deck === selectedDeck.id).length === 0 && (
-                                    <div className="empty-state">
-                                        <p>No cards yet. Create your first card to get started!</p>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {activeView === 'quiz' && (
-                    <div className={`content-section ${isTransitioning ? 'transitioning' : ''}`}>
-                        {selectedQuiz && (
-                            <div className={`quiz-view ${isTransitioning ? 'transitioning' : ''}`}>
-                                <QuizView 
-                                    quiz={selectedQuiz} 
-                                    onClose={() => {
-                                        setIsTransitioning(true);
-                                        setTimeout(() => {
-                                            // Find the last valid navigation state
-                                            for (let i = navHistory.length - 1; i >= 0; i--) {
-                                                const prevState = navHistory[i];
-                                                if (prevState.view !== 'quiz') {
-                                                    handleNavigation(prevState.view, prevState.folder, prevState.deck);
-                                                    break;
-                                                }
-                                            }
-                                            setIsTransitioning(false);
-                                        }, 300);
-                                    }}
-                                />
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {activeView === 'flashcards' && (
-                    <div className="content-section">
-                        {showFlashcardTabs && (
-                          <div className="flashcard-tabs">
-                              <button 
-                                  className={`flashcard-tab ${activeView === 'flashcards' && !selectedTab ? 'active' : ''}`}
-                                  onClick={() => setSelectedTab(null)}
-                              >
-                                  My Flashcards
-                              </button>
-                              <button 
-                                  className={`flashcard-tab ${selectedTab === 'review' ? 'active' : ''}`}
-                                  onClick={() => setSelectedTab('review')}
-                              >
-                                  Review Cards
-                              </button>
-                          </div>
-                        )}
-                        <div className="flashcard-content">
-                            {!selectedTab ? (
-                                <ReviewCards onViewModeChange={handleReviewCardsViewModeChange} />
-                            ) : selectedTab === 'review' && (
-                                <ReviewCardsDashboard 
-                                    onStartReview={(review) => {
-                                        setSelectedReview(review);
-                                    }}
-                                />
-                            )}
-                        </div>
-                    </div>
-                )}
+                {renderContent()}
             </div>
 
             {/* Review Mode Modal - Moved outside of tab content */}
@@ -2284,12 +2381,30 @@ function Dashboard() {
                                 handleDeleteDeck(contextMenu.id);
                             } else if (contextMenu.type === 'quiz') {
                                 handleDeleteQuiz(contextMenu.id);
+                            } else if (contextMenu.type === 'document') {
+                                handleDeleteDocument(contextMenu.id);
                             }
                             setContextMenu({ show: false, x: 0, y: 0, type: null, id: null });
                         }}
                     >
-                        Delete {contextMenu.type === 'folder' ? 'Folder' : contextMenu.type === 'deck' ? 'Deck' : 'Quiz'}
+                        Delete {contextMenu.type === 'folder' ? 'Folder' : 
+                               contextMenu.type === 'deck' ? 'Deck' : 
+                               contextMenu.type === 'quiz' ? 'Quiz' : 'Document'}
                     </button>
+                </div>
+            )}
+
+            {/* Document Editor Modal */}
+            {showDocumentEditor && (
+                <div className="content-section">
+                    <DocumentEditor
+                        folderId={selectedFolder?.id}
+                        onClose={() => {
+                            setShowDocumentEditor(false);
+                            setSelectedDocument(null);
+                        }}
+                        documentId={selectedDocument?.id}
+                    />
                 </div>
             )}
         </div>
