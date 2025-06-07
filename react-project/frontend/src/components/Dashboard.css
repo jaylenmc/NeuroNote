@@ -1494,12 +1494,12 @@
 }
 
 .modal-content {
-    background: #1e1e1e;
-    border-radius: 12px;
-    padding: 24px;
+    background: rgba(30, 30, 30, 0.95);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     width: 90%;
     max-width: 500px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
     transform: translateY(-20px);
     opacity: 0;
     transition: transform 0.3s ease, opacity 0.3s ease;
@@ -1577,13 +1577,16 @@
 }
 
 .dashboard-card {
-    background: rgba(30, 30, 30, 0.7);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border-radius: 12px;
-    padding: 24px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    outline: 1px solid rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease;
+}
+
+.dashboard-card:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.08);
 }
 
 .dashboard-card h3 {
@@ -1609,12 +1612,16 @@
 }
 
 .widget {
-    background: rgba(30, 30, 30, 0.7);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    border-radius: 12px;
-    padding: 24px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s ease;
+}
+
+.widget:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.08);
 }
 
 .widget h3 {
@@ -1770,9 +1777,9 @@
     align-items: center;
     gap: 12px;
     padding: 16px;
-    background: rgba(42, 42, 42, 0.5);
-    border-radius: 8px;
-    transition: all 0.2s;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 0.75rem;
+    transition: all 0.2s ease;
     border: 1px solid rgba(255, 255, 255, 0.1);
     position: relative;
     cursor: pointer;
@@ -1782,8 +1789,8 @@
 }
 
 .deck-item:hover, .quiz-item:hover {
-    background: rgba(51, 51, 51, 0.5);
-    transform: translateX(5px);
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.08);
 }
 
 .deck-icon, .quiz-icon {
@@ -1820,9 +1827,10 @@
     max-width: 800px;
     max-height: 90vh;
     overflow-y: auto;
-    background: #1a1a1a;
-    border-radius: 12px;
-    padding: 24px;
+    background: rgba(30, 30, 30, 0.95);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .quiz-modal-header {
@@ -2074,16 +2082,16 @@
     display: flex;
     align-items: center;
     padding: 16px;
-    background-color: #2d3748;
-    border-radius: 8px;
-    margin-bottom: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 0.75rem;
+    margin-bottom: 1rem;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.2s ease;
 }
 
 .document-item:hover {
-    background-color: #4a5568;
-    transform: translateY(-1px);
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.08);
 }
 
 .document-icon {
@@ -2164,4 +2172,226 @@
     background: linear-gradient(90deg, #4ADEDE 0%, #7C83FD 100%);
     box-shadow: 0 8px 32px rgba(76, 131, 253, 0.18);
     transform: translateY(-2px) scale(1.03);
+}
+
+.flashcards-welcome-widget {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 32px;
+    padding: 24px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    position: relative;
+    z-index: 1;
+}
+
+.flashcards-welcome-title {
+    margin: 0;
+    font-size: 1.75rem;
+    color: white;
+}
+
+.flashcards-welcome-desc {
+    margin: 8px 0 0 0;
+    opacity: 0.9;
+    color: white;
+}
+
+.flashcards-welcome-btn {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1rem;
+    cursor: pointer;
+    padding: 12px 24px;
+    border-radius: 12px;
+    transition: all 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+.flashcards-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 32px;
+    position: relative;
+    z-index: 1;
+}
+
+.flashcards-stat {
+    padding: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    /* transform and box-shadow for hover are handled in :hover */
+}
+
+.flashcards-stat-icon {
+    font-size: 24px;
+    margin-bottom: 8px;
+}
+
+.flashcards-stat-value {
+    font-size: 24px;
+    font-weight: bold;
+    color: #1f2937;
+}
+
+.flashcards-stat-label {
+    color: #6b7280;
+    font-size: 14px;
+}
+
+.flashcards-stat:hover {
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 8px 12px rgba(0,0,0,0.15);
+    transform: scale(1.05);
+}
+
+.flashcards-stats-grid .flashcards-stat:nth-child(1) {
+  transform: rotate(-2deg);
+}
+.flashcards-stats-grid .flashcards-stat:nth-child(2) {
+  transform: rotate(1.5deg);
+}
+.flashcards-stats-grid .flashcards-stat:nth-child(3) {
+  transform: rotate(-1deg);
+}
+.flashcards-stats-grid .flashcards-stat:nth-child(4) {
+  transform: rotate(2deg);
+}
+.flashcards-stats-grid .flashcards-stat {
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+.flashcards-stats-grid .flashcards-stat:hover {
+  transform: rotate(0deg) scale(1.05);
+  box-shadow: 0 8px 12px rgba(0,0,0,0.15);
+}
+
+.flashcards-section-card {
+    margin-bottom: 32px;
+    position: relative;
+    z-index: 1;
+    padding: 24px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: none;
+}
+
+.flashcards-section-card-title {
+    margin-bottom: 16px;
+    color: white;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.flashcards-section-card-desc {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 1.125rem;
+    text-align: center;
+    width: 100%;
+    padding: 32px;
+}
+
+.flashcards-section-tip {
+    margin-bottom: 32px;
+    padding: 24px;
+    background: rgba(124, 131, 253, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    border: 1px solid rgba(124, 131, 253, 0.2);
+    box-shadow: none;
+    position: relative;
+    z-index: 1;
+}
+
+.flashcards-section-tip-title {
+    margin-bottom: 16px;
+    color: white;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.flashcards-section-tip-desc {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 1rem;
+    margin: 0;
+}
+
+.flashcards-tools-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    position: relative;
+    z-index: 1;
+}
+
+.flashcards-tool-btn {
+    padding: 16px;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: white;
+    font-size: 1rem;
+}
+
+.flashcards-tool-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-4px);
+    box-shadow: 0 0 20px rgba(124, 131, 253, 0.3);
+}
+
+.flashcards-upcoming-reviews {
+  background: rgba(30, 30, 30, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  color: #fff;
+}
+
+.flashcards-study-tip-sticky {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 220px;
+  background: #fffbe6;
+  color: #222;
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.10);
+  padding: 16px 18px 14px 18px;
+  transform: rotate(4deg);
+  z-index: 2;
+  border: 1px solid #f7e6a1;
+}
+.flashcards-study-tip-title {
+  margin: 0 0 6px 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #b59b00;
+  letter-spacing: 0.5px;
+}
+.flashcards-study-tip-desc {
+  margin: 0;
+  font-size: 0.98rem;
+  color: #444;
+  line-height: 1.4;
 } 

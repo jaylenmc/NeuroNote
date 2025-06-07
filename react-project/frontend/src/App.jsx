@@ -8,6 +8,7 @@ import Signin from './auth/signin';
 import Authentication from './api/OAuthSuccess';
 import Dashboard from './components/Dashboard';
 import StudyRoom from './components/StudyRoom';
+import DeckContent from './components/DeckContent';
 import { useAuth, AuthProvider } from './auth/AuthContext'; // or wherever it's defined
 import { ThemeProvider } from './contexts/ThemeContext';
 
@@ -90,6 +91,14 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <StudyRoom />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/study-room/deck/:deckId" 
+            element={
+              <ProtectedRoute>
+                <DeckContent />
               </ProtectedRoute>
             } 
           />

@@ -1669,58 +1669,17 @@ function Dashboard() {
         }
 
         if (activeView === 'flashcards') {
-            console.log('Current decks state:', decks);
             return (
-                <div className="content-section" style={{ 
-                    padding: '32px',
-                    position: 'relative',
-                    minHeight: '100vh',
-                    background: 'transparent'
-                }}>
+                <div className="content-section">
                     {/* Header Section */}
-                    <div style={{ 
-                        display: 'flex', 
-                        justifyContent: 'space-between', 
-                        alignItems: 'center',
-                        marginBottom: '32px',
-                        padding: '24px',
-                        background: 'rgba(255, 255, 255, 0.1)',
-                        backdropFilter: 'blur(10px)',
-                        borderRadius: '16px',
-                        border: '1px solid rgba(255, 255, 255, 0.2)',
-                        position: 'relative',
-                        zIndex: 1
-                    }}>
+                    <div className="flashcards-welcome-widget">
                         <div>
-                            <h2 style={{ margin: 0, fontSize: '1.75rem', color: 'white' }}>Welcome to Flashcards</h2>
-                            <p style={{ margin: '8px 0 0 0', opacity: 0.9, color: 'white' }}>Ready to boost your learning?</p>
+                            <h2 className="flashcards-welcome-title">Welcome to Flashcards</h2>
+                            <p className="flashcards-welcome-desc">Ready to boost your learning?</p>
                         </div>
                         <button 
+                            className="flashcards-welcome-btn"
                             onClick={() => navigate('/study-room')}
-                            style={{
-                                background: 'rgba(255, 255, 255, 0.1)',
-                                color: '#ffffff',
-                                border: '1px solid rgba(255, 255, 255, 0.2)',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '8px',
-                                fontSize: '1rem',
-                                cursor: 'pointer',
-                                padding: '12px 24px',
-                                borderRadius: '12px',
-                                transition: 'all 0.3s ease',
-                                backdropFilter: 'blur(10px)'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.2)';
-                                e.currentTarget.style.transform = 'translateX(4px)';
-                                e.currentTarget.style.boxShadow = '0 0 20px rgba(124, 131, 253, 0.5)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                                e.currentTarget.style.transform = 'translateX(0)';
-                                e.currentTarget.style.boxShadow = 'none';
-                            }}
                         >
                             Enter Study Room
                             <svg 
@@ -1739,195 +1698,41 @@ function Dashboard() {
                     </div>
 
                     {/* Stats Section - Sticky Notes Style */}
-                    <div style={{ 
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(4, 1fr)',
-                        gap: '16px',
-                        marginBottom: '32px',
-                        position: 'relative',
-                        zIndex: 1
-                    }}>
+                    <div className="flashcards-stats-grid">
                         {[
                             { label: 'Total Decks', value: decks?.length || 0, icon: '📚', color: '#FFE5D4' },
                             { label: 'Total Cards', value: '0', icon: '🎴', color: '#D4F1F4' },
                             { label: 'Due Today', value: '0', icon: '⏰', color: '#E2ECE9' },
                             { label: 'Current Streak', value: '0 days', icon: '🔥', color: '#FFE5D4' }
                         ].map((stat, index) => (
-                            <div key={index} style={{
-                                padding: '20px',
-                                background: stat.color,
-                                borderRadius: '4px',
-                                boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                transform: `rotate(${Math.random() * 4 - 2}deg)`,
-                                transition: 'all 0.3s ease',
-                                cursor: 'pointer'
-                            }}
-                            onMouseEnter={(e) => {
-                                e.currentTarget.style.transform = `rotate(0deg) scale(1.05)`;
-                                e.currentTarget.style.boxShadow = '0 8px 12px rgba(0,0,0,0.15)';
-                            }}
-                            onMouseLeave={(e) => {
-                                e.currentTarget.style.transform = `rotate(${Math.random() * 4 - 2}deg)`;
-                                e.currentTarget.style.boxShadow = '0 4px 6px rgba(0,0,0,0.1)';
-                            }}>
-                                <span style={{ fontSize: '24px', marginBottom: '8px' }}>{stat.icon}</span>
-                                <span style={{ fontSize: '24px', fontWeight: 'bold', color: '#1f2937' }}>{stat.value}</span>
-                                <span style={{ color: '#6b7280', fontSize: '14px' }}>{stat.label}</span>
+                            <div key={index} className="flashcards-stat" style={{ background: stat.color }}>
+                                <span className="flashcards-stat-icon">{stat.icon}</span>
+                                <span className="flashcards-stat-value">{stat.value}</span>
+                                <span className="flashcards-stat-label">{stat.label}</span>
                             </div>
                         ))}
                     </div>
 
-                    {/* Recently Used Decks - Glassy Cards */}
-                    <div style={{ marginBottom: '32px', position: 'relative', zIndex: 1 }}>
-                        <h3 style={{ marginBottom: '16px', color: 'white' }}>Recently Used Decks</h3>
-                        <div style={{ 
-                            display: 'flex', 
-                            gap: '16px', 
-                            overflowX: 'auto',
-                            padding: '8px 0',
-                            scrollbarWidth: 'none',
-                            msOverflowStyle: 'none'
-                        }}>
-                            {decks && decks.length > 0 ? (
-                                decks.map(deck => (
-                                    <div 
-                                        key={deck.id} 
-                                        style={{ 
-                                            minWidth: '280px',
-                                            padding: '24px',
-                                            background: 'rgba(255, 255, 255, 0.1)',
-                                            backdropFilter: 'blur(10px)',
-                                            borderRadius: '16px',
-                                            border: '1px solid rgba(255, 255, 255, 0.2)',
-                                            transition: 'all 0.3s ease',
-                                            position: 'relative',
-                                            overflow: 'hidden',
-                                            cursor: 'pointer'
-                                        }}
-                                        onMouseEnter={(e) => {
-                                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
-                                            e.currentTarget.style.transform = 'translateY(-4px)';
-                                            e.currentTarget.style.boxShadow = '0 0 20px rgba(124, 131, 253, 0.3)';
-                                        }}
-                                        onMouseLeave={(e) => {
-                                            e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                                            e.currentTarget.style.transform = 'translateY(0)';
-                                            e.currentTarget.style.boxShadow = 'none';
-                                        }}
-                                    >
-                                        <div style={{
-                                            position: 'absolute',
-                                            top: 0,
-                                            left: 0,
-                                            right: 0,
-                                            height: '4px',
-                                            background: 'linear-gradient(90deg, #7C83FD 0%, #4ADEDE 100%)',
-                                            borderTopLeftRadius: '16px',
-                                            borderTopRightRadius: '16px'
-                                        }} />
-                                        <h3 style={{ 
-                                            fontSize: '1.25rem',
-                                            fontWeight: '600',
-                                            marginBottom: '8px',
-                                            color: 'white'
-                                        }}>{deck.title}</h3>
-                                        <p style={{ 
-                                            color: 'rgba(255, 255, 255, 0.8)',
-                                            fontSize: '0.875rem',
-                                            marginBottom: '16px'
-                                        }}>{deck.subject}</p>
-                                    </div>
-                                ))
-                            ) : (
-                                <p style={{
-                                    color: 'rgba(255, 255, 255, 0.8)',
-                                    fontSize: '1.125rem',
-                                    textAlign: 'center',
-                                    width: '100%',
-                                    padding: '32px'
-                                }}>No decks found. Create your first deck to get started!</p>
-                            )}
+                    {/* Upcoming Reviews - Glassy Card with Study Tip Sticky Note */}
+                    <div className="flashcards-section-card flashcards-upcoming-reviews" style={{ position: 'relative' }}>
+                        <div className="flashcards-study-tip-sticky">
+                            <h4 className="flashcards-study-tip-title">Study Tip</h4>
+                            <p className="flashcards-study-tip-desc">"The best way to learn is to teach. Try explaining your flashcards to someone else or even to yourself out loud."</p>
                         </div>
-                    </div>
-
-                    {/* Upcoming Reviews - Glassy Card */}
-                    <div style={{ 
-                        marginBottom: '32px',
-                        padding: '24px',
-                        background: 'rgba(255, 255, 255, 0.1)',
-                        backdropFilter: 'blur(10px)',
-                        borderRadius: '16px',
-                        border: '1px solid rgba(255, 255, 255, 0.2)',
-                        position: 'relative',
-                        zIndex: 1
-                    }}>
-                        <h3 style={{ marginBottom: '16px', color: 'white' }}>Upcoming Reviews</h3>
-                        <p style={{ color: 'rgba(255, 255, 255, 0.8)' }}>No cards due for review today.</p>
-                    </div>
-
-                    {/* Study Tip - Gradient Glassy Card */}
-                    <div style={{ 
-                        marginBottom: '32px',
-                        padding: '24px',
-                        background: 'rgba(124, 131, 253, 0.1)',
-                        backdropFilter: 'blur(10px)',
-                        borderRadius: '16px',
-                        border: '1px solid rgba(124, 131, 253, 0.2)',
-                        position: 'relative',
-                        zIndex: 1
-                    }}>
-                        <h3 style={{ marginBottom: '16px', color: 'white' }}>Study Tip of the Day</h3>
-                        <p style={{ margin: 0, color: 'rgba(255, 255, 255, 0.9)' }}>
-                            "The best way to learn is to teach. Try explaining your flashcards to someone else or even to yourself out loud."
-                        </p>
+                        <h3 className="flashcards-section-card-title">Upcoming Reviews</h3>
+                        <p className="flashcards-section-card-desc">No cards due for review today.</p>
                     </div>
 
                     {/* Shortcuts / Tools - Glassy Buttons */}
-                    <div style={{ 
-                        display: 'grid',
-                        gridTemplateColumns: 'repeat(3, 1fr)',
-                        gap: '16px',
-                        position: 'relative',
-                        zIndex: 1
-                    }}>
+                    <div className="flashcards-tools-grid">
                         {[
                             { label: 'Create New Deck', icon: '➕', action: () => setShowNewDeckModal(true) },
                             { label: 'Quick Review', icon: '⚡', action: () => {} },
                             { label: 'View Statistics', icon: '📊', action: () => {} }
                         ].map((tool, index) => (
-                            <button 
-                                key={index}
-                                onClick={tool.action}
-                                style={{
-                                    padding: '16px',
-                                    background: 'rgba(255, 255, 255, 0.1)',
-                                    backdropFilter: 'blur(10px)',
-                                    border: '1px solid rgba(255, 255, 255, 0.2)',
-                                    borderRadius: '12px',
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    alignItems: 'center',
-                                    gap: '8px',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.3s ease',
-                                    color: 'white'
-                                }}
-                                onMouseEnter={(e) => {
-                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
-                                    e.currentTarget.style.transform = 'translateY(-4px)';
-                                    e.currentTarget.style.boxShadow = '0 0 20px rgba(124, 131, 253, 0.3)';
-                                }}
-                                onMouseLeave={(e) => {
-                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)';
-                                    e.currentTarget.style.transform = 'translateY(0)';
-                                    e.currentTarget.style.boxShadow = 'none';
-                                }}
-                            >
-                                <span style={{ fontSize: '24px' }}>{tool.icon}</span>
-                                <span style={{ fontSize: '14px' }}>{tool.label}</span>
+                            <button key={index} className="flashcards-tool-btn" onClick={tool.action}>
+                                <span style={{ fontSize: '1.5rem' }}>{tool.icon}</span>
+                                {tool.label}
                             </button>
                         ))}
                     </div>
