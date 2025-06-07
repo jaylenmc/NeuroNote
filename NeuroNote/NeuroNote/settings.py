@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'claude_client',
     'corsheaders',
     'folders',
+    'documents'
 ]
 
 REST_FRAMEWORK = {

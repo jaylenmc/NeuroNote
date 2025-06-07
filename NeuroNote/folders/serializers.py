@@ -3,5 +3,5 @@ from .models import Folder
 
 class FolderSerializer(serializers.ModelSerializer):
     class Meta:
-        fields = '__all__'
+        fields = ['id', 'name', 'content_num']
         model = Folder

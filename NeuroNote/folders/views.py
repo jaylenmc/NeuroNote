@@ -4,13 +4,19 @@ from .serializers import FolderSerializer
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+from .services import check_content_num
 
 class FolderView(APIView):
     permission_classes = [IsAuthenticated]
     
     def get(self,request):
-        user = request.user
-        folders = Folder.objects.filter(user=user)
+        folders = Folder.objects.filter(user=request.user)
+
+        for folder in folders:
+            folder.content_num = check_content_num(folder)
+            folder.save()
+
+
         serialized = FolderSerializer(folders, many=True)
 
         return Response(serialized.data, status=status.HTTP_200_OK)
