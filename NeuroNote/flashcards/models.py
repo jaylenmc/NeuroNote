@@ -6,6 +6,7 @@ import math
 class Deck(models.Model):
     title = models.TextField()
     subject = models.CharField(max_length=255, default="No subject provided")
+    num_of_cards = models.IntegerField(default=0)
 
     user = models.ForeignKey(AuthUser, on_delete=models.CASCADE, null=True)
 

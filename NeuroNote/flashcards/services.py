@@ -1,4 +1,4 @@
-from .models import ReviewLog
+from .models import ReviewLog, Card
 from django.utils import timezone
 from datetime import timedelta
 
@@ -9,3 +9,7 @@ def check_past_week_cards():
     print(f'cards: {cards}')
 
     return cards
+
+def num_of_cards(deck):
+    num = Card.objects.filter(card_deck=deck).count()
+    return num

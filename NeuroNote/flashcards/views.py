@@ -10,14 +10,18 @@ from achievements.models import UserAchievements
 from achievements.services import knowledge_engineer, memory_architect, deck_destroyer
 from datetime import datetime
 from folders.models import Folder
-from .services import check_past_week_cards
+from .services import check_past_week_cards, num_of_cards
 
 class DeckCollection(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        deck = Deck.objects.filter(user=request.user)
-        serialized = DeckSerializer(deck, many=True)
+        decks = Deck.objects.filter(user=request.user)
+        for deck in decks:
+            deck.num_of_cards = num_of_cards(deck)
+            deck.save()
+
+        serialized = DeckSerializer(decks, many=True)
 
         return Response(serialized.data, status=status.HTTP_200_OK)
     
@@ -53,8 +57,8 @@ class DeckCollection(APIView):
 class CardCollection(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request):
-        cards = Card.objects.filter(card_deck__user=request.user)
+    def get(self, request, deck_id):
+        cards = Card.objects.filter(card_deck__user=request.user, card_deck__id=deck_id)
         serialized = CardSerializer(cards, many=True)
 
         return Response(serialized.data, status=status.HTTP_200_OK)
