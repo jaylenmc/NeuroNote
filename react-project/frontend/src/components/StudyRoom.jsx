@@ -15,8 +15,9 @@ import {
     Moon,
     Sun,
     X,
-    ArrowLeft
+    ArrowLeft,
 } from 'lucide-react';
+import { FiEdit2, FiTrash2 } from 'react-icons/fi';
 import './StudyRoom.css';
 
 const StudyRoom = () => {
@@ -28,11 +29,11 @@ const StudyRoom = () => {
     const [volume, setVolume] = useState(50);
     const [timeLeft, setTimeLeft] = useState(25 * 60); // 25 minutes in seconds
     const [isTimerRunning, setIsTimerRunning] = useState(false);
-    const [showDecks, setShowDecks] = useState(false);
     const { particlesContainerRef, particlesLoaded } = useParticles();
     const [currentCard, setCurrentCard] = useState(null);
     const [showAnswer, setShowAnswer] = useState(false);
     const [error, setError] = useState(null);
+    const [isFlipped, setIsFlipped] = useState(false);
 
     // Timer effect
     useEffect(() => {
@@ -81,16 +82,12 @@ const StudyRoom = () => {
     };
 
     const tools = [
-        { icon: <BookOpen size={24} />, label: 'Decks', color: '#7c83fd', onClick: () => setShowDecks(true) },
+        { icon: <BookOpen size={24} />, label: 'Decks', color: '#7c83fd', onClick: () => navigate('/study-room/decks') },
         { icon: <Timer size={24} />, label: 'Timer', color: '#ff6b6b', onClick: toggleTimer },
         { icon: <Target size={24} />, label: 'Focus', color: '#4ecdc4', onClick: () => {} },
         { icon: <RefreshCw size={24} />, label: 'Review', color: '#ffd93d', onClick: () => {} },
         { icon: <BarChart2 size={24} />, label: 'Progress', color: '#95e1d3', onClick: () => {} }
     ];
-
-    if (showDecks) {
-        return <StudyDecks onBack={() => setShowDecks(false)} />;
-    }
 
     return (
         <div className={`study-room ${isStudyMode ? 'study-mode-active' : ''}`}>
@@ -172,6 +169,9 @@ const StudyRoom = () => {
             </div>
 
             {isStudyMode && <div className="candle" />}
+
+            {/* Card Viewer removed */}
+
         </div>
     );
 };

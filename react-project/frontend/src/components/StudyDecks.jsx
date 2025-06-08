@@ -14,7 +14,7 @@ import {
 } from 'lucide-react';
 import './StudyDecks.css';
 
-const StudyDecks = ({ onBack }) => {
+const StudyDecks = () => {
     const [decks, setDecks] = useState([]);
     const [error, setError] = useState(null);
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -225,7 +225,7 @@ const StudyDecks = ({ onBack }) => {
     return (
         <div className="study-decks-container">
             <div className="study-decks-header">
-                <button className="back-button" onClick={onBack}>
+                <button className="back-button" onClick={() => navigate('/study-room')}>
                     <ArrowLeft size={20} />
                     Back
                 </button>
@@ -283,7 +283,7 @@ const StudyDecks = ({ onBack }) => {
                                             <BookOpen size={16} />
                                             Total Cards
                                         </span>
-                                        <span>{deck.cards?.length || 0}</span>
+                                        <span>{typeof deck.num_of_cards === 'number' ? deck.num_of_cards : (deck.cards?.length || 0)}</span>
                                     </div>
                                     
                                     <div className="deck-stat-row">
@@ -292,7 +292,9 @@ const StudyDecks = ({ onBack }) => {
                                             Reviewed
                                         </span>
                                         <span>
-                                            {deck.cards?.filter(card => card.last_review_date)?.length || 0}
+                                            {deck.cards?.filter((card, idx) => {
+                                              return card.last_review_date;
+                                            })?.length || 0}
                                         </span>
                                     </div>
 
