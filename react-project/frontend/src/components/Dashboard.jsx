@@ -1701,7 +1701,7 @@ function Dashboard() {
                     <div className="flashcards-stats-grid">
                         {[
                             { label: 'Total Decks', value: decks?.length || 0, icon: '📚', color: '#FFE5D4' },
-                            { label: 'Total Cards', value: '0', icon: '🎴', color: '#D4F1F4' },
+                            { label: 'Total Cards', value: getTotalCards(), icon: '🎴', color: '#D4F1F4' },
                             { label: 'Due Today', value: '0', icon: '⏰', color: '#E2ECE9' },
                             { label: 'Current Streak', value: '0 days', icon: '🔥', color: '#FFE5D4' }
                         ].map((stat, index) => (
@@ -1844,6 +1844,11 @@ function Dashboard() {
             body.style.padding = '';
         };
     }, [activeView]);
+
+    const getTotalCards = () => {
+        if (!decks || decks.length === 0) return 0;
+        return decks.reduce((sum, deck) => sum + (typeof deck.num_of_cards === 'number' ? deck.num_of_cards : 0), 0);
+    };
 
     return (
         <div className="dashboard-container" style={{ 

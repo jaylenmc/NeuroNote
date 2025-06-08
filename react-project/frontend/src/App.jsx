@@ -11,6 +11,7 @@ import StudyRoom from './components/StudyRoom';
 import DeckContent from './components/DeckContent';
 import { useAuth, AuthProvider } from './auth/AuthContext'; // or wherever it's defined
 import { ThemeProvider } from './contexts/ThemeContext';
+import StudyDecks from './components/StudyDecks';
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
@@ -99,6 +100,14 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <DeckContent />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/study-room/decks" 
+            element={
+              <ProtectedRoute>
+                <StudyDecks />
               </ProtectedRoute>
             } 
           />
