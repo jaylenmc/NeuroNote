@@ -302,8 +302,18 @@
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 9999 !important;
+    z-index: 9999;
     backdrop-filter: blur(4px);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+    pointer-events: none;
+}
+
+.modal-overlay.show {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
 }
 
 .modal-content {
@@ -314,7 +324,13 @@
     background: var(--bg-primary);
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
     position: relative;
-    z-index: 10000 !important;
+    z-index: 10000;
+    transform: translateY(20px);
+    transition: transform 0.2s ease;
+}
+
+.modal-overlay.show .modal-content {
+    transform: translateY(0);
 }
 
 .modal-header {
@@ -419,4 +435,102 @@
 
 .modal-actions button[type="submit"]:hover {
     background: var(--accent-secondary);
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.ribbon-filter {
+    position: relative;
+}
+
+.filter-button {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    color: var(--text-primary);
+    transition: all 0.3s ease;
+}
+
+.filter-button:hover {
+    background: var(--bg-secondary);
+}
+
+.ribbon-filter-dropdown {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 0.5rem;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    padding: 0.5rem;
+    min-width: 200px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    display: none;
+}
+
+.ribbon-filter:hover .ribbon-filter-dropdown {
+    display: block;
+}
+
+.ribbon-filter-option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    padding: 0.75rem;
+    border: none;
+    background: transparent;
+    color: var(--text-primary);
+    cursor: pointer;
+    border-radius: 0.25rem;
+    transition: all 0.2s ease;
+    text-align: left;
+}
+
+.ribbon-filter-option:hover {
+    background: var(--bg-secondary);
+}
+
+.ribbon-filter-option.active {
+    background: var(--bg-secondary);
+    color: var(--ribbon-color);
+}
+
+.ribbon-color-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+/* Ribbon color classes for deck cards */
+.deck-card.ribbon-soft-blue {
+    border-left: 4px solid #38bdf8;
+}
+
+.deck-card.ribbon-warm-amber {
+    border-left: 4px solid #f59e42;
+}
+
+.deck-card.ribbon-soft-red {
+    border-left: 4px solid #f43f5e;
+}
+
+.deck-card.ribbon-dark-pink {
+    border-left: 4px solid #db2777;
+}
+
+.deck-card.ribbon-muted-purple {
+    border-left: 4px solid #7c3aed;
 } 

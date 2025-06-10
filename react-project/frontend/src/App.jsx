@@ -12,6 +12,8 @@ import DeckContent from './components/DeckContent';
 import { useAuth, AuthProvider } from './auth/AuthContext'; // or wherever it's defined
 import { ThemeProvider } from './contexts/ThemeContext';
 import StudyDecks from './components/StudyDecks';
+import ReviewSession from './components/ReviewSession';
+import ReviewPage from './pages/ReviewPage';
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
@@ -33,7 +35,7 @@ function Navbar() {
   const location = useLocation();
   
   // Hide navbar on these routes
-  const hideNavbarRoutes = ['/dashboard', '/signin', '/auth/callback/', '/study-room'];
+  const hideNavbarRoutes = ['/dashboard', '/signin', '/auth/callback/', '/study-room', '/review'];
   if (hideNavbarRoutes.some(route => location.pathname.startsWith(route))) {
     return null;
   }
@@ -111,6 +113,19 @@ function AppContent() {
               </ProtectedRoute>
             } 
           />
+          <Route 
+            path="/review-session" 
+            element={
+              <ProtectedRoute>
+                <ReviewSession />
+              </ProtectedRoute>
+            } 
+          />
+          <Route path="/review" element={
+            <ProtectedRoute>
+              <ReviewPage />
+            </ProtectedRoute>
+          } />
           <Route path='/signin' element={ <Signin /> }/>
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>

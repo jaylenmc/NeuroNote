@@ -17,8 +17,9 @@ import {
     X,
     ArrowLeft,
 } from 'lucide-react';
-import { FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { FiEdit2, FiTrash2, FiRefreshCw } from 'react-icons/fi';
 import './StudyRoom.css';
+import ReviewWidget from './ReviewWidget';
 
 const StudyRoom = () => {
     const navigate = useNavigate();
@@ -34,6 +35,8 @@ const StudyRoom = () => {
     const [showAnswer, setShowAnswer] = useState(false);
     const [error, setError] = useState(null);
     const [isFlipped, setIsFlipped] = useState(false);
+    const [showTimer, setShowTimer] = useState(false);
+    const [showReview, setShowReview] = useState(false);
 
     // Timer effect
     useEffect(() => {
@@ -69,7 +72,13 @@ const StudyRoom = () => {
     };
 
     const toggleTimer = () => {
-        setIsTimerRunning(prev => !prev);
+        setShowTimer(!showTimer);
+        setShowReview(false); // Hide review when showing timer
+    };
+
+    const toggleReview = () => {
+        setShowReview(!showReview);
+        setShowTimer(false); // Hide timer when showing review
     };
 
     const resetTimer = () => {
@@ -85,7 +94,7 @@ const StudyRoom = () => {
         { icon: <BookOpen size={24} />, label: 'Decks', color: '#7c83fd', onClick: () => navigate('/study-room/decks') },
         { icon: <Timer size={24} />, label: 'Timer', color: '#ff6b6b', onClick: toggleTimer },
         { icon: <Target size={24} />, label: 'Focus', color: '#4ecdc4', onClick: () => {} },
-        { icon: <RefreshCw size={24} />, label: 'Review', color: '#ffd93d', onClick: () => {} },
+        { icon: <FiRefreshCw size={24} />, label: 'Review', color: '#ffd93d', onClick: () => navigate('/review') },
         { icon: <BarChart2 size={24} />, label: 'Progress', color: '#95e1d3', onClick: () => {} }
     ];
 
@@ -170,8 +179,18 @@ const StudyRoom = () => {
 
             {isStudyMode && <div className="candle" />}
 
-            {/* Card Viewer removed */}
-
+            <div className="study-content">
+                {showTimer && (
+                    <div className="tool-card glass-card">
+                        <TimerWidget />
+                    </div>
+                )}
+                {showReview && (
+                    <div className="tool-card glass-card">
+                        <ReviewWidget />
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

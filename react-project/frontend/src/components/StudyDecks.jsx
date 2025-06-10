@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback, memo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import ReactDOM from 'react-dom';
 import { 
     BookOpen, 
     ArrowLeft, 
@@ -14,6 +15,56 @@ import {
 } from 'lucide-react';
 import './StudyDecks.css';
 
+// Memoized Modal Component
+const CreateDeckModal = memo(({ showCreateModal, handleCloseModal, handleCreateDeck, newDeck, setNewDeck, titleInputRef }) => {
+    const modalContent = (
+        <div className={`modal-overlay ${showCreateModal ? 'show' : ''}`} onClick={handleCloseModal}>
+            <div className="modal-content" onClick={e => e.stopPropagation()}>
+                <div className="modal-header">
+                    <h3>Create New Deck</h3>
+                    <button 
+                        className="close-button"
+                        onClick={handleCloseModal}
+                    >
+                        <X size={20} />
+                    </button>
+                </div>
+                <form onSubmit={handleCreateDeck}>
+                    <div className="form-group">
+                        <label htmlFor="title">Title</label>
+                        <input
+                            ref={titleInputRef}
+                            type="text"
+                            id="title"
+                            value={newDeck.title}
+                            onChange={(e) => setNewDeck(prev => ({ ...prev, title: e.target.value }))}
+                            required
+                            placeholder="Enter deck title"
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="subject">Subject</label>
+                        <input
+                            type="text"
+                            id="subject"
+                            value={newDeck.subject}
+                            onChange={(e) => setNewDeck(prev => ({ ...prev, subject: e.target.value }))}
+                            required
+                            placeholder="Enter subject"
+                        />
+                    </div>
+                    <div className="modal-actions">
+                        <button type="button" onClick={handleCloseModal}>Cancel</button>
+                        <button type="submit">Create Deck</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    );
+
+    return ReactDOM.createPortal(modalContent, document.body);
+});
+
 const StudyDecks = () => {
     const [decks, setDecks] = useState([]);
     const [error, setError] = useState(null);
@@ -21,11 +72,63 @@ const StudyDecks = () => {
     const [newDeck, setNewDeck] = useState({ title: '', subject: '' });
     const [showMenu, setShowMenu] = useState(null);
     const navigate = useNavigate();
+    const titleInputRef = useRef(null);
+    const modalRef = useRef(null);
 
     // Debug modal state
     useEffect(() => {
         console.log('Modal state changed:', showCreateModal);
     }, [showCreateModal]);
+
+    const handleCloseModal = useCallback(() => {
+        setShowCreateModal(false);
+        setNewDeck({ title: '', subject: '' });
+    }, []);
+
+    const handleOpenCreateModal = useCallback(() => {
+        setShowCreateModal(true);
+        // Focus the input after the modal is shown
+        requestAnimationFrame(() => {
+            if (titleInputRef.current) {
+                titleInputRef.current.focus();
+            }
+        });
+    }, []);
+
+    const handleCreateDeck = useCallback(async (e) => {
+        e.preventDefault();
+        try {
+            const token = sessionStorage.getItem('jwt_token');
+            if (!token) {
+                setError('Please log in to create a deck');
+                return;
+            }
+
+            const response = await fetch('http://localhost:8000/api/flashcards/deck/', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify(newDeck)
+            });
+
+            if (response.status === 401) {
+                setError('Session expired. Please log in again.');
+                return;
+            }
+
+            if (!response.ok) {
+                throw new Error('Failed to create deck');
+            }
+
+            handleCloseModal();
+            await fetchDecks();
+        } catch (err) {
+            setError(err.message);
+        }
+    }, [newDeck, handleCloseModal]);
 
     const fetchDecks = async () => {
         try {
@@ -67,42 +170,6 @@ const StudyDecks = () => {
         navigate(`/study-room/deck/${deckId}`);
     };
 
-    const handleCreateDeck = async (e) => {
-        e.preventDefault();
-        try {
-            const token = sessionStorage.getItem('jwt_token');
-            if (!token) {
-                setError('Please log in to create a deck');
-                return;
-            }
-
-            const response = await fetch('http://localhost:8000/api/flashcards/deck/', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                credentials: 'include',
-                body: JSON.stringify(newDeck)
-            });
-
-            if (response.status === 401) {
-                setError('Session expired. Please log in again.');
-                return;
-            }
-
-            if (!response.ok) {
-                throw new Error('Failed to create deck');
-            }
-
-            setShowCreateModal(false);
-            setNewDeck({ title: '', subject: '' });
-            await fetchDecks();
-        } catch (err) {
-            setError(err.message);
-        }
-    };
-
     const handleDeleteDeck = async (deckId, e) => {
         e.stopPropagation();
         if (!window.confirm('Are you sure you want to delete this deck?')) return;
@@ -138,17 +205,6 @@ const StudyDecks = () => {
         }
     };
 
-    const handleOpenCreateModal = () => {
-        console.log('Opening modal...');
-        setShowCreateModal(true);
-    };
-
-    const handleCloseModal = () => {
-        console.log('Closing modal...');
-        setShowCreateModal(false);
-        setNewDeck({ title: '', subject: '' });
-    };
-
     const getSubjectEmoji = (subject) => {
         const emojiMap = {
             'Biology': '🧬',
@@ -173,55 +229,6 @@ const StudyDecks = () => {
         return date.toLocaleDateString();
     };
 
-    // Create Modal Component
-    const CreateDeckModal = () => {
-        if (!showCreateModal) return null;
-
-        return (
-            <div className="modal-overlay" onClick={handleCloseModal}>
-                <div className="modal-content" onClick={e => e.stopPropagation()}>
-                    <div className="modal-header">
-                        <h3>Create New Deck</h3>
-                        <button 
-                            className="close-button"
-                            onClick={handleCloseModal}
-                        >
-                            <X size={20} />
-                        </button>
-                    </div>
-                    <form onSubmit={handleCreateDeck}>
-                        <div className="form-group">
-                            <label htmlFor="title">Title</label>
-                            <input
-                                type="text"
-                                id="title"
-                                value={newDeck.title}
-                                onChange={(e) => setNewDeck(prev => ({ ...prev, title: e.target.value }))}
-                                required
-                                placeholder="Enter deck title"
-                            />
-                        </div>
-                        <div className="form-group">
-                            <label htmlFor="subject">Subject</label>
-                            <input
-                                type="text"
-                                id="subject"
-                                value={newDeck.subject}
-                                onChange={(e) => setNewDeck(prev => ({ ...prev, subject: e.target.value }))}
-                                required
-                                placeholder="Enter subject"
-                            />
-                        </div>
-                        <div className="modal-actions">
-                            <button type="button" onClick={handleCloseModal}>Cancel</button>
-                            <button type="submit">Create Deck</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        );
-    };
-
     return (
         <div className="study-decks-container">
             <div className="study-decks-header">
@@ -230,10 +237,12 @@ const StudyDecks = () => {
                     Back
                 </button>
                 <h2>Your Decks</h2>
-                <button className="create-deck-button" onClick={handleOpenCreateModal}>
-                    <Plus size={20} />
-                    Create Deck
-                </button>
+                <div className="header-actions">
+                    <button className="create-deck-button" onClick={handleOpenCreateModal}>
+                        <Plus size={20} />
+                        Create Deck
+                    </button>
+                </div>
             </div>
 
             {error && <div className="error-message">{error}</div>}
@@ -293,7 +302,7 @@ const StudyDecks = () => {
                                         </span>
                                         <span>
                                             {deck.cards?.filter((card, idx) => {
-                                              return card.last_review_date;
+                                                return card.last_review_date;
                                             })?.length || 0}
                                         </span>
                                     </div>
@@ -331,7 +340,14 @@ const StudyDecks = () => {
                 ))}
             </div>
 
-            <CreateDeckModal />
+            <CreateDeckModal 
+                showCreateModal={showCreateModal}
+                handleCloseModal={handleCloseModal}
+                handleCreateDeck={handleCreateDeck}
+                newDeck={newDeck}
+                setNewDeck={setNewDeck}
+                titleInputRef={titleInputRef}
+            />
         </div>
     );
 };

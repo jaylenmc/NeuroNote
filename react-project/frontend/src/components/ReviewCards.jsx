@@ -146,12 +146,52 @@ const ReviewCards = ({ onViewModeChange }) => {
 
   const fetchCards = async () => {
     try {
-      const response = await api.get('flashcards/cards');
-      setCards(response.data);
+      const token = sessionStorage.getItem('jwt_token');
+      if (!token) {
+        setError('Please log in to view your cards');
+        return;
+      }
+
+      // First fetch all decks
+      const decksResponse = await fetch('http://localhost:8000/api/flashcards/deck/', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      });
+
+      if (!decksResponse.ok) {
+        throw new Error('Failed to fetch decks');
+      }
+
+      const decksData = await decksResponse.json();
+      setDecks(decksData);
+
+      // Then fetch cards for each deck
+      const allCards = [];
+      for (const deck of decksData) {
+        const cardsResponse = await fetch(`http://localhost:8000/api/flashcards/cards/${deck.id}/`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'
+        });
+
+        if (!cardsResponse.ok) {
+          console.error(`Failed to fetch cards for deck ${deck.id}`);
+          continue;
+        }
+
+        const cardsData = await cardsResponse.json();
+        allCards.push(...cardsData);
+      }
+
+      setCards(allCards);
       setLoading(false);
-    } catch (error) {
-      console.error('Error fetching cards:', error);
-      setError('Failed to load cards');
+    } catch (err) {
+      setError(err.message);
       setLoading(false);
     }
   };
