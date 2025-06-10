@@ -42,6 +42,22 @@ class DeckCollection(APIView):
 
         return Response(serialized.data, status=status.HTTP_200_OK)
     
+    def put(self, request, deck_id):
+        deck = Deck.objects.filter(user=request.user, id=deck_id).first()
+        if not deck:
+            return Response({"Message": "Deck does not exist"}, status=status.HTTP_404_NOT_FOUND)
+        
+        title = request.data.get('title')
+        subject = request.data.get('subject')
+
+        deck.title = title
+        deck.subject = subject
+        deck.save()
+
+        serialized = DeckSerializer(deck)
+
+        return Response(serialized.data, status=status.HTTP_200_OK)
+    
     def delete(self, request ,deck_id):
         id = deck_id
         user = request.user
@@ -93,6 +109,38 @@ class CardCollection(APIView):
 
         return Response(serialized.data, status=status.HTTP_200_OK)
     
+    def put(self, request, deck_id, card_id):
+        card = Card.objects.filter(card_deck__user=request.user, card_deck__id=deck_id, id=card_id).first()
+
+        if not card:
+            return Response({"Message": "Card does not exist"}, status=status.HTTP_404_NOT_FOUND)
+        
+        question = request.data.get('question')
+        answer = request.data.get('answer')
+        scheduled_date = request.data.get('scheduled_date')
+
+        if question:
+            card.question = question
+
+        if answer:
+            card.answer = answer
+
+        if scheduled_date is not None:  # Check if scheduled_date is provided (even if it's null)
+            if scheduled_date:  # If it has a value, parse it
+                try:
+                    parsed_date = datetime.strptime(scheduled_date, '%Y-%m-%d').date()
+                    card.scheduled_date = parsed_date
+                except (ValueError, TypeError):
+                    return Response({"Message": "Invalid date format"}, status=status.HTTP_400_BAD_REQUEST)
+            else:  # If it's empty/null, set to None
+                card.scheduled_date = None
+
+        card.save()
+
+        serialized = CardSerializer(card)
+
+        return Response(serialized.data, status=status.HTTP_200_OK)
+    
     def delete(self, request, deck_id, card_id):
         deck = Deck.objects.filter(user=request.user, id=deck_id).first()
 
@@ -104,7 +152,7 @@ class CardCollection(APIView):
 
         return Response({"Message": "Successfully deleted"}, status=status.HTTP_200_OK)
     
-@api_view(['POST'])
+@api_view(['PUT'])
 @permission_classes([IsAuthenticated])
 def review_card(request):
     deck_id = request.data.get('deck_id')
