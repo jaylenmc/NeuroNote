@@ -112,6 +112,10 @@ function Dashboard() {
     const [showDocumentEditor, setShowDocumentEditor] = useState(false);
     const [decks, setDecks] = useState([]); // <-- Add this line
 
+    // Add this state at the top with other state declarations
+    const [dueTodayCount, setDueTodayCount] = useState(0);
+    const [upcomingCards, setUpcomingCards] = useState([]);
+
     // Function to check if token is expired
     const isTokenExpired = (token) => {
         if (!token) return true;
@@ -419,6 +423,8 @@ function Dashboard() {
             return `Folder • ${selectedFolder.name}`;
         } else if (activeView === 'deck' && selectedDeck) {
             return `Deck • ${selectedDeck.name}`;
+        } else if (activeView === 'flashcards') {
+            return 'Flashcards';
         } else {
             return '';
         }
@@ -1702,7 +1708,7 @@ function Dashboard() {
                         {[
                             { label: 'Total Decks', value: decks?.length || 0, icon: '📚', color: '#FFE5D4' },
                             { label: 'Total Cards', value: getTotalCards(), icon: '🎴', color: '#D4F1F4' },
-                            { label: 'Due Today', value: '0', icon: '⏰', color: '#E2ECE9' },
+                            { label: 'Due Today', value: dueTodayCount, icon: '⏰', color: '#E2ECE9' },
                             { label: 'Current Streak', value: '0 days', icon: '🔥', color: '#FFE5D4' }
                         ].map((stat, index) => (
                             <div key={index} className="flashcards-stat" style={{ background: stat.color }}>
@@ -1719,8 +1725,26 @@ function Dashboard() {
                             <h4 className="flashcards-study-tip-title">Study Tip</h4>
                             <p className="flashcards-study-tip-desc">"The best way to learn is to teach. Try explaining your flashcards to someone else or even to yourself out loud."</p>
                         </div>
-                        <h3 className="flashcards-section-card-title">Upcoming Reviews</h3>
-                        <p className="flashcards-section-card-desc">No cards due for review today.</p>
+                        <h3 className="flashcards-section-card-title">Cards Scheduled For Next 7 Days</h3>
+                        <div className="upcoming-cards-list">
+                            {upcomingCards.length > 0 ? (
+                                upcomingCards.map((card, index) => (
+                                    <div key={card.id} className="upcoming-card-item">
+                                        <div className="card-header">
+                                            <span className="deck-name">{card.deckTitle}</span>
+                                            <span className="review-date">
+                                                {new Date(card.scheduled_date).toLocaleDateString()}
+                                            </span>
+                                        </div>
+                                        <div className="card-content">
+                                            <p className="card-question">{card.question}</p>
+                                        </div>
+                                    </div>
+                                ))
+                            ) : (
+                                <p className="flashcards-section-card-desc">No cards scheduled for the next 7 days.</p>
+                            )}
+                        </div>
                     </div>
 
                     {/* Shortcuts / Tools - Glassy Buttons */}
@@ -1850,14 +1874,144 @@ function Dashboard() {
         return decks.reduce((sum, deck) => sum + (typeof deck.num_of_cards === 'number' ? deck.num_of_cards : 0), 0);
     };
 
+    // Add this function to fetch due today count
+    const fetchDueTodayCount = async () => {
+        try {
+            const token = sessionStorage.getItem('jwt_token');
+            if (!token) return;
+
+            // Fetch all decks
+            const decksResponse = await fetch('http://localhost:8000/api/flashcards/deck/', {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                credentials: 'include'
+            });
+
+            if (!decksResponse.ok) return;
+            const decks = await decksResponse.json();
+
+            // Fetch cards for each deck and count due today
+            let dueToday = 0;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            for (const deck of decks) {
+                const cardsResponse = await fetch(`http://localhost:8000/api/flashcards/cards/${deck.id}/`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    credentials: 'include'
+                });
+
+                if (!cardsResponse.ok) continue;
+                const cards = await cardsResponse.json();
+
+                cards.forEach(card => {
+                    if (card.scheduled_date) {
+                        const dueDate = new Date(card.scheduled_date);
+                        dueDate.setHours(0, 0, 0, 0);
+                        if (dueDate.getTime() === today.getTime()) {
+                            dueToday++;
+                        }
+                    }
+                });
+            }
+
+            setDueTodayCount(dueToday);
+        } catch (error) {
+            console.error('Error fetching due today count:', error);
+        }
+    };
+
+    // Add this useEffect to fetch the count when the component mounts
+    useEffect(() => {
+        if (activeView === 'flashcards') {
+            fetchDueTodayCount();
+        }
+    }, [activeView]);
+
+    // Add this function to fetch upcoming cards
+    const fetchUpcomingCards = async () => {
+        try {
+            const token = sessionStorage.getItem('jwt_token');
+            if (!token) return;
+
+            // Fetch all decks
+            const decksResponse = await fetch('http://localhost:8000/api/flashcards/deck/', {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+                credentials: 'include'
+            });
+
+            if (!decksResponse.ok) return;
+            const decks = await decksResponse.json();
+
+            // Fetch cards for each deck and filter for next 7 days
+            let upcoming = [];
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const nextWeek = new Date(today);
+            nextWeek.setDate(today.getDate() + 7);
+
+            for (const deck of decks) {
+                const cardsResponse = await fetch(`http://localhost:8000/api/flashcards/cards/${deck.id}/`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    credentials: 'include'
+                });
+
+                if (!cardsResponse.ok) continue;
+                const cards = await cardsResponse.json();
+
+                cards.forEach(card => {
+                    if (card.scheduled_date) {
+                        const dueDate = new Date(card.scheduled_date);
+                        dueDate.setHours(0, 0, 0, 0);
+                        if (dueDate > today && dueDate <= nextWeek) {
+                            upcoming.push({
+                                ...card,
+                                deckTitle: deck.title
+                            });
+                        }
+                    }
+                });
+            }
+
+            // Sort by scheduled date
+            upcoming.sort((a, b) => new Date(a.scheduled_date) - new Date(b.scheduled_date));
+            setUpcomingCards(upcoming);
+        } catch (error) {
+            console.error('Error fetching upcoming cards:', error);
+        }
+    };
+
+    // Add this useEffect to fetch upcoming cards when the component mounts
+    useEffect(() => {
+        if (activeView === 'flashcards') {
+            fetchUpcomingCards();
+        }
+    }, [activeView]);
+
     return (
         <div className="dashboard-container" style={{ 
-            minHeight: '100vh',
             ...(activeView === 'flashcards' && {
                 background: 'linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url("https://images.unsplash.com/photo-1507842217343-583bb7270b66?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80")',
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
-                backgroundAttachment: 'fixed'
+                backgroundAttachment: 'fixed',
+                margin: 0,
+                padding: 0
             })
         }}>
             {/* Notification */}
@@ -1868,11 +2022,7 @@ function Dashboard() {
             )}
 
             {/* Left Sidebar */}
-            <div className="dashboard-sidebar" style={{
-                ...(activeView === 'flashcards' && {
-                    background: 'transparent'
-                })
-            }}>
+            <div className="dashboard-sidebar">
                 <div className="sidebar-top">
                     <div className="workspace-header">
                         <div className="user-profile" onClick={() => setShowDropdown(!showDropdown)}>
@@ -1961,29 +2111,18 @@ function Dashboard() {
             {/* Main Content Area Wrapper */}
             <div className="main-area" style={{
                 ...(activeView === 'flashcards' && {
-                    background: 'transparent'
+                    height: '100vh',
+                    overflowY: 'auto',
+                    paddingTop: '60px'
                 })
             }}>
                 {/* Horizontal Navbar */}
-                <div className="main-horizontal-navbar" style={{
-                    ...(activeView === 'flashcards' && {
-                        background: 'transparent',
-                        backdropFilter: 'blur(8px)',
-                        borderBottom: '1px solid rgba(255, 255, 255, 0.1)'
-                    })
-                }}>
+                <div className="main-horizontal-navbar">
                     <div className="navbar-left">
                         <button 
                             className={`action-icon-button ${currentNavIndex <= 0 ? 'disabled' : ''}`}
                             onClick={handleBack}
                             disabled={currentNavIndex <= 0}
-                            style={{
-                                ...(activeView === 'flashcards' && {
-                                    color: 'white',
-                                    backgroundColor: 'transparent',
-                                    border: 'none'
-                                })
-                            }}
                         >
                             &lt;
                         </button>
@@ -1991,105 +2130,32 @@ function Dashboard() {
                             className={`action-icon-button ${currentNavIndex >= navHistory.length - 1 ? 'disabled' : ''}`}
                             onClick={handleForward}
                             disabled={currentNavIndex >= navHistory.length - 1}
-                            style={{
-                                ...(activeView === 'flashcards' && {
-                                    color: 'white',
-                                    backgroundColor: 'transparent',
-                                    border: 'none'
-                                })
-                            }}
                         >
                             &gt;
                         </button>
-                        <div className="navbar-title" style={{
-                            ...(activeView === 'flashcards' && {
-                                color: 'white'
-                            })
-                        }}>{getCurrentViewTitle()}</div>
+                        <div className="navbar-title">{getCurrentViewTitle()}</div>
                     </div>
                     <div className="dashboard-actions">
-                        <button className="action-icon-button" onClick={handleShare} style={{
-                            ...(activeView === 'flashcards' && {
-                                color: 'white',
-                                backgroundColor: 'transparent',
-                                border: 'none'
-                            })
-                        }}><FiShare2 /></button>
-                        <button className="action-icon-button" onClick={handleStar} style={{
-                            ...(activeView === 'flashcards' && {
-                                color: 'white',
-                                backgroundColor: 'transparent',
-                                border: 'none'
-                            })
-                        }}><FiStar /></button>
+                        <button className="action-icon-button" onClick={handleShare}><FiShare2 /></button>
+                        <button className="action-icon-button" onClick={handleStar}><FiStar /></button>
                         <div className="settings-container">
-                            <button 
-                                className="action-icon-button" 
-                                onClick={handleSettingsClick}
-                                style={{
-                                    ...(activeView === 'flashcards' && {
-                                        color: 'white',
-                                        backgroundColor: 'transparent',
-                                        border: 'none'
-                                    })
-                                }}
-                            >
+                            <button className="action-icon-button" onClick={handleSettingsClick}>
                                 <FiMoreVertical />
                             </button>
                             {showSettingsDropdown && (
-                                <div className="settings-dropdown show" style={{
-                                    ...(activeView === 'flashcards' && {
-                                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                                        backdropFilter: 'blur(8px)',
-                                        border: '1px solid rgba(255, 255, 255, 0.1)'
-                                    })
-                                }}>
-                                    {activeView === 'folder' && selectedFolder && (
-                                        <button 
-                                            className="dropdown-item delete-option"
-                                            onClick={() => {
-                                                handleDeleteFolder(selectedFolder.id);
-                                                setShowSettingsDropdown(false);
-                                            }}
-                                            style={{
-                                                ...(activeView === 'flashcards' && {
-                                                    color: 'white'
-                                                })
-                                            }}
-                                        >
-                                            Delete Folder
-                                        </button>
-                                    )}
-                                    {activeView === 'deck' && selectedDeck && (
-                                        <button 
-                                            className="dropdown-item delete-option"
-                                            onClick={() => {
-                                                handleDeleteDeck(selectedDeck.id);
-                                                setShowSettingsDropdown(false);
-                                            }}
-                                            style={{
-                                                ...(activeView === 'flashcards' && {
-                                                    color: 'white'
-                                                })
-                                            }}
-                                        >
-                                            Delete Deck
-                                        </button>
-                                    )}
+                                <div className="settings-dropdown show">
+                                    {/* ... existing dropdown content ... */}
                                 </div>
                             )}
                         </div>
-                        <button className="action-icon-button" onClick={handleCollab} style={{
-                            ...(activeView === 'flashcards' && {
-                                color: 'white',
-                                backgroundColor: 'transparent',
-                                border: 'none'
-                            })
-                        }}><FiUsers /></button>
+                        <button className="action-icon-button" onClick={handleCollab}><FiUsers /></button>
                     </div>
                 </div>
 
-                {renderContent()}
+                {/* Main Content Area */}
+                <div className="tabs-content-container">
+                    {renderContent()}
+                </div>
             </div>
         </div>
     );

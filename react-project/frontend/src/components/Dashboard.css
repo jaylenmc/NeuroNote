@@ -5,27 +5,69 @@
 
 .dashboard-container {
     display: flex;
-    width: 100%;
-    height: 100vh; /* Container fills the viewport height */
-    background-color: #373737;
-    overflow: hidden; /* Prevent main container scroll */
+    width: 100vw;
+    height: 100vh;
+    background: linear-gradient(135deg, #1E1E1E 0%, #2A2A2A 100%);
+    position: relative;
+    overflow: hidden;
+    margin: 0;
+    padding: 0;
+}
+
+/* Background Elements for Home Tab */
+.background-blobs {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  z-index: 0;
+  pointer-events: none; /* Allow clicking through the background */
+}
+
+.blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(40px);
+  opacity: 0.15;
+}
+
+.blob-1 {
+  width: 600px;
+  height: 600px;
+  background: #4CAF50;
+  top: -200px;
+  left: -100px;
+}
+
+.blob-2 {
+  width: 500px;
+  height: 500px;
+  background: #2196F3;
+  bottom: -150px;
+  right: -100px;
+}
+
+.blob-3 {
+  width: 400px;
+  height: 400px;
+  background: #9C27B0;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 
 .dashboard-sidebar {
     width: 250px;
-    height: calc(100vh - 24px);
-    background-color: rgba(30, 30, 30, 0.3);
-    display: flex;
-    flex-direction: column;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    flex-shrink: 0;
-    position: relative;
-    z-index: 20;
-    border-radius: 12px;
-    margin: 12px 0 12px 12px; /* top right bottom left */
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    overflow: hidden; /* Prevent sidebar overflow */
+    height: calc(100vh - 48px);
+    background: #1E1E1E;
+    position: fixed;
+    left: 24px;
+    top: 24px;
+    z-index: 30;
+    border-radius: 16px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
 .sidebar-top {
@@ -196,15 +238,15 @@
 }
 
 .main-area {
-    flex: 1; /* Main area takes remaining width */
+    flex: 1;
+    margin-left: 274px;
+    padding: 24px;
+    position: relative;
+    z-index: 1;
+    min-height: 100vh;
+    height: 100vh;
     display: flex;
     flex-direction: column;
-    position: relative; /* For children positioning */
-    height: 100vh; /* Main area fills the viewport height */
-    overflow-y: auto; /* MAKE THE MAIN AREA SCROLLABLE */
-    background-color: #373737;
-    padding-top: 60px; /* Space for fixed navbar */
-    box-sizing: border-box;
 }
 
 .sidebar-content .nav-item,
@@ -317,31 +359,7 @@
 }
 
 .main-horizontal-navbar {
-    height: 60px;
-    width: calc(100% - 250px);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 40px;
-    box-sizing: border-box;
-    background-color: #373737;
-    position: fixed;
-    top: 0;
-    left: 250px;
-    z-index: 10;
-}
-
-.navbar-left {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.navbar-title {
-    color: white;
-    font-size: 18px;
-    font-weight: 600;
-    margin-left: 8px;
+    display: none;
 }
 
 .dashboard-image-container {
@@ -389,12 +407,11 @@
 }
 
 .content-section {
-    padding: 32px;
-    margin: 20px;
-    flex: 1;
-    opacity: 1;
-    transform: translateY(0);
-    transition: opacity 0.3s ease, transform 0.3s ease;
+    background: #1E1E1E;
+    border-radius: 8px;
+    padding: 24px;
+    margin: 24px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
 .content-section.transitioning {
@@ -533,21 +550,23 @@
 }
 
 .folder-content-item {
-    display: flex;
-    align-items: center;
-    padding: 12px 16px;
+    background: #2A2A2A;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 8px 12px;
     margin: 4px 0;
     cursor: pointer;
-    transition: all 0.2s;
-    border-radius: 6px;
+    transition: all 0.2s ease;
 }
 
 .folder-content-item:hover {
-    background-color: #333;
+    background: #333333;
+    border-color: rgba(255, 255, 255, 0.1);
 }
 
 .folder-content-item.active {
-    background-color: #333;
+    background: #333333;
+    border-color: rgba(255, 255, 255, 0.15);
 }
 
 .content-icon {
@@ -677,7 +696,10 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    margin: 0 180px;
+    min-height: 100vh;
+    height: 100vh;
+    margin: 0;
+    padding: 0;
 }
 
 .notion-center-container {
@@ -971,30 +993,23 @@
 }
 
 .folder-item {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    background: #2A2A2A;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
     padding: 8px 12px;
-    border-radius: 6px;
+    margin-bottom: 8px;
     cursor: pointer;
-    transition: all 0.2s;
-    color: #888;
-    position: relative;
-    width: 100%;
-    opacity: 1;
-    transform: translateX(0);
-    transition: opacity 0.2s ease, transform 0.2s ease, background-color 0.2s ease;
+    transition: all 0.2s ease;
 }
 
 .folder-item:hover {
-    background: #2a2a2a;
-    color: white;
-    transform: translateX(5px);
+    background: #333333;
+    border-color: rgba(255, 255, 255, 0.1);
 }
 
 .folder-item.active {
-    background: #2a2a2a;
-    color: white;
+    background: #333333;
+    border-color: rgba(255, 255, 255, 0.15);
 }
 
 .folder-icon {
@@ -2394,4 +2409,122 @@
   font-size: 0.98rem;
   color: #444;
   line-height: 1.4;
+}
+
+.upcoming-cards-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 16px;
+    max-height: 400px;
+    overflow-y: auto;
+    padding-right: 8px;
+}
+
+.upcoming-card-item {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.2s ease;
+}
+
+.upcoming-card-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+}
+
+.upcoming-card-item .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+.upcoming-card-item .deck-name {
+    color: #7c83fd;
+    font-weight: 500;
+    font-size: 0.9rem;
+}
+
+.upcoming-card-item .review-date {
+    color: #888;
+    font-size: 0.85rem;
+}
+
+.upcoming-card-item .card-content {
+    color: #fff;
+}
+
+.upcoming-card-item .card-question {
+    margin: 0;
+    font-size: 0.95rem;
+    line-height: 1.4;
+}
+
+/* Scrollbar styles */
+.upcoming-cards-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.upcoming-cards-list::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+}
+
+.upcoming-cards-list::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 3px;
+}
+
+.upcoming-cards-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+/* Special glassmorphism effects for important elements */
+.xp-progress-ring {
+    background: rgba(55, 55, 55, 0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+}
+
+.achievement-card {
+    background: rgba(55, 55, 55, 0.7);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Regular content areas */
+.content-section {
+    background: #1E1E1E;
+    border-radius: 8px;
+    padding: 24px;
+    margin: 24px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+/* Buttons */
+.action-button {
+    background: #2A2A2A;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    padding: 8px 16px;
+    transition: all 0.2s ease;
+}
+
+.action-button:hover {
+    background: #333333;
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Dividers */
+.section-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
+    margin: 24px 0;
 } 

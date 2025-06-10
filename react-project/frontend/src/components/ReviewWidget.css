@@ -1,0 +1,489 @@
+.review-widget {
+  background: #2a2a2a !important;
+  border-radius: 1.5rem;
+  padding: 1.5rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Section 1: Review Summary Header */
+.review-summary {
+  margin-bottom: 1.5rem;
+}
+
+.badge-row {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 9999px;
+  font-size: 0.9rem;
+  position: relative;
+  transition: transform 0.2s ease;
+}
+
+.badge:hover {
+  transform: translateY(-1px);
+}
+
+.badge.overdue {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+}
+
+.badge.due-today {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+}
+
+.badge.upcoming {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.tooltip {
+  position: absolute;
+  bottom: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #1a1a1a;
+  color: #e5e5e5;
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  margin-bottom: 0.5rem;
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.tooltip::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 5px;
+  border-style: solid;
+  border-color: #1a1a1a transparent transparent transparent;
+}
+
+/* Section 2: Card Lists Preview */
+.card-preview-section {
+  background: #2a2a2a !important;
+  border-radius: 1rem;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+
+.tab-bar {
+  display: flex;
+  background: #2a2a2a !important;
+  padding: 0.5rem;
+  gap: 0.5rem;
+}
+
+.tab {
+  flex: 1;
+  padding: 0.75rem;
+  border: none;
+  background: none;
+  border-radius: 0.5rem;
+  font-size: 0.9rem;
+  color: #9ca3af;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tab:hover {
+  background: #373737 !important;
+}
+
+.tab.active {
+  background: #373737 !important;
+  color: #e5e5e5;
+  font-weight: 500;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.card-list {
+  padding: 1rem;
+  max-height: 300px;
+  overflow-y: auto;
+  background: #2a2a2a !important;
+}
+
+.card-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.card-list::-webkit-scrollbar-track {
+  background: #2a2a2a;
+}
+
+.card-list::-webkit-scrollbar-thumb {
+  background: #404040;
+  border-radius: 4px;
+}
+
+.review-widget .card-item {
+  position: relative;
+  background: rgba(30,30,30,0.85);
+  border-radius: 1.25rem;
+  box-shadow: 0 2px 12px rgba(55,55,55,0.08);
+  border: 1.5px solid rgba(255,255,255,0.08);
+  padding: 22px 20px 18px 16px;
+  min-height: 140px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: box-shadow 0.2s, transform 0.2s, border 0.2s, background 0.2s;
+  overflow: hidden;
+  backdrop-filter: blur(8px);
+}
+
+.review-widget .card-item::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 7px;
+  border-top-left-radius: 1.25rem;
+  border-bottom-left-radius: 1.25rem;
+  background: #7c83fd;
+}
+
+.review-widget .card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.review-widget .card-info h4 {
+  font-size: 1.13rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.review-widget .card-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.review-widget .deck-title {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.review-widget .review-date {
+  font-size: 0.875rem;
+  color: rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.review-widget .review-date::before {
+  content: '📅';
+  font-size: 0.875rem;
+}
+
+.review-widget .card-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-left: 16px;
+}
+
+.review-widget .card-action-btn {
+  padding: 6px 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s;
+  background: none;
+}
+
+.review-widget .card-action-btn.edit {
+  background: #4a90e2;
+  color: white;
+}
+
+.review-widget .card-action-btn.edit:hover {
+  background: #357abd;
+}
+
+.review-widget .action-panel {
+  background: rgba(30,30,30,0.85);
+  border-radius: 1.25rem;
+  box-shadow: 0 2px 12px rgba(55,55,55,0.08);
+  border: 1.5px solid rgba(255,255,255,0.08);
+  padding: 24px;
+  margin-top: 24px;
+  backdrop-filter: blur(8px);
+}
+
+.review-widget .action-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+}
+
+.review-widget .edit-deck-button {
+  background: #4a90e2;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.review-widget .edit-deck-button:hover {
+  background: #357abd;
+}
+
+.review-widget .modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.review-widget .modal-content {
+  background: white;
+  padding: 24px;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.review-widget .modal-content h2 {
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.review-widget .form-group {
+  margin-bottom: 16px;
+}
+
+.review-widget .form-group label {
+  display: block;
+  margin-bottom: 8px;
+  color: #666;
+}
+
+.review-widget .form-group input,
+.review-widget .form-group textarea {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+.review-widget .form-group textarea {
+  min-height: 100px;
+  resize: vertical;
+}
+
+.review-widget .modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.review-widget .submit-button {
+  background: #4CAF50;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.review-widget .submit-button:hover {
+  background: #45a049;
+}
+
+.review-widget .cancel-button {
+  background: #f44336;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+.review-widget .cancel-button:hover {
+  background: #da190b;
+}
+
+.card-status {
+  margin-left: 1rem;
+}
+
+.status-icon {
+  font-size: 1.2rem;
+}
+
+.status-icon.mastered {
+  color: #f59e0b;
+}
+
+.status-icon.learning {
+  color: #8b5cf6;
+}
+
+.status-icon.needs-attention {
+  color: #ef4444;
+}
+
+/* Section 3: Action Panel */
+.start-review-button {
+  background: rgba(124, 131, 253, 0.1);
+  color: #7c83fd;
+  border: 1px solid rgba(124, 131, 253, 0.2);
+  padding: 12px 24px;
+  border-radius: 9999px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.start-review-button:hover {
+  background: rgba(124, 131, 253, 0.15);
+  border-color: rgba(124, 131, 253, 0.3);
+  transform: translateY(-2px);
+}
+
+.subtext {
+  text-align: center;
+  color: rgba(255, 255, 255, 0.6);
+  margin-top: 12px;
+  font-size: 0.875rem;
+}
+
+/* Loading and Error States */
+.loading,
+.error {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 200px;
+  color: #e5e5e5;
+  font-size: 1.1rem;
+}
+
+.error {
+  color: #ef4444;
+}
+
+/* Responsive Design */
+@media (max-width: 640px) {
+  .review-widget {
+    padding: 1rem;
+  }
+
+  .badge-row {
+    flex-direction: column;
+  }
+
+  .tab-bar {
+    flex-direction: column;
+  }
+
+  .card-list {
+    max-height: 200px;
+  }
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.review-widget {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.card-item {
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .review-widget {
+    background: #1a1a1a;
+  }
+
+  .card-preview-section {
+    background: #23272f;
+  }
+
+  .tab {
+    color: #9ca3af;
+  }
+
+  .tab:hover {
+    background: #2d3748;
+    color: #e5e7eb;
+  }
+
+  .tab.active {
+    background: #2d3748;
+    color: #e5e7eb;
+  }
+
+  .card-item {
+    background: #2d3748;
+  }
+
+  .card-item:hover {
+    background: #374151;
+  }
+
+  .card-info h4 {
+    color: #e5e7eb;
+  }
+
+  .deck-title {
+    color: #9ca3af;
+  }
+
+  .subtext {
+    color: #9ca3af;
+  }
+} 
