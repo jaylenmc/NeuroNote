@@ -1,8 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiAlertCircle, FiClock, FiCalendar, FiStar, FiBook, FiAlertTriangle, FiShuffle, FiPause, FiPlay, FiArrowLeft } from 'react-icons/fi';
+import { FiAlertCircle, FiClock, FiCalendar, FiStar, FiBook, FiAlertTriangle, FiShuffle, FiPause, FiPlay, FiArrowLeft, FiLoader } from 'react-icons/fi';
 import ReactDOM from 'react-dom';
 import './ReviewWidget.css';
+import brainPng from '../assets/brain.png';
+
+const LoadingSpinner = () => (
+  <div style={{
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    margin: '20px auto',
+    width: '60px',
+    height: '60px',
+    position: 'relative',
+  }}>
+    <img 
+      src={brainPng}
+      alt="Loading..." 
+      className="brain-loader"
+      style={{
+        width: '100%',
+        height: '100%',
+        objectFit: 'contain',
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0
+      }}
+    />
+  </div>
+);
 
 const ReviewWidget = () => {
   const navigate = useNavigate();
@@ -98,6 +127,7 @@ const ReviewWidget = () => {
 
   const fetchCards = async () => {
     try {
+      setLoading(true);
       const token = sessionStorage.getItem('jwt_token');
       if (!token) {
         setError('Please log in to view your decks');
@@ -120,6 +150,7 @@ const ReviewWidget = () => {
         if (decksResponse.status === 401) {
           setError('Session expired. Please log in again.');
           navigate('/signin');
+          setLoading(false);
           return;
         }
         throw new Error('Failed to fetch decks');
@@ -127,7 +158,6 @@ const ReviewWidget = () => {
 
       const decks = await decksResponse.json();
       console.log('Fetched decks:', decks);
-      setLoading(false);
 
       // Fetch cards for each deck
       const allCards = [];
@@ -187,6 +217,7 @@ const ReviewWidget = () => {
 
       console.log('Sorted cards:', sortedCards);
       setCards(sortedCards);
+      setLoading(false);
     } catch (err) {
       console.error('Error fetching cards:', err);
       setError(err.message);
@@ -340,6 +371,10 @@ const ReviewWidget = () => {
     setIsFlipped(false);
     setShowAnswer(false);
     setUserAnswer('');
+    // Refresh the cards list when closing after a completed session
+    if (sessionComplete) {
+      fetchCards();
+    }
   };
 
   const formatTime = (seconds) => {
@@ -385,12 +420,25 @@ const ReviewWidget = () => {
             </div>
           ) : (
             <>
-              <div className="review-header" style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+              <div className="review-header" style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '0 20px',
+                width: '100%',
+                position: 'relative'
+              }}>
                 <div className="deck-title" style={{fontWeight: 600, fontSize: '1.2rem', color: '#fff', display: 'flex', alignItems: 'center', gap: 8}}>
                   <FiBook className="deck-icon" />
                   Review Session
                 </div>
-                <div className="progress-bar">
+                <div className="progress-bar" style={{
+                  position: 'absolute',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: '40%',
+                  maxWidth: '400px'
+                }}>
                   <div className="progress-fill" style={{width: `${((currentReviewCardIndex + 1) / reviewCards.length) * 100}%`}} />
                 </div>
                 <div className="timer" style={{color: '#fff', fontWeight: 500, fontSize: '1rem', display: 'flex', alignItems: 'center', gap: 4}}>
@@ -467,9 +515,9 @@ const ReviewWidget = () => {
               </div>
 
               <div className="session-controls" style={{display: 'flex', justifyContent: 'center', gap: 16, marginTop: 16}}>
-                <button className="control-btn" style={{background: '#333', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', fontWeight: 500, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8}} onClick={handleShuffle}><FiShuffle /> Shuffle</button>
-                <button className="control-btn" style={{background: '#333', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', fontWeight: 500, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8}} onClick={handlePause}>{isPaused ? <FiPlay /> : <FiPause />} {isPaused ? 'Resume' : 'Pause'}</button>
-                <button className="control-btn" style={{background: '#222', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', fontWeight: 500, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8}} onClick={handleCloseReviewModal}><FiArrowLeft /> End Session</button>
+                <button className="control-btn" style={{cursor: 'pointer', background: '#333', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', fontWeight: 500, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8}} onClick={handleShuffle}><FiShuffle /> Shuffle</button>
+                <button className="control-btn" style={{cursor: 'pointer', background: '#333', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', fontWeight: 500, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8}} onClick={handlePause}>{isPaused ? <FiPlay /> : <FiPause />} {isPaused ? 'Resume' : 'Pause'}</button>
+                <button className="control-btn" style={{cursor: 'pointer', background: '#222', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', fontWeight: 500, fontSize: 15, display: 'flex', alignItems: 'center', gap: 8}} onClick={handleCloseReviewModal}><FiArrowLeft /> End Session</button>
               </div>
             </>
           )}
@@ -772,7 +820,7 @@ const ReviewWidget = () => {
   if (loading) {
     return (
       <div className="review-widget">
-        <div className="loading">Loading decks...</div>
+        <LoadingSpinner />
       </div>
     );
   }
@@ -853,21 +901,25 @@ const ReviewWidget = () => {
       </div>
 
       <div className="card-list">
-        {cards[activeTab].map((card, index) => (
-          <div key={card.id} className="card-item">
-            <div className="card-info">
-              <h4>{card.question}</h4>
-              <div className="card-details">
-              <span className="deck-title">{card.deckTitle}</span>
-                {card.scheduled_date && (
-                  <span className="review-date">
-                    Next Review: {new Date(card.scheduled_date).toLocaleDateString()}
-                  </span>
-                )}
+        {loading ? (
+          <LoadingSpinner />
+        ) : (
+          cards[activeTab].map((card, index) => (
+            <div key={card.id} className="card-item">
+              <div className="card-info">
+                <h4>{card.question}</h4>
+                <div className="card-details">
+                  <span className="deck-title">{card.deckTitle}</span>
+                  {card.scheduled_date && (
+                    <span className="review-date">
+                      Next Review: {new Date(card.scheduled_date).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
-            </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );
@@ -902,5 +954,77 @@ const ReviewWidget = () => {
     </div>
   );
 };
+
+// Add the style element at the end of the file
+const style = document.createElement('style');
+style.textContent = `
+  .glass-n {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .glass-n span {
+    font-size: 48px;
+    font-weight: bold;
+    color: transparent;
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0) 0%,
+      rgba(255, 255, 255, 0.8) 50%,
+      rgba(255, 255, 255, 0) 100%
+    );
+    background-size: 200% 100%;
+    background-clip: text;
+    -webkit-background-clip: text;
+    animation: shimmer 2s infinite;
+    text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+    position: relative;
+  }
+
+  .glass-n span::before {
+    content: 'N';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    color: rgba(255, 255, 255, 0.1);
+    text-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+
+  .brain-loader {
+    animation: brainPulse 2s ease-in-out infinite;
+    filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.3));
+  }
+
+  @keyframes brainPulse {
+    0% {
+      transform: scale(1);
+      filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.2));
+    }
+    50% {
+      transform: scale(1.1);
+      filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.5));
+    }
+    100% {
+      transform: scale(1);
+      filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.2));
+    }
+  }
+`;
+document.head.appendChild(style);
 
 export default ReviewWidget; 
