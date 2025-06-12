@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { FiHome, FiSettings, FiLogOut, FiFolder, FiPlus, FiBook, FiLayers, FiCheckSquare, FiTrendingUp, FiAward, FiShare2, FiStar, FiMoreVertical, FiUsers, FiFileText, FiEdit2, FiArrowLeft, FiChevronRight } from 'react-icons/fi';
+import { FiHome, FiSettings, FiLogOut, FiFolder, FiPlus, FiBook, FiLayers, FiCheckSquare, FiTrendingUp, FiAward, FiShare2, FiStar, FiMoreVertical, FiUsers, FiFileText, FiEdit2, FiArrowLeft, FiChevronRight, FiSearch, FiGrid, FiList } from 'react-icons/fi';
 import closedFolderIcon from '../assets/ClosedFolder.svg';
 import openFolderIcon from '../assets/OpenFolder.svg';
 import deckIcon from '../assets/deck.svg';
 import testIcon from '../assets/test.svg';
+import blackboardBg from '../assets/Blackboard.png';
 import './Dashboard.css';
+import './FlashcardsNightOwl.css';
 import QuizView from './QuizView';
 import ReviewCards from './ReviewCards';
 import Calendar from './Calendar';
@@ -115,6 +117,9 @@ function Dashboard() {
     // Add this state at the top with other state declarations
     const [dueTodayCount, setDueTodayCount] = useState(0);
     const [upcomingCards, setUpcomingCards] = useState([]);
+
+    // Add this state at the top with other state declarations
+    const [viewMode, setViewMode] = useState('grid');
 
     // Function to check if token is expired
     const isTokenExpired = (token) => {
@@ -1519,37 +1524,34 @@ function Dashboard() {
     };
 
     const renderFolderItems = (folder) => {
-        console.log('Rendering folder items for:', folder);
         if (!folder.items || folder.items.length === 0) {
-            console.log('No items in folder');
             return (
-                                                <div className="empty-folder-content">
-                                                    <p>No items in this folder</p>
-                                                    <div className="empty-folder-actions">
-                                                        <button 
-                                                            className="add-item-btn"
+                <div className="empty-folder-content">
+                    <p>No items in this folder</p>
+                    <div className="empty-folder-actions">
+                        <button 
+                            className="add-item-btn"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 handleCreateDocument();
                             }}
-                                                        >
+                        >
                             <FiFileText /> Add Document
-                                                        </button>
-                                                        <button 
-                                                            className="add-item-btn"
+                        </button>
+                        <button 
+                            className="add-item-btn"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 setShowNewQuizModal(true);
                             }}
-                                                        >
-                                                            <FiFileText /> Add Quiz
-                                                        </button>
-                                                    </div>
-                                                </div>
+                        >
+                            <FiFileText /> Add Quiz
+                        </button>
+                    </div>
+                </div>
             );
         }
 
-        console.log('Rendering items:', folder.items);
         return folder.items.map(item => {
             if (item.type === 'document') {
                 return (
@@ -1561,8 +1563,12 @@ function Dashboard() {
                     >
                         <FiFileText className="content-icon" />
                         <span className="content-name">{item.title}</span>
+                        <div className="item-meta">
+                            <span className="item-tag">Document</span>
+                            <span>{new Date(item.created_at).toLocaleDateString()}</span>
+                        </div>
                         <div className="item-actions">
-                        <button 
+                            <button 
                                 className="delete-btn"
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -1570,8 +1576,8 @@ function Dashboard() {
                                 }}
                             >
                                 ×
-                        </button>
-                    </div>
+                            </button>
+                        </div>
                     </div>
                 );
             } else if (item.type === 'quiz') {
@@ -1584,6 +1590,10 @@ function Dashboard() {
                     >
                         <FiFileText className="content-icon" />
                         <span className="content-name">{item.topic}</span>
+                        <div className="item-meta">
+                            <span className="item-tag">Quiz</span>
+                            <span>{item.subject}</span>
+                        </div>
                         <div className="item-actions">
                             <button 
                                 className="delete-btn"
@@ -1634,8 +1644,34 @@ function Dashboard() {
             return (
                 <div className={`content-section ${isTransitioning ? 'transitioning' : ''}`}>
                     <div className="folder-content-header">
+                        <h2>{selectedFolder.name}</h2>
+                        <div className="folder-tools">
+                            <div className="folder-search">
+                                <FiSearch />
+                                <input type="text" placeholder="Search in this folder..." />
+                            </div>
+                            <div className="folder-filters">
+                                <button className="filter-btn">All</button>
+                                <button className="filter-btn">Documents</button>
+                                <button className="filter-btn">Quizzes</button>
+                            </div>
+                            <div className="layout-toggles">
+                                <button 
+                                    className={`layout-toggle ${viewMode === 'grid' ? 'active' : ''}`}
+                                    onClick={() => setViewMode('grid')}
+                                >
+                                    <FiGrid />
+                                </button>
+                                <button 
+                                    className={`layout-toggle ${viewMode === 'list' ? 'active' : ''}`}
+                                    onClick={() => setViewMode('list')}
+                                >
+                                    <FiList />
+                                </button>
+                            </div>
+                        </div>
                         <div className="add-item-buttons">
-                                        <button 
+                            <button 
                                 className="add-item-btn"
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -1643,8 +1679,8 @@ function Dashboard() {
                                 }}
                             >
                                 <FiFileText /> Add Document
-                                        </button>
-                                        <button 
+                            </button>
+                            <button 
                                 className="add-item-btn"
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -1652,17 +1688,17 @@ function Dashboard() {
                                 }}
                             >
                                 <FiFileText /> Add Quiz
-                                        </button>
-                                </div>
+                            </button>
                         </div>
+                    </div>
                     {isLoading.initialLoad ? (
                         <div className="loading-container">
                             <div className="loading-spinner"></div>
-                    </div>
+                        </div>
                     ) : (
-                        <div className="folder-items">
+                        <div className={`folder-items ${viewMode}-view`}>
                             {renderFolderItems(selectedFolder)}
-                </div>
+                        </div>
                     )}
                 </div>
             );
@@ -1676,90 +1712,86 @@ function Dashboard() {
 
         if (activeView === 'flashcards') {
             return (
-                <div className="content-section">
-                    {/* Header Section */}
-                    <div className="flashcards-welcome-widget">
+                <div className="nightowl-flashcards-bg">
+                  <div className="nightowl-flashcards-content">
+                    {/* Header & Mascot */}
+                    <div className="nightowl-header-row">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 24 }}>
+                        <span className="nightowl-panel-icon" role="img" aria-label="owl">🦉</span>
                         <div>
-                            <h2 className="flashcards-welcome-title">Welcome to Flashcards</h2>
-                            <p className="flashcards-welcome-desc">Ready to boost your learning?</p>
+                          <div className="nightowl-header-title">Night Owl Flashcards</div>
+                          <div className="nightowl-header-sub">Study late, focus deep, and let your ideas glow.</div>
                         </div>
-                        <button 
-                            className="flashcards-welcome-btn"
-                            onClick={() => navigate('/study-room')}
-                        >
-                            Enter Study Room
-                            <svg 
-                                width="20" 
-                                height="20" 
-                                viewBox="0 0 24 24" 
-                                fill="none" 
-                                stroke="currentColor" 
-                                strokeWidth="2" 
-                                strokeLinecap="round" 
-                                strokeLinejoin="round"
-                            >
-                                <path d="M5 12h14M12 5l7 7-7 7"/>
-                            </svg>
-                        </button>
+                      </div>
+                      <button className="nightowl-studyroom-btn" onClick={() => navigate('/study-room')}>
+                        <span role="img" aria-label="moon">🌙</span> Enter Study Room
+                      </button>
                     </div>
 
-                    {/* Stats Section - Sticky Notes Style */}
-                    <div className="flashcards-stats-grid">
-                        {[
-                            { label: 'Total Decks', value: decks?.length || 0, icon: '📚', color: '#FFE5D4' },
-                            { label: 'Total Cards', value: getTotalCards(), icon: '🎴', color: '#D4F1F4' },
-                            { label: 'Due Today', value: dueTodayCount, icon: '⏰', color: '#E2ECE9' },
-                            { label: 'Current Streak', value: '0 days', icon: '🔥', color: '#FFE5D4' }
-                        ].map((stat, index) => (
-                            <div key={index} className="flashcards-stat" style={{ background: stat.color }}>
-                                <span className="flashcards-stat-icon">{stat.icon}</span>
-                                <span className="flashcards-stat-value">{stat.value}</span>
-                                <span className="flashcards-stat-label">{stat.label}</span>
-                            </div>
+                    {/* Status Widget (XP, Streak, etc) */}
+                    <div className="nightowl-status-widget">
+                      <span className="nightowl-xp-moon" role="img" aria-label="moon">🌙</span>
+                      <span className="nightowl-xp-label">XP</span>
+                      <div className="nightowl-xp-bar">
+                        <div className="nightowl-xp-fill" style={{width: '68%'}}></div>
+                      </div>
+                      <span className="nightowl-xp-label">Level 4</span>
+                    </div>
+
+                    {/* Card Grid */}
+                    <div className="nightowl-panel-grid">
+                      <div className="nightowl-panel">
+                        <span className="nightowl-panel-icon" role="img" aria-label="deck">📚</span>
+                        <div className="nightowl-panel-title">Total Decks</div>
+                        <div className="nightowl-panel-value">{decks?.length || 0}</div>
+                        <div className="nightowl-panel-label">Decks Created</div>
+                      </div>
+                      <div className="nightowl-panel">
+                        <span className="nightowl-panel-icon" role="img" aria-label="cards">🗂️</span>
+                        <div className="nightowl-panel-title">Total Cards</div>
+                        <div className="nightowl-panel-value">{getTotalCards()}</div>
+                        <div className="nightowl-panel-label">Cards in All Decks</div>
+                      </div>
+                      <div className="nightowl-panel">
+                        <span className="nightowl-panel-icon" role="img" aria-label="alarm">⏰</span>
+                        <div className="nightowl-panel-title">Due Today</div>
+                        <div className="nightowl-panel-value">{dueTodayCount}</div>
+                        <div className="nightowl-panel-label">Cards to Review</div>
+                      </div>
+                      <div className="nightowl-panel">
+                        <span className="nightowl-panel-icon" role="img" aria-label="fire">🔥</span>
+                        <div className="nightowl-panel-title">Current Streak</div>
+                        <div className="nightowl-panel-value">0 days</div>
+                        <div className="nightowl-panel-label">Daily Study</div>
+                      </div>
+                    </div>
+
+                    {/* Upcoming Review Widget */}
+                    <div className="upcoming-review-widget">
+                      <div className="upcoming-review-widget-title">Upcoming Reviews (Next 7 Days)</div>
+                      <div className="upcoming-review-widget-content">
+                        {upcomingCards.map((card) => (
+                          <div key={card.id} className="upcoming-review-item">
+                            <span className="upcoming-review-item-question">{card.question}</span>
+                            <span className="upcoming-review-item-deck">{card.deckTitle}</span>
+                            <span className="upcoming-review-item-date">Review Date: {new Date(card.scheduled_date).toLocaleDateString()}</span>
+                          </div>
                         ))}
+                      </div>
                     </div>
 
-                    {/* Upcoming Reviews - Glassy Card with Study Tip Sticky Note */}
-                    <div className="flashcards-section-card flashcards-upcoming-reviews" style={{ position: 'relative' }}>
-                        <div className="flashcards-study-tip-sticky">
-                            <h4 className="flashcards-study-tip-title">Study Tip</h4>
-                            <p className="flashcards-study-tip-desc">"The best way to learn is to teach. Try explaining your flashcards to someone else or even to yourself out loud."</p>
-                        </div>
-                        <h3 className="flashcards-section-card-title">Cards Scheduled For Next 7 Days</h3>
-                        <div className="upcoming-cards-list">
-                            {upcomingCards.length > 0 ? (
-                                upcomingCards.map((card, index) => (
-                                    <div key={card.id} className="upcoming-card-item">
-                                        <div className="card-header">
-                                            <span className="deck-name">{card.deckTitle}</span>
-                                            <span className="review-date">
-                                                {new Date(card.scheduled_date).toLocaleDateString()}
-                                            </span>
-                                        </div>
-                                        <div className="card-content">
-                                            <p className="card-question">{card.question}</p>
-                                        </div>
-                                    </div>
-                                ))
-                            ) : (
-                                <p className="flashcards-section-card-desc">No cards scheduled for the next 7 days.</p>
-                            )}
-                        </div>
+                    {/* Sticky Note (minimal) */}
+                    <div className="nightowl-sticky">
+                      <span role="img" aria-label="pin">📌</span> Study Tip: Try reviewing cards in small batches for better retention.
                     </div>
 
-                    {/* Shortcuts / Tools - Glassy Buttons */}
-                    <div className="flashcards-tools-grid">
-                        {[
-                            { label: 'Create New Deck', icon: '➕', action: () => setShowNewDeckModal(true) },
-                            { label: 'Quick Review', icon: '⚡', action: () => {} },
-                            { label: 'View Statistics', icon: '📊', action: () => {} }
-                        ].map((tool, index) => (
-                            <button key={index} className="flashcards-tool-btn" onClick={tool.action}>
-                                <span style={{ fontSize: '1.5rem' }}>{tool.icon}</span>
-                                {tool.label}
-                            </button>
-                        ))}
+                    {/* Tools/Shortcuts */}
+                    <div className="nightowl-tools-grid">
+                      <button className="nightowl-tool-btn"><span role="img" aria-label="plus">➕</span> New Deck</button>
+                      <button className="nightowl-tool-btn"><span role="img" aria-label="zap">⚡</span> Quick Review</button>
+                      <button className="nightowl-tool-btn"><span role="img" aria-label="chart">📊</span> View Stats</button>
                     </div>
+                  </div>
                 </div>
             );
         }
@@ -1844,28 +1876,19 @@ function Dashboard() {
     // Add useEffect to handle background changes
     useEffect(() => {
         const body = document.body;
+        const html = document.documentElement;
         if (activeView === 'flashcards') {
-            body.style.background = 'linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url("https://images.unsplash.com/photo-1507842217343-583bb7270b66?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80")';
-            body.style.backgroundSize = 'cover';
-            body.style.backgroundPosition = 'center';
-            body.style.backgroundAttachment = 'fixed';
-            body.style.transition = 'background 0.3s ease';
-            body.style.minHeight = '100vh';
-            body.style.margin = '0';
-            body.style.padding = '0';
+            body.classList.add('nightowl-root-bg');
+            html.classList.add('nightowl-root-bg');
         } else {
-            body.style.background = '';
-            body.style.minHeight = '';
-            body.style.margin = '';
-            body.style.padding = '';
+            body.classList.remove('nightowl-root-bg');
+            html.classList.remove('nightowl-root-bg');
         }
 
         // Cleanup function
         return () => {
-            body.style.background = '';
-            body.style.minHeight = '';
-            body.style.margin = '';
-            body.style.padding = '';
+            body.classList.remove('nightowl-root-bg');
+            html.classList.remove('nightowl-root-bg');
         };
     }, [activeView]);
 
@@ -2006,10 +2029,10 @@ function Dashboard() {
     return (
         <div className="dashboard-container" style={{ 
             ...(activeView === 'flashcards' && {
-                background: 'linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url("https://images.unsplash.com/photo-1507842217343-583bb7270b66?ixlib=rb-1.2.1&auto=format&fit=crop&w=1920&q=80")',
+                background: `url(${blackboardBg})`,
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
-                backgroundAttachment: 'fixed',
+                backgroundRepeat: 'no-repeat',
                 margin: 0,
                 padding: 0
             })

@@ -422,11 +422,10 @@
 }
 
 .content-section {
-    background: #1E1E1E;
+    background: transparent;
     border-radius: 8px;
     padding: 24px;
     margin: 24px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
 .content-section.transitioning {
@@ -2516,11 +2515,10 @@
 
 /* Regular content areas */
 .content-section {
-    background: #1E1E1E;
+    background: transparent;
     border-radius: 8px;
     padding: 24px;
     margin: 24px;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
 }
 
 /* Buttons */

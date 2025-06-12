@@ -10,6 +10,34 @@
     transition: all 0.3s ease;
 }
 
+/* Background Elements */
+.study-room::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+        linear-gradient(45deg, rgba(78, 205, 196, 0.03) 25%, transparent 25%),
+        linear-gradient(-45deg, rgba(78, 205, 196, 0.03) 25%, transparent 25%);
+    background-size: 60px 60px;
+    opacity: 0.1;
+    z-index: 0;
+}
+
+.study-room::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle at 50% 50%, rgba(78, 205, 196, 0.05) 0%, transparent 50%);
+    animation: particleFloat 20s ease-in-out infinite;
+    z-index: 0;
+}
+
 .particles-container {
     position: absolute;
     top: 0;
@@ -26,12 +54,18 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 2rem;
+    padding: 1rem;
+    background: rgba(37, 37, 37, 0.7);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .study-room-header h1 {
     font-size: 2rem;
     font-weight: 600;
     margin: 0;
+    color: #fff;
 }
 
 .header-controls {
@@ -42,21 +76,21 @@
 
 .theme-toggle,
 .study-mode-toggle {
-    background: transparent;
-    border: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     padding: 0.5rem 1rem;
     border-radius: 0.5rem;
     cursor: pointer;
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    color: var(--text-primary);
+    color: #fff;
     transition: all 0.3s ease;
 }
 
 .theme-toggle:hover,
 .study-mode-toggle:hover {
-    background: var(--bg-secondary);
+    background: rgba(255, 255, 255, 0.15);
     transform: translateY(-2px);
 }
 
@@ -64,34 +98,97 @@
     position: relative;
     z-index: 1;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 1.5rem;
     margin-bottom: 2rem;
 }
 
 .tool-card {
+    background: rgba(255, 255, 255, 0.1);
     padding: 1.5rem;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1rem;
-    cursor: pointer;
-    border-radius: 1rem;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
     transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+    animation: noteAppear 0.5s ease-out forwards;
+    transform-origin: center;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.tool-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 0 20px var(--shadow-color);
+/* Sticky Note Themes */
+.tool-card[style*="--tool-color: #7c83fd"] {
+    background: #FFE5D4;
+    border: 1px solid rgba(255, 107, 107, 0.1);
 }
 
-.tool-icon {
+.tool-card[style*="--tool-color: #4ecdc4"] {
+    background: #D4F1F4;
+    border: 1px solid rgba(78, 205, 196, 0.1);
+}
+
+.tool-card[style*="--tool-color: #ff6b6b"] {
+    background: #E2D4F0;
+    border: 1px solid rgba(147, 51, 234, 0.1);
+}
+
+.tool-card[style*="--tool-color: #ffd93d"] {
+    background: #E2ECE9;
+    border: 1px solid rgba(45, 206, 137, 0.1);
+}
+
+/* Sticky Note Content */
+.tool-card .tool-icon {
     color: var(--tool-color);
     transition: transform 0.3s ease;
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
 }
 
-.tool-card:hover .tool-icon {
-    transform: scale(1.1);
+.tool-card span {
+    color: #fff;
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+/* Sticky Note Interactions */
+.tool-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.tool-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    opacity: 0.1;
+    pointer-events: none;
+}
+
+/* Animations */
+@keyframes noteAppear {
+    0% {
+        opacity: 0;
+        transform: scale(0.9) translateY(20px);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1) translateY(0);
+    }
+}
+
+@keyframes particleFloat {
+    0%, 100% {
+        transform: translate(0, 0);
+    }
+    50% {
+        transform: translate(20px, 20px);
+    }
 }
 
 .timer-section {
@@ -100,13 +197,17 @@
     padding: 2rem;
     text-align: center;
     margin-bottom: 2rem;
-    border-radius: 1rem;
+    background: rgba(37, 37, 37, 0.7);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .timer {
     font-size: 3rem;
     font-weight: 600;
     margin-bottom: 1rem;
+    color: #fff;
     transition: all 0.3s ease;
 }
 
@@ -121,9 +222,9 @@
 }
 
 .timer-controls button {
-    background: var(--accent-primary);
-    color: white;
-    border: none;
+    background: rgba(255, 255, 255, 0.1);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.1);
     padding: 0.5rem 1rem;
     border-radius: 0.5rem;
     cursor: pointer;
@@ -131,7 +232,7 @@
 }
 
 .timer-controls button:hover {
-    background: var(--accent-secondary);
+    background: rgba(255, 255, 255, 0.15);
     transform: translateY(-2px);
 }
 
@@ -142,18 +243,24 @@
     display: flex;
     align-items: center;
     gap: 1rem;
-    border-radius: 1rem;
+    background: rgba(37, 37, 37, 0.7);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .sound-toggle {
-    background: transparent;
-    border: none;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 0.5rem;
+    border-radius: 0.5rem;
     cursor: pointer;
-    color: var(--text-primary);
+    color: #fff;
     transition: all 0.3s ease;
 }
 
 .sound-toggle:hover {
+    background: rgba(255, 255, 255, 0.15);
     transform: scale(1.1);
 }
 
@@ -166,7 +273,7 @@
 .sound-wave-bar {
     width: 3px;
     height: 15px;
-    background: var(--text-primary);
+    background: #fff;
     animation: soundWave 1s infinite;
 }
 
@@ -182,7 +289,7 @@
     flex: 1;
     height: 4px;
     -webkit-appearance: none;
-    background: var(--bg-secondary);
+    background: rgba(255, 255, 255, 0.1);
     border-radius: 2px;
     outline: none;
 }
@@ -191,7 +298,7 @@
     -webkit-appearance: none;
     width: 16px;
     height: 16px;
-    background: var(--accent-primary);
+    background: #fff;
     border-radius: 50%;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -292,28 +399,21 @@
     transition: all 0.3s ease;
 }
 
-.study-room-header {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    margin-bottom: 2rem;
-}
-
 .back-button {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    background: transparent;
-    border: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
     padding: 0.5rem 1rem;
     border-radius: 0.5rem;
     cursor: pointer;
-    color: var(--text-primary);
+    color: #fff;
     transition: all 0.3s ease;
 }
 
 .back-button:hover {
-    background: var(--bg-secondary);
+    background: rgba(255, 255, 255, 0.15);
     transform: translateX(-4px);
 }
 
@@ -536,6 +636,38 @@
     
     .card-preview-back .card-preview-content {
         font-size: 1rem;
+    }
+
+    .study-room {
+        padding: 1rem;
+    }
+
+    .study-room-header {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+    .header-controls {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .theme-toggle,
+    .study-mode-toggle {
+        width: 100%;
+        justify-content: center;
+    }
+
+    .study-tools {
+        grid-template-columns: 1fr;
+    }
+
+    .timer-section {
+        padding: 1rem;
+    }
+
+    .timer {
+        font-size: 2rem;
     }
 }
 

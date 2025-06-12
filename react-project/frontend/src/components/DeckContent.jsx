@@ -144,8 +144,10 @@ export default function DeckContent() {
     const reps = card.repetitions || 0;
     const correct = card.correct || 0;
     const incorrect = card.incorrect || 0;
+    const totalAttempts = correct + incorrect;
 
-    if (reps >= 5) {
+    // Consider a card mastered if it has at least 5 repetitions and a high correct ratio
+    if (reps >= 5 && totalAttempts > 0 && (correct / totalAttempts) >= 0.8) {
       return 'ribbon-dark-pink';
     } else if (reps >= 1 && incorrect > correct) {
       return 'ribbon-soft-red';
@@ -153,10 +155,10 @@ export default function DeckContent() {
       return 'ribbon-soft-blue';
     } else if (reps === 1) {
       return 'ribbon-warm-amber';
-    } else if (reps === 2 || reps === 3) {
+    } else if (reps >= 2) {
       return 'ribbon-muted-purple';
     }
-    return '';
+    return 'ribbon-muted-purple'; // Default to purple for any other case
   };
 
   const filteredCards = cards.filter(card => {
@@ -596,7 +598,7 @@ export default function DeckContent() {
             } else if (reps === 1) {
               ribbonColorClass = 'ribbon-warm-amber';
               ribbonTooltip = 'Needs Repetition: Seen, but needs more review.';
-            } else if (reps === 2 || reps === 3) {
+            } else if (reps >= 2) {
               ribbonColorClass = 'ribbon-muted-purple';
               ribbonTooltip = 'In Progress: Partially reviewed.';
             }
