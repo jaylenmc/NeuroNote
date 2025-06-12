@@ -214,8 +214,15 @@ const DashboardHome = () => {
       {/* Achievements Section */}
       <div className="dashboard-achievements">
         <div className="section-header">
-          <h2><Trophy size={24} /> Achievements</h2>
-          <p>Track your learning milestones and accomplishments</p>
+          <div className="achievements-header">
+            <div className="achievements-title">
+              <h2><Trophy size={24} /> Achievements</h2>
+              <p>Track your learning milestones and accomplishments</p>
+            </div>
+            <button className="view-achievements-btn">
+              View Achievements
+            </button>
+          </div>
         </div>
         <div className="achievements-grid">
           {achievements.map((achievement, index) => (
