@@ -4,6 +4,8 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../auth/AuthContext';
 import { useParticles } from '../hooks/useParticles';
 import StudyDecks from './StudyDecks';
+import AskNeuroNote from './AskNeuroNote';
+import QuizWidget from './QuizWidget';
 import { 
     BookOpen, 
     Timer, 
@@ -16,6 +18,8 @@ import {
     Sun,
     X,
     ArrowLeft,
+    MessageSquare,
+    HelpCircle,
 } from 'lucide-react';
 import { FiEdit2, FiTrash2, FiRefreshCw } from 'react-icons/fi';
 import './StudyRoom.css';
@@ -37,6 +41,8 @@ const StudyRoom = () => {
     const [isFlipped, setIsFlipped] = useState(false);
     const [showTimer, setShowTimer] = useState(false);
     const [showReview, setShowReview] = useState(false);
+    const [showAskNeuroNote, setShowAskNeuroNote] = useState(false);
+    const [showQuiz, setShowQuiz] = useState(false);
 
     // Timer effect
     useEffect(() => {
@@ -90,12 +96,17 @@ const StudyRoom = () => {
         navigate('/dashboard?tab=flashcards');
     };
 
+    const handleProgressClick = () => {
+        navigate('/progress');
+    };
+
     const tools = [
         { icon: <BookOpen size={24} />, label: 'Decks', color: '#7c83fd', onClick: () => navigate('/study-room/decks') },
-        { icon: <Timer size={24} />, label: 'Timer', color: '#ff6b6b', onClick: toggleTimer },
-        { icon: <Target size={24} />, label: 'Focus', color: '#4ecdc4', onClick: () => {} },
+        { icon: <HelpCircle size={24} />, label: 'Quiz', color: '#ff6b6b', onClick: () => navigate('/quiz') },
+        { icon: <Target size={24} />, label: 'Focus', color: '#4ecdc4', onClick: () => navigate('/focus') },
         { icon: <FiRefreshCw size={24} />, label: 'Review', color: '#ffd93d', onClick: () => navigate('/review') },
-        { icon: <BarChart2 size={24} />, label: 'Progress', color: '#95e1d3', onClick: () => {} }
+        { icon: <BarChart2 size={24} />, label: 'Progress', color: '#95e1d3', onClick: handleProgressClick },
+        { icon: <MessageSquare size={24} />, label: 'Ask NeuroNote', color: '#6c5ce7', onClick: () => navigate('/chat') }
     ];
 
     return (
@@ -180,14 +191,19 @@ const StudyRoom = () => {
             {isStudyMode && <div className="candle" />}
 
             <div className="study-content">
-                {showTimer && (
-                    <div className="tool-card glass-card">
-                        <TimerWidget />
+                {showQuiz && (
+                    <div className="study-content-widget">
+                        <QuizWidget />
                     </div>
                 )}
                 {showReview && (
-                    <div className="tool-card glass-card">
+                    <div className="study-content-widget">
                         <ReviewWidget />
+                    </div>
+                )}
+                {showAskNeuroNote && (
+                    <div className="study-content-widget">
+                        <AskNeuroNote />
                     </div>
                 )}
             </div>

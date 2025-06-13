@@ -947,7 +947,8 @@
 }
 
 .back-button:hover {
-    color: white;
+    opacity: 0.8;
+    transform: translateX(-4px);
 }
 
 .deck-actions {
