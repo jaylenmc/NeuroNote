@@ -1,8 +1,13 @@
 import anthropic
 import os
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework.views import APIView
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework import status
 
 client = anthropic.Anthropic(
-    api_key=os.environ.get("ANTHROPIC_API_KEY")
+    api_key='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'
 ) 
 
 def thinker_ai(prompt: str, user: object):
@@ -31,20 +36,32 @@ def thinker_ai(prompt: str, user: object):
    
     return message.content
 
-def notetaker_ai(prompt: str):
-    try:
-        message = client.messages.create(
-            model="claude-3-haiku-20240307",  # Using the free model
-            max_tokens=1000,
-            temperature=0.7,
-            system="You are a educational tutor. Provide clear and concise answers.",
-            messages=[
-                {
-                    "role": "user",
-                    "content": [{"type": "text", "text": prompt}]
-                }
-            ]
-        )
-        return message.content
-    except Exception as e:
-        return f"Error: {str(e)}"
+class NoteTakerAi(APIView):
+    permission_classes = [IsAuthenticated]
+    
+    def post(self, request):
+        prompt = request.data.get('prompt')
+        print(f'This is the prompt: {prompt}')
+        try:
+            message = client.messages.create(
+                model="claude-3-haiku-20240307",  # Using the free model
+                max_tokens=1000,
+                temperature=0.7,
+                system="You are a educational tutor. Provide clear and concise answers.",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [{"type": "text", "text": prompt}]
+                    }
+                ]
+            )
+            raw_output = message.content
+
+            # Extract only text blocks
+            text_only = " ".join(
+                block.text for block in raw_output if block.type == "text"
+            )
+            print(f'This is the message: {text_only}')
+            return Response({'Message': text_only}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'Error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
