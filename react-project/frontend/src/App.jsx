@@ -14,6 +14,12 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import StudyDecks from './components/StudyDecks';
 import ReviewSession from './components/ReviewSession';
 import ReviewPage from './pages/ReviewPage';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import ChatPage from './pages/ChatPage';
+import QuizPage from './pages/QuizPage';
+import FocusPage from './pages/FocusPage';
+import ProgressPage from './pages/ProgressPage';
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
@@ -35,7 +41,7 @@ function Navbar() {
   const location = useLocation();
   
   // Hide navbar on these routes
-  const hideNavbarRoutes = ['/dashboard', '/signin', '/auth/callback/', '/study-room', '/review'];
+  const hideNavbarRoutes = ['/dashboard', '/signin', '/auth/callback/', '/study-room', '/review', '/chat', '/login', '/register', '/quiz', '/focus', '/progress'];
   if (hideNavbarRoutes.some(route => location.pathname.startsWith(route))) {
     return null;
   }
@@ -66,7 +72,7 @@ function Navbar() {
 // AppContent wrapper to use location
 function AppContent() {
   const location = useLocation();
-  const showNavbar = !['/dashboard', '/signin', '/auth/callback/'].some(route => 
+  const showNavbar = !['/dashboard', '/signin', '/auth/callback/', '/chat', '/login', '/register', '/quiz', '/progress'].some(route => 
     location.pathname.startsWith(route)
   );
 
@@ -127,6 +133,20 @@ function AppContent() {
             </ProtectedRoute>
           } />
           <Route path='/signin' element={ <Signin /> }/>
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/chat" element={<ChatPage />} />
+          <Route path="/quiz" element={
+            <ProtectedRoute>
+              <QuizPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/focus" element={
+            <ProtectedRoute>
+              <FocusPage />
+            </ProtectedRoute>
+          } />
+          <Route path="/progress" element={<ProgressPage />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </main>

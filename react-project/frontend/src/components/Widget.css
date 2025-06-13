@@ -1,0 +1,54 @@
+.widget {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 1.5rem;
+    cursor: pointer;
+    transition: transform 0.2s, background-color 0.2s;
+}
+
+.widget:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.widget h3 {
+    margin: 0 0 0.5rem;
+    font-size: 1.2rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.widget p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.quiz-widget {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    min-height: 120px;
+}
+
+.quiz-widget h3 {
+    font-size: 1.4rem;
+    margin-bottom: 0.75rem;
+}
+
+.quiz-widget p {
+    font-size: 1rem;
+    opacity: 0.8;
+}
+
+/* Dark mode adjustments */
+.dark-mode .widget {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.dark-mode .widget:hover {
+    background: rgba(255, 255, 255, 0.1);
+} 

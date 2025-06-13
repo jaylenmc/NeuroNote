@@ -1526,29 +1526,29 @@ function Dashboard() {
     const renderFolderItems = (folder) => {
         if (!folder.items || folder.items.length === 0) {
             return (
-                <div className="empty-folder-content">
-                    <p>No items in this folder</p>
-                    <div className="empty-folder-actions">
-                        <button 
-                            className="add-item-btn"
+                                                <div className="empty-folder-content">
+                                                    <p>No items in this folder</p>
+                                                    <div className="empty-folder-actions">
+                                                        <button 
+                                                            className="add-item-btn"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 handleCreateDocument();
                             }}
-                        >
+                                                        >
                             <FiFileText /> Add Document
-                        </button>
-                        <button 
-                            className="add-item-btn"
+                                                        </button>
+                                                        <button 
+                                                            className="add-item-btn"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 setShowNewQuizModal(true);
                             }}
-                        >
-                            <FiFileText /> Add Quiz
-                        </button>
-                    </div>
-                </div>
+                                                        >
+                                                            <FiFileText /> Add Quiz
+                                                        </button>
+                                                    </div>
+                                                </div>
             );
         }
 
@@ -1568,7 +1568,7 @@ function Dashboard() {
                             <span>{new Date(item.created_at).toLocaleDateString()}</span>
                         </div>
                         <div className="item-actions">
-                            <button 
+                        <button 
                                 className="delete-btn"
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -1576,8 +1576,8 @@ function Dashboard() {
                                 }}
                             >
                                 ×
-                            </button>
-                        </div>
+                        </button>
+                    </div>
                     </div>
                 );
             } else if (item.type === 'quiz') {
@@ -1671,7 +1671,7 @@ function Dashboard() {
                             </div>
                         </div>
                         <div className="add-item-buttons">
-                            <button 
+                                        <button 
                                 className="add-item-btn"
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -1679,8 +1679,8 @@ function Dashboard() {
                                 }}
                             >
                                 <FiFileText /> Add Document
-                            </button>
-                            <button 
+                                        </button>
+                                        <button 
                                 className="add-item-btn"
                                 onClick={(e) => {
                                     e.stopPropagation();
@@ -1688,17 +1688,17 @@ function Dashboard() {
                                 }}
                             >
                                 <FiFileText /> Add Quiz
-                            </button>
+                                        </button>
+                                </div>
                         </div>
-                    </div>
                     {isLoading.initialLoad ? (
                         <div className="loading-container">
                             <div className="loading-spinner"></div>
-                        </div>
+                    </div>
                     ) : (
                         <div className={`folder-items ${viewMode}-view`}>
                             {renderFolderItems(selectedFolder)}
-                        </div>
+                </div>
                     )}
                 </div>
             );
@@ -1725,7 +1725,7 @@ function Dashboard() {
                       </div>
                       <button className="nightowl-studyroom-btn" onClick={() => navigate('/study-room')}>
                         <span role="img" aria-label="moon">🌙</span> Enter Study Room
-                      </button>
+                        </button>
                     </div>
 
                     {/* Status Widget (XP, Streak, etc) */}
@@ -1734,7 +1734,7 @@ function Dashboard() {
                       <span className="nightowl-xp-label">XP</span>
                       <div className="nightowl-xp-bar">
                         <div className="nightowl-xp-fill" style={{width: '68%'}}></div>
-                      </div>
+                            </div>
                       <span className="nightowl-xp-label">Level 4</span>
                     </div>
 
@@ -1745,25 +1745,25 @@ function Dashboard() {
                         <div className="nightowl-panel-title">Total Decks</div>
                         <div className="nightowl-panel-value">{decks?.length || 0}</div>
                         <div className="nightowl-panel-label">Decks Created</div>
-                      </div>
+                        </div>
                       <div className="nightowl-panel">
                         <span className="nightowl-panel-icon" role="img" aria-label="cards">🗂️</span>
                         <div className="nightowl-panel-title">Total Cards</div>
                         <div className="nightowl-panel-value">{getTotalCards()}</div>
                         <div className="nightowl-panel-label">Cards in All Decks</div>
-                      </div>
+                                        </div>
                       <div className="nightowl-panel">
                         <span className="nightowl-panel-icon" role="img" aria-label="alarm">⏰</span>
                         <div className="nightowl-panel-title">Due Today</div>
                         <div className="nightowl-panel-value">{dueTodayCount}</div>
                         <div className="nightowl-panel-label">Cards to Review</div>
-                      </div>
+                                        </div>
                       <div className="nightowl-panel">
                         <span className="nightowl-panel-icon" role="img" aria-label="fire">🔥</span>
                         <div className="nightowl-panel-title">Current Streak</div>
                         <div className="nightowl-panel-value">0 days</div>
                         <div className="nightowl-panel-label">Daily Study</div>
-                      </div>
+                        </div>
                     </div>
 
                     {/* Upcoming Review Widget */}
@@ -1791,7 +1791,7 @@ function Dashboard() {
                       <button className="nightowl-tool-btn"><span role="img" aria-label="zap">⚡</span> Quick Review</button>
                       <button className="nightowl-tool-btn"><span role="img" aria-label="chart">📊</span> View Stats</button>
                     </div>
-                  </div>
+                    </div>
                 </div>
             );
         }

@@ -1,0 +1,122 @@
+.auth-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 2rem;
+    background: var(--background-primary);
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 400px;
+    padding: 2rem;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.auth-card h1 {
+    margin: 0 0 0.5rem;
+    font-size: 2rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: center;
+}
+
+.auth-subtitle {
+    margin: 0 0 2rem;
+    color: var(--text-secondary);
+    text-align: center;
+}
+
+.auth-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-group label {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+}
+
+.form-group input {
+    padding: 0.75rem 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+    font-size: 1rem;
+    transition: border-color 0.2s;
+}
+
+.form-group input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.auth-button {
+    padding: 0.75rem;
+    border: none;
+    border-radius: 8px;
+    background: var(--primary-color);
+    color: white;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.auth-button:hover:not(:disabled) {
+    background: var(--primary-color-dark);
+}
+
+.auth-button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.auth-error {
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+    background: rgba(244, 67, 54, 0.1);
+    border: 1px solid #F44336;
+    border-radius: 8px;
+    color: #F44336;
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+.auth-footer {
+    margin: 2rem 0 0;
+    text-align: center;
+    color: var(--text-secondary);
+}
+
+.auth-link {
+    color: var(--primary-color);
+    text-decoration: none;
+    font-weight: 500;
+    transition: opacity 0.2s;
+}
+
+.auth-link:hover {
+    opacity: 0.8;
+}
+
+/* Dark mode adjustments */
+.dark-mode .auth-card {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.dark-mode .form-group input {
+    background: rgba(255, 255, 255, 0.05);
+} 
