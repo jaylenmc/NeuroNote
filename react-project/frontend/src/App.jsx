@@ -8,6 +8,7 @@ import Signin from './auth/signin';
 import Authentication from './api/OAuthSuccess';
 import Dashboard from './components/Dashboard';
 import StudyRoom from './components/StudyRoom';
+import StudyRoomPage from './pages/StudyRoom';
 import DeckContent from './components/DeckContent';
 import { useAuth, AuthProvider } from './auth/AuthContext'; // or wherever it's defined
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -20,6 +21,8 @@ import ChatPage from './pages/ChatPage';
 import QuizPage from './pages/QuizPage';
 import FocusPage from './pages/FocusPage';
 import ProgressPage from './pages/ProgressPage';
+import StudyGroups from './pages/StudyGroups';
+import Achievements from './pages/Achievements';
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
@@ -41,7 +44,7 @@ function Navbar() {
   const location = useLocation();
   
   // Hide navbar on these routes
-  const hideNavbarRoutes = ['/dashboard', '/signin', '/auth/callback/', '/study-room', '/review', '/chat', '/login', '/register', '/quiz', '/focus', '/progress'];
+  const hideNavbarRoutes = ['/dashboard', '/signin', '/auth/callback/', '/study-room', '/review', '/chat', '/login', '/register', '/quiz', '/focus', '/progress', '/study-groups', '/achievements'];
   if (hideNavbarRoutes.some(route => location.pathname.startsWith(route))) {
     return null;
   }
@@ -72,7 +75,7 @@ function Navbar() {
 // AppContent wrapper to use location
 function AppContent() {
   const location = useLocation();
-  const showNavbar = !['/dashboard', '/signin', '/auth/callback/', '/chat', '/login', '/register', '/quiz', '/progress'].some(route => 
+  const showNavbar = !['/dashboard', '/signin', '/auth/callback/', '/chat', '/login', '/register', '/quiz', '/progress', '/study-groups', '/achievements'].some(route => 
     location.pathname.startsWith(route)
   );
 
@@ -147,6 +150,23 @@ function AppContent() {
             </ProtectedRoute>
           } />
           <Route path="/progress" element={<ProgressPage />} />
+          <Route 
+            path="/study-groups" 
+            element={
+              <ProtectedRoute>
+                <StudyGroups />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/study-groups/study-room/" 
+            element={
+              <ProtectedRoute>
+                <StudyRoomPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route path="/achievements" element={<Achievements />} />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </main>

@@ -6,9 +6,11 @@ import {
   Zap, BookOpen, TrendingUp, Award, Rocket, Coffee
 } from 'lucide-react';
 import './DashboardHome.css';
+import { useNavigate } from 'react-router-dom';
 
 const DashboardHome = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState({
     studyStreak: 7,
     xpPoints: 2450,
@@ -219,7 +221,10 @@ const DashboardHome = () => {
               <h2><Trophy size={24} /> Achievements</h2>
               <p>Track your learning milestones and accomplishments</p>
             </div>
-            <button className="view-achievements-btn">
+            <button 
+              className="view-achievements-btn"
+              onClick={() => navigate('/achievements')}
+            >
               View Achievements
             </button>
           </div>
@@ -249,9 +254,18 @@ const DashboardHome = () => {
 
       {/* Collaborations Section */}
       <div className="dashboard-collaborations">
-        <div className="section-header">
-          <h2><Users size={24} /> Study Groups</h2>
-          <p>Connect with peers and study together</p>
+        <div className="section-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <h2 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Users size={24} /> Study Groups</h2>
+            <p>Connect with peers and study together</p>
+          </div>
+          <button
+            className="view-study-groups-btn"
+            style={{ marginLeft: 'auto', padding: '8px 16px', borderRadius: '6px', background: '#4ECDC4', color: '#fff', border: 'none', fontWeight: 500, fontSize: '1rem', cursor: 'pointer' }}
+            onClick={() => navigate('/study-groups')}
+          >
+            View Study Groups
+          </button>
         </div>
         <div className="collaborations-grid">
           {collaborations.map((collab, index) => (
