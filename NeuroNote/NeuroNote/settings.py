@@ -33,6 +33,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -48,7 +49,9 @@ INSTALLED_APPS = [
     'claude_client',
     'corsheaders',
     'folders',
-    'documents'
+    'documents',
+    'chat',
+    'studyroom',
 ]
 
 REST_FRAMEWORK = {
@@ -117,7 +120,10 @@ DATABASES = {
         'USER': 'admin',
         'PASSWORD': 'Flabbergasted1!',
         'HOST': 'database-1.cez2oquaua0b.us-east-1.rds.amazonaws.com',
-        'PORT': '3306'
+        'PORT': '3306',
+        "TEST": {
+            "NAME": "test_neuronote_db",
+        },
     }
 }
 
@@ -170,3 +176,13 @@ GOOGLE_CLIENT_SECRET = 'REDACTED'
 REDIRECT_URI = 'http://localhost:5173/auth/callback/'
 
 LOGIN_URL = '/'
+
+ASGI_APPLICATION = 'NeuroNote.asgi.application'
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+        },
+    },
+}
