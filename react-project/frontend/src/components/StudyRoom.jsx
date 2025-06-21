@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTheme } from '../contexts/ThemeContext';
 import { useAuth } from '../auth/AuthContext';
@@ -21,7 +21,7 @@ import {
     MessageSquare,
     HelpCircle,
 } from 'lucide-react';
-import { FiEdit2, FiTrash2, FiRefreshCw } from 'react-icons/fi';
+import { FiEdit2, FiTrash2, FiRefreshCw, FiCheck, FiX } from 'react-icons/fi';
 import './StudyRoom.css';
 import ReviewWidget from './ReviewWidget';
 
@@ -43,13 +43,24 @@ const StudyRoom = () => {
     const [showReview, setShowReview] = useState(false);
     const [showAskNeuroNote, setShowAskNeuroNote] = useState(false);
     const [showQuiz, setShowQuiz] = useState(false);
+    const [isEditingTimer, setIsEditingTimer] = useState(false);
+    const [editHours, setEditHours] = useState(0);
+    const [editMinutes, setEditMinutes] = useState(25);
+    const [editSeconds, setEditSeconds] = useState(0);
+    const timerInputRef = useRef(null);
 
     // Timer effect
     useEffect(() => {
         let timer;
         if (isTimerRunning && timeLeft > 0) {
             timer = setInterval(() => {
-                setTimeLeft(prev => prev - 1);
+                setTimeLeft(prev => {
+                    if (prev <= 1) {
+                        setIsTimerRunning(false);
+                        return 0;
+                    }
+                    return prev - 1;
+                });
             }, 1000);
         }
         return () => clearInterval(timer);
@@ -77,14 +88,12 @@ const StudyRoom = () => {
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
-    const toggleTimer = () => {
-        setShowTimer(!showTimer);
-        setShowReview(false); // Hide review when showing timer
+    const handleStartTimer = () => {
+        if (timeLeft > 0) setIsTimerRunning(true);
     };
 
-    const toggleReview = () => {
-        setShowReview(!showReview);
-        setShowTimer(false); // Hide timer when showing review
+    const handlePauseTimer = () => {
+        setIsTimerRunning(false);
     };
 
     const resetTimer = () => {
@@ -98,6 +107,40 @@ const StudyRoom = () => {
 
     const handleProgressClick = () => {
         navigate('/progress');
+    };
+
+    const handleTimerClick = () => {
+        setEditHours(Math.floor(timeLeft / 3600));
+        setEditMinutes(Math.floor((timeLeft % 3600) / 60));
+        setEditSeconds(timeLeft % 60);
+        setIsEditingTimer(true);
+        setTimeout(() => {
+            if (timerInputRef.current) timerInputRef.current.focus();
+        }, 0);
+    };
+
+    const handleSaveTimer = () => {
+        const totalSeconds = Math.max(0, editHours * 3600 + editMinutes * 60 + editSeconds);
+        setTimeLeft(totalSeconds);
+        setIsEditingTimer(false);
+        setIsTimerRunning(false);
+    };
+
+    const handleTimerInputKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            handleInputBlur();
+        } else if (e.key === 'Escape') {
+            setIsEditingTimer(false);
+        }
+    };
+
+    const handleInputFocus = (setter) => setter('');
+
+    const handleInputBlur = () => {
+        setEditHours(h => h === '' || h === null || isNaN(h) ? 0 : h);
+        setEditMinutes(m => m === '' || m === null || isNaN(m) ? 0 : m);
+        setEditSeconds(s => s === '' || s === null || isNaN(s) ? 0 : s);
+        handleSaveTimer();
     };
 
     const tools = [
@@ -153,14 +196,77 @@ const StudyRoom = () => {
             </div>
 
             <div className="timer-section glass-card">
-                <div className={`timer ${isTimerRunning ? 'timer-active' : ''}`}>
-                    {formatTime(timeLeft)}
+                <div
+                    className={`timer ${isTimerRunning ? 'timer-active' : ''}`}
+                    style={{ cursor: isEditingTimer ? 'auto' : 'pointer' }}
+                    onClick={!isEditingTimer ? handleTimerClick : undefined}
+                >
+                    {isEditingTimer ? (
+                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', width: '100%' }}>
+                            <input
+                                ref={timerInputRef}
+                                type="number"
+                                min="0"
+                                max="99"
+                                value={editHours === '' ? '' : String(editHours).padStart(2, '0')}
+                                onChange={e => setEditHours(e.target.value === '' ? '' : Math.max(0, Math.min(99, Number(e.target.value))))}
+                                onFocus={() => handleInputFocus(setEditHours)}
+                                onBlur={handleInputBlur}
+                                onKeyDown={handleTimerInputKeyDown}
+                                style={{ width: 56, textAlign: 'center', fontSize: '3rem', fontFamily: 'inherit', fontWeight: 600, border: 'none', borderBottom: '2px solid #fff', background: 'transparent', color: '#fff', outline: 'none', margin: '0 2px' }}
+                                placeholder="00"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                className="timer-edit-input"
+                            />
+                            <span style={{ fontSize: '1.5rem' }}>:</span>
+                            <input
+                                type="number"
+                                min="0"
+                                max="59"
+                                value={editMinutes === '' ? '' : String(editMinutes).padStart(2, '0')}
+                                onChange={e => setEditMinutes(e.target.value === '' ? '' : Math.max(0, Math.min(59, Number(e.target.value))))}
+                                onFocus={() => handleInputFocus(setEditMinutes)}
+                                onBlur={handleInputBlur}
+                                onKeyDown={handleTimerInputKeyDown}
+                                style={{ width: 56, textAlign: 'center', fontSize: '3rem', fontFamily: 'inherit', fontWeight: 600, border: 'none', borderBottom: '2px solid #fff', background: 'transparent', color: '#fff', outline: 'none', margin: '0 2px' }}
+                                placeholder="00"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                className="timer-edit-input"
+                            />
+                            <span style={{ fontSize: '1.5rem' }}>:</span>
+                            <input
+                                type="number"
+                                min="0"
+                                max="59"
+                                value={editSeconds === '' ? '' : String(editSeconds).padStart(2, '0')}
+                                onChange={e => setEditSeconds(e.target.value === '' ? '' : Math.max(0, Math.min(59, Number(e.target.value))))}
+                                onFocus={() => handleInputFocus(setEditSeconds)}
+                                onBlur={handleInputBlur}
+                                onKeyDown={handleTimerInputKeyDown}
+                                style={{ width: 56, textAlign: 'center', fontSize: '3rem', fontFamily: 'inherit', fontWeight: 600, border: 'none', borderBottom: '2px solid #fff', background: 'transparent', color: '#fff', outline: 'none', margin: '0 2px' }}
+                                placeholder="00"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                className="timer-edit-input"
+                            />
+                        </div>
+                    ) : (
+                        <span style={{ display: 'block', width: '100%', textAlign: 'center' }}>{
+                            `${String(Math.floor(timeLeft / 3600)).padStart(2, '0')}:` +
+                            `${String(Math.floor((timeLeft % 3600) / 60)).padStart(2, '0')}:` +
+                            `${String(timeLeft % 60).padStart(2, '0')}`
+                        }</span>
+                    )}
                 </div>
                 <div className="timer-controls">
-                    <button onClick={toggleTimer}>
-                        {isTimerRunning ? 'Pause' : 'Start'}
-                    </button>
-                    <button onClick={resetTimer}>Reset</button>
+                    {isTimerRunning ? (
+                        <button onClick={handlePauseTimer} disabled={isEditingTimer}>Pause</button>
+                    ) : (
+                        <button onClick={handleStartTimer} disabled={isEditingTimer || timeLeft === 0}>Start</button>
+                    )}
+                    <button onClick={resetTimer} disabled={isEditingTimer}>Reset</button>
                 </div>
             </div>
 

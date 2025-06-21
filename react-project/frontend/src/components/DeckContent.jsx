@@ -45,7 +45,6 @@ export default function DeckContent() {
   const ribbonColors = [
     { value: null, label: 'All Cards', color: '#666' },
     { value: 'ribbon-soft-blue', label: 'Unseen', color: '#38bdf8' },
-    { value: 'ribbon-warm-amber', label: 'Needs Review', color: '#f59e42' },
     { value: 'ribbon-muted-purple', label: 'In Progress', color: '#7c3aed' },
     { value: 'ribbon-soft-red', label: 'Struggling', color: '#f43f5e' },
     { value: 'ribbon-dark-pink', label: 'Mastered', color: '#db2777' }
@@ -60,11 +59,17 @@ export default function DeckContent() {
   }, [deckId]);
 
   async function fetchDeck() {
-    const res = await fetch(`${API_URL}flashcards/deck/`, {
-      headers: { Authorization: `Bearer ${jwt}` }
-    });
-    const data = await res.json();
-    setDeck(data.find(d => d.id === parseInt(deckId)));
+    try {
+      const token = sessionStorage.getItem('jwt_token');
+      if (!token) return;
+      const response = await fetch(`${API_URL}flashcards/deck/`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      setDeck(data.decks.find(d => d.id === parseInt(deckId)));
+    } catch (err) {
+      console.error('Error fetching deck:', err);
+    }
   }
 
   async function fetchCards() {
@@ -90,6 +95,13 @@ export default function DeckContent() {
 
   const handleAddCard = async (e) => {
     e.preventDefault();
+    if (!deck) {
+      setError('Deck is not loaded yet. Please wait and try again.');
+      return;
+    }
+    console.log('handleAddCard called');
+    console.log('newCard:', newCard);
+    console.log('deck:', deck);
     try {
       const token = sessionStorage.getItem('jwt_token');
       if (!token) {
@@ -112,6 +124,8 @@ export default function DeckContent() {
           scheduled_date: newCard.scheduled_date
         })
       });
+
+      console.log('POST /cards/ response:', response);
 
       if (!response.ok) {
         throw new Error('Failed to create card');
@@ -141,30 +155,30 @@ export default function DeckContent() {
   }
 
   const getRibbonColor = (card) => {
-    const reps = card.repetitions || 0;
-    const correct = card.correct || 0;
-    const incorrect = card.incorrect || 0;
-    const totalAttempts = correct + incorrect;
-
-    // Consider a card mastered if it has at least 5 repetitions and a high correct ratio
-    if (reps >= 5 && totalAttempts > 0 && (correct / totalAttempts) >= 0.8) {
-      return 'ribbon-dark-pink';
-    } else if (reps >= 1 && incorrect > correct) {
-      return 'ribbon-soft-red';
-    } else if (reps === 0) {
-      return 'ribbon-soft-blue';
-    } else if (reps === 1) {
-      return 'ribbon-warm-amber';
-    } else if (reps >= 2) {
-      return 'ribbon-muted-purple';
+    let ribbonColorClass = '', ribbonTooltip = '';
+    if (card.learning_status === 'Mastered') {
+      ribbonColorClass = 'ribbon-dark-pink';
+      ribbonTooltip = "Mastered: You've reviewed this card enough times to master it!";
+    } else if (card.learning_status === 'Struggling') {
+      ribbonColorClass = 'ribbon-soft-red';
+      ribbonTooltip = 'Struggling: More incorrect than correct answers.';
+    } else if (card.learning_status === 'Unseen') {
+      ribbonColorClass = 'ribbon-soft-blue';
+      ribbonTooltip = 'Unseen: You have not reviewed this card yet.';
+    } else if (card.learning_status === 'In Progress') {
+      ribbonColorClass = 'ribbon-muted-purple';
+      ribbonTooltip = 'In Progress: Partially reviewed.';
+    } else {
+      ribbonColorClass = 'ribbon-muted-purple';
+      ribbonTooltip = 'In Progress: Partially reviewed.';
     }
-    return 'ribbon-muted-purple'; // Default to purple for any other case
+    return { ribbonColorClass, ribbonTooltip };
   };
 
   const filteredCards = cards.filter(card => {
     const matchesSearch = card.question.toLowerCase().includes(search.toLowerCase()) ||
                          card.answer.toLowerCase().includes(search.toLowerCase());
-    const matchesRibbon = !selectedRibbonColor || getRibbonColor(card) === selectedRibbonColor;
+    const matchesRibbon = !selectedRibbonColor || getRibbonColor(card).ribbonColorClass === selectedRibbonColor;
     return matchesSearch && matchesRibbon;
   });
 
@@ -438,8 +452,7 @@ export default function DeckContent() {
 
   const renderCard = (card) => {
     const isEditing = editingCardId === card.id;
-    const ribbonColorClass = card.ribbon_color || 'ribbon-soft-blue';
-    const ribbonTooltip = ribbonColors.find(c => c.value === ribbonColorClass)?.label || 'Unseen';
+    const { ribbonColorClass, ribbonTooltip } = getRibbonColor(card);
     const showTooltip = badgeTooltip?.cardId === card.id;
 
     return (
@@ -577,7 +590,7 @@ export default function DeckContent() {
           </div>
         </div>
       </div>
-      <button className="add-card-btn" onClick={() => setShowAdd(true)}><FiPlus /> Add New Card</button>
+      <button className="add-card-btn" onClick={() => setShowAdd(true)} disabled={!deck}><FiPlus /> Add New Card</button>
       <div className="card-list-grid cards-grid">
         {loading ? <div className="loading">Loading...</div> :
           filteredCards.map(card => {
@@ -586,19 +599,19 @@ export default function DeckContent() {
             const correct = card.correct || 0;
             const incorrect = card.incorrect || 0;
             let ribbonColorClass = '', ribbonTooltip = '';
-            if (reps >= 5) {
+            if (card.learning_status === 'Mastered') {
               ribbonColorClass = 'ribbon-dark-pink';
               ribbonTooltip = "Mastered: You've reviewed this card enough times to master it!";
-            } else if (reps >= 1 && incorrect > correct) {
+            } else if (card.learning_status === 'Struggling') {
               ribbonColorClass = 'ribbon-soft-red';
               ribbonTooltip = 'Struggling: More incorrect than correct answers.';
-            } else if (reps === 0) {
+            } else if (card.learning_status === 'Unseen') {
               ribbonColorClass = 'ribbon-soft-blue';
               ribbonTooltip = 'Unseen: You have not reviewed this card yet.';
-            } else if (reps === 1) {
-              ribbonColorClass = 'ribbon-warm-amber';
-              ribbonTooltip = 'Needs Repetition: Seen, but needs more review.';
-            } else if (reps >= 2) {
+            } else if (card.learning_status === 'In Progress') {
+              ribbonColorClass = 'ribbon-muted-purple';
+              ribbonTooltip = 'In Progress: Partially reviewed.';
+            } else {
               ribbonColorClass = 'ribbon-muted-purple';
               ribbonTooltip = 'In Progress: Partially reviewed.';
             }
@@ -609,17 +622,13 @@ export default function DeckContent() {
               ribbonBackground = 'linear-gradient(100deg, #60a5fa 60%, #38bdf8 100%)';
               arrowColor = '#38bdf8';
             }
-            if (ribbonColorClass === 'ribbon-warm-amber') {
-              ribbonBackground = 'linear-gradient(100deg, #fbbf24 60%, #f59e42 100%)';
-              arrowColor = '#f59e42';
+            if (ribbonColorClass === 'ribbon-dark-pink') {
+              ribbonBackground = 'linear-gradient(100deg, #a21caf 60%, #db2777 100%)';
+              arrowColor = '#db2777';
             }
             if (ribbonColorClass === 'ribbon-soft-red') {
               ribbonBackground = 'linear-gradient(100deg, #f87171 60%, #f43f5e 100%)';
               arrowColor = '#f43f5e';
-            }
-            if (ribbonColorClass === 'ribbon-dark-pink') {
-              ribbonBackground = 'linear-gradient(100deg, #a21caf 60%, #db2777 100%)';
-              arrowColor = '#db2777';
             }
             if (ribbonColorClass === 'ribbon-muted-purple') {
               ribbonBackground = 'linear-gradient(100deg, #a78bfa 60%, #7c3aed 100%)';

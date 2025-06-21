@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api/axios';
 import './QuizPage.css';
 
 const formatDate = (dateString) => {
@@ -31,14 +31,9 @@ const QuizPage = () => {
         try {
             setLoading(true);
             setError(null);
-            const token = sessionStorage.getItem('jwt_token');
-            const response = await axios.get('http://127.0.0.1:8000/api/test/quiz/', {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json'
-                },
-                credentials: 'include'
-            });
+            console.log('Fetching quizzes...');
+            const response = await api.get('/test/quiz/');
+            console.log('Quizzes response:', response.data);
             setQuizzes(Array.isArray(response.data) ? response.data : []);
         } catch (error) {
             console.error('Error fetching quizzes:', error);
@@ -52,14 +47,7 @@ const QuizPage = () => {
     const handleDelete = async (quizId) => {
         if (window.confirm('Are you sure you want to delete this quiz?')) {
             try {
-                const token = sessionStorage.getItem('jwt_token');
-                await axios.delete(`http://127.0.0.1:8000/api/test/quiz/${quizId}/`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Accept': 'application/json'
-                    },
-                    credentials: 'include'
-                });
+                await api.delete(`/test/quiz/${quizId}/`);
                 setQuizzes(quizzes.filter(quiz => quiz.id !== quizId));
             } catch (error) {
                 console.error('Error deleting quiz:', error);
@@ -159,54 +147,70 @@ const QuizPage = () => {
                     <table className="quiz-table">
                         <thead>
                             <tr>
-                                <th>Quiz Title</th>
-                                <th>Questions</th>
-                                <th>Score</th>
-                                <th>Last Attempt</th>
-                                <th>Actions</th>
+                                <th className="quiz-th-center">Quiz Title</th>
+                                <th className="quiz-th-center">Questions</th>
+                                <th className="quiz-th-center">Score</th>
+                                <th className="quiz-th-center">Last Attempt</th>
+                                <th className="quiz-th-center">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {quizzes.map(quiz => (
-                                <tr key={quiz.id} className="quiz-row">
-                                    <td className="quiz-title">
-                                        <span className="quiz-icon">🧠</span>
-                                        {quiz.topic}
-                                    </td>
-                                    <td>{quiz.question_count || 0}</td>
-                                    <td>{quiz.last_score ? `${quiz.last_score}%` : '—'}</td>
-                                    <td>{quiz.last_attempt ? formatDate(quiz.last_attempt) : '—'}</td>
-                                    <td className="quiz-actions">
-                                        {quiz.last_score ? (
-                                            <button 
-                                                className="quiz-action-btn view-btn"
-                                                onClick={() => handleReview(quiz.id)}
-                                            >
-                                                View
-                                            </button>
-                                        ) : (
-                                            <button 
-                                                className="quiz-action-btn start-btn"
-                                                onClick={() => handleTest(quiz.id)}
-                                            >
-                                                Start
-                                            </button>
-                                        )}
-                                        <button 
-                                            className="quiz-action-btn edit-btn"
-                                            onClick={() => handleEdit(quiz.id)}
-                                        >
-                                            Edit
-                                        </button>
-                                        <button 
-                                            className="quiz-action-btn delete-btn"
-                                            onClick={() => handleDelete(quiz.id)}
-                                        >
-                                            Delete
-                                        </button>
-                                    </td>
-                                </tr>
-                            ))}
+                            {quizzes.map(quiz => {
+                                console.log('Rendering quiz:', quiz);
+                                return (
+                                    <tr key={quiz.id} className="quiz-row">
+                                        <td className="quiz-td-center quiz-title">
+                                            <span className="quiz-icon">🧠</span>
+                                            <div>
+                                                <div>{quiz.topic}</div>
+                                                {quiz.subject && <div className="quiz-subject-subtitle">{quiz.subject}</div>}
+                                            </div>
+                                        </td>
+                                        <td className="quiz-question-count">{quiz.question_count || 0}</td>
+                                        <td className="quiz-td-center">{quiz.last_score !== null && quiz.last_score !== undefined ? `${quiz.last_score}%` : '—'}</td>
+                                        <td className="quiz-td-center">{quiz.last_attempt ? formatDate(quiz.last_attempt) : '—'}</td>
+                                        <td className="quiz-td-center">
+                                            <div className="quiz-actions">
+                                                {quiz.last_score !== null && quiz.last_score !== undefined ? (
+                                                    <>
+                                                        <button 
+                                                            className="quiz-action-btn view-btn"
+                                                            onClick={() => handleReview(quiz.id)}
+                                                        >
+                                                            View
+                                                        </button>
+                                                        <button 
+                                                            className="quiz-action-btn start-btn"
+                                                            onClick={() => handleTest(quiz.id)}
+                                                        >
+                                                            Retake
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <button 
+                                                        className="quiz-action-btn start-btn"
+                                                        onClick={() => handleTest(quiz.id)}
+                                                    >
+                                                        Start
+                                                    </button>
+                                                )}
+                                                <button 
+                                                    className="quiz-action-btn edit-btn"
+                                                    onClick={() => handleEdit(quiz.id)}
+                                                >
+                                                    Edit
+                                                </button>
+                                                <button 
+                                                    className="quiz-action-btn delete-btn"
+                                                    onClick={() => handleDelete(quiz.id)}
+                                                >
+                                                    Delete
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </table>
                 </div>

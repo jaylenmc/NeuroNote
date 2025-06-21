@@ -142,6 +142,12 @@ const DashboardHome = () => {
     }
   };
 
+  const xpForLevel = (level) => Math.floor(100 * Math.pow(1.5, level - 1));
+  const xp = user?.xp || 0;
+  const level = user?.level || 1;
+  const nextLevelXp = xpForLevel(level);
+  const progress = Math.min((xp / nextLevelXp) * 100, 100);
+
   return (
     <div className="dashboard-home-container">
       {/* Background Elements */}
@@ -196,19 +202,17 @@ const DashboardHome = () => {
                 cy="50" 
                 r="45"
                 style={{
-                  strokeDasharray: `${(stats.xpPoints % stats.nextLevelXp) / stats.nextLevelXp * 283} 283`
+                  strokeDasharray: `${(progress / 100) * 283} 283`
                 }}
               />
             </svg>
             <div className="xp-center">
-              <span className="xp-level">Level {stats.level}</span>
-              <span className="xp-points">{stats.xpPoints} XP</span>
+              <span className="xp-level">Level {level}</span>
+              <span className="xp-points">{xp} / {nextLevelXp} XP</span>
             </div>
           </div>
           <div className="xp-next">
-            <span className="xp-to-next">
-              {stats.nextLevelXp - (stats.xpPoints % stats.nextLevelXp)} XP to Level {stats.level + 1}
-            </span>
+            <span>{nextLevelXp - xp} XP to Level {level + 1}</span>
           </div>
         </div>
       </div>

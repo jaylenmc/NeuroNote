@@ -1,15 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiArrowLeft, FiCheck, FiX, FiVolume2, FiVolumeX } from 'react-icons/fi';
+import { FaFire, FaThumbtack } from 'react-icons/fa';
 import './FocusPage.css';
+
+const habitIcons = {
+    Meditate: '🧘‍♂️',
+    Exercise: '🏃‍♂️',
+    Read: '📚',
+    Hydrate: '💧',
+};
 
 const FocusPage = () => {
     const navigate = useNavigate();
-    const [focusTask, setFocusTask] = useState('');
-    const [isTaskComplete, setIsTaskComplete] = useState(false);
+    const [focusTasks, setFocusTasks] = useState([
+        { id: 1, text: '', completed: false },
+        { id: 2, text: '', completed: false },
+        { id: 3, text: '', completed: false },
+    ]);
     const [distractions, setDistractions] = useState([]);
     const [distractionInput, setDistractionInput] = useState('');
-    const [focusStreak, setFocusStreak] = useState({ days: 0, minutes: 0 });
+    const [focusStreak, setFocusStreak] = useState(7); // Example streak
     const [currentQuote, setCurrentQuote] = useState('');
     const [isAmbientSoundOn, setIsAmbientSoundOn] = useState(false);
     const [volume, setVolume] = useState(50);
@@ -20,6 +31,7 @@ const FocusPage = () => {
         { id: 4, name: 'Hydrate', completed: false }
     ]);
     const [isFocusMode, setIsFocusMode] = useState(false);
+    const [allTasksComplete, setAllTasksComplete] = useState(false);
 
     const quotes = [
         "Focus on being productive instead of busy.",
@@ -30,24 +42,24 @@ const FocusPage = () => {
     ];
 
     useEffect(() => {
-        // Rotate quotes every 30 seconds
+        setCurrentQuote(quotes[Math.floor(Math.random() * quotes.length)]);
         const quoteInterval = setInterval(() => {
             setCurrentQuote(quotes[Math.floor(Math.random() * quotes.length)]);
         }, 30000);
-
-        // Set initial quote
-        setCurrentQuote(quotes[Math.floor(Math.random() * quotes.length)]);
-
         return () => clearInterval(quoteInterval);
     }, []);
 
-    const handleTaskSubmit = (e) => {
-        e.preventDefault();
-        if (focusTask.trim()) {
-            setIsTaskComplete(false);
-        }
-    };
+    useEffect(() => {
+        setAllTasksComplete(focusTasks.every(t => t.text && t.completed));
+    }, [focusTasks]);
 
+    // Handlers
+    const handleTaskChange = (id, value) => {
+        setFocusTasks(tasks => tasks.map(t => t.id === id ? { ...t, text: value } : t));
+    };
+    const handleTaskToggle = (id) => {
+        setFocusTasks(tasks => tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
+    };
     const handleDistractionSubmit = (e) => {
         e.preventDefault();
         if (distractionInput.trim()) {
@@ -60,13 +72,11 @@ const FocusPage = () => {
             setDistractionInput('');
         }
     };
-
     const toggleHabit = (habitId) => {
         setHabits(habits.map(habit =>
             habit.id === habitId ? { ...habit, completed: !habit.completed } : habit
         ));
     };
-
     const toggleAmbientSound = () => {
         setIsAmbientSoundOn(!isAmbientSoundOn);
     };
@@ -85,114 +95,106 @@ const FocusPage = () => {
                 </button>
             </div>
 
-            <div className="focus-content">
-                <div className="focus-main">
-                    <div className="focus-task-section">
-                        <h2>Today's Focus Task</h2>
-                        <form onSubmit={handleTaskSubmit} className="task-form">
-                            <input
-                                type="text"
-                                value={focusTask}
-                                onChange={(e) => setFocusTask(e.target.value)}
-                                placeholder="What's your main focus today?"
-                                className="task-input"
-                            />
-                            <button type="submit" className="task-submit">Set Task</button>
-                        </form>
-                        {focusTask && (
-                            <div className="task-display">
-                                <span className={isTaskComplete ? 'completed' : ''}>
-                                    {focusTask}
-                                </span>
-                                <button
-                                    onClick={() => setIsTaskComplete(!isTaskComplete)}
-                                    className="complete-button"
-                                >
-                                    {isTaskComplete ? <FiX /> : <FiCheck />}
-                                </button>
-                            </div>
-                        )}
+            <div className="focus-grid-layout">
+                {/* Top Left: Focus Streak Widget */}
+                <section className="focus-streak-widget">
+                    <div className="focus-section-header">
+                        <span className="focus-section-bar" />
+                        <span className="focus-section-title">Focus Streak</span>
                     </div>
-
-                    <div className="distraction-log">
-                        <h2>Distraction Log</h2>
-                        <form onSubmit={handleDistractionSubmit} className="distraction-form">
-                            <input
-                                type="text"
-                                value={distractionInput}
-                                onChange={(e) => setDistractionInput(e.target.value)}
-                                placeholder="What distracted you?"
-                                className="distraction-input"
-                            />
-                            <button type="submit" className="distraction-submit">Log</button>
-                        </form>
-                        <div className="distraction-list">
-                            {distractions.map(distraction => (
-                                <div key={distraction.id} className="distraction-item">
-                                    <span className="distraction-text">{distraction.text}</span>
-                                    <span className="distraction-time">{distraction.timestamp}</span>
-                                </div>
-                            ))}
+                    <div className="focus-streak-ring-container">
+                        <svg className="focus-streak-ring" width="90" height="90">
+                            <circle cx="45" cy="45" r="40" stroke="#4EE1C1" strokeWidth="7" fill="none" opacity="0.2" />
+                            <circle cx="45" cy="45" r="40" stroke="#4EE1C1" strokeWidth="7" fill="none" strokeDasharray={251.2} strokeDashoffset={251.2 - (focusStreak/30)*251.2} style={{ filter: 'drop-shadow(0 0 12px #4EE1C1)' }} />
+                        </svg>
+                        <div className="focus-streak-number-glow">
+                            <FaFire className="focus-streak-flame" />
+                            <span className="focus-streak-number">{focusStreak}</span>
                         </div>
                     </div>
-                </div>
+                    <div className="focus-streak-label">🔥 {focusStreak}-Day Focus Streak</div>
+                    <div className="focus-streak-subtext">Keep it going!</div>
+                </section>
 
-                <div className="focus-sidebar">
-                    <div className="focus-stats">
-                        <h2>Focus Streak</h2>
-                        <div className="stats-display">
-                            <div className="stat">
-                                <span className="stat-value">{focusStreak.days}</span>
-                                <span className="stat-label">Days</span>
-                            </div>
-                            <div className="stat">
-                                <span className="stat-value">{focusStreak.minutes}</span>
-                                <span className="stat-label">Minutes</span>
-                            </div>
-                        </div>
+                {/* Top Right: Micro Habit Tracker */}
+                <section className="micro-habit-tracker">
+                    <div className="focus-section-header">
+                        <span className="focus-section-bar" />
+                        <span className="focus-section-title">Today's Micro Habits</span>
                     </div>
-
-                    <div className="focus-quote">
-                        <p>{currentQuote}</p>
-                    </div>
-
-                    <div className="sound-control">
-                        <h2>Ambient Sound</h2>
-                        <div className="sound-controls">
+                    <div className="micro-habits-grid">
+                        {habits.map(habit => (
                             <button
-                                onClick={toggleAmbientSound}
-                                className="sound-toggle"
+                                key={habit.id}
+                                className={`micro-habit-card${habit.completed ? ' completed' : ''}`}
+                                onClick={() => toggleHabit(habit.id)}
                             >
-                                {isAmbientSoundOn ? <FiVolume2 /> : <FiVolumeX />}
+                                <span className="micro-habit-icon">{habitIcons[habit.name]}</span>
+                                <span className="micro-habit-name">{habit.name}</span>
+                                {habit.completed && <span className="micro-habit-checkmark"><FiCheck /></span>}
                             </button>
-                            {isAmbientSoundOn && (
-                                <input
-                                    type="range"
-                                    min="0"
-                                    max="100"
-                                    value={volume}
-                                    onChange={(e) => setVolume(Number(e.target.value))}
-                                    className="volume-slider"
-                                />
-                            )}
-                        </div>
+                        ))}
                     </div>
+                </section>
 
-                    <div className="habits-tracker">
-                        <h2>Micro Habits</h2>
-                        <div className="habits-grid">
-                            {habits.map(habit => (
-                                <button
-                                    key={habit.id}
-                                    className={`habit-button ${habit.completed ? 'completed' : ''}`}
-                                    onClick={() => toggleHabit(habit.id)}
-                                >
-                                    {habit.name}
-                                </button>
-                            ))}
-                        </div>
+                {/* Center: Today's Focus Tasks */}
+                <section className="focus-tasks-section">
+                    <div className="focus-section-header">
+                        <span className="focus-section-bar" />
+                        <span className="focus-section-title">Today's Focus Tasks</span>
                     </div>
-                </div>
+                    <div className="focus-tasks-card">
+                        <FaThumbtack className="focus-tasks-pin" />
+                        <ul className="focus-tasks-list">
+                            {focusTasks.map(task => (
+                                <li key={task.id} className="focus-task-item">
+                                    <label className="focus-task-checkbox-label">
+                                        <input
+                                            type="checkbox"
+                                            checked={task.completed}
+                                            onChange={() => handleTaskToggle(task.id)}
+                                        />
+                                        <span className="focus-task-custom-checkbox" />
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={task.text}
+                                        onChange={e => handleTaskChange(task.id, e.target.value)}
+                                        className="focus-task-input"
+                                        placeholder="Task..."
+                                    />
+                                </li>
+                            ))}
+                        </ul>
+                        {allTasksComplete && <div className="focus-tasks-completed-badge">Completed!</div>}
+                    </div>
+                </section>
+
+                {/* Bottom: Distraction Log */}
+                <section className="distraction-log-section">
+                    <div className="focus-section-header">
+                        <span className="focus-section-bar" />
+                        <span className="focus-section-title">Distraction Log</span>
+                    </div>
+                    <form onSubmit={handleDistractionSubmit} className="distraction-form-modern">
+                        <input
+                            type="text"
+                            value={distractionInput}
+                            onChange={(e) => setDistractionInput(e.target.value)}
+                            placeholder="What distracted you?"
+                            className="distraction-input-modern"
+                        />
+                        <button type="submit" className="distraction-log-btn">+ Log Distraction</button>
+                    </form>
+                    <div className="distraction-list-modern">
+                        {distractions.map(distraction => (
+                            <div key={distraction.id} className="distraction-item-modern">
+                                <span className="distraction-text-modern">{distraction.text}</span>
+                                <span className="distraction-time-modern">{distraction.timestamp}</span>
+                            </div>
+                        ))}
+                    </div>
+                </section>
             </div>
         </div>
     );

@@ -189,7 +189,7 @@ const StudyDecks = () => {
             }
 
             const data = await response.json();
-            setDecks(data);
+            setDecks(data.decks || []);
             setLoading(false);
         } catch (err) {
             setError(err.message);

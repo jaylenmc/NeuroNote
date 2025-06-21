@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { FiHome, FiSettings, FiLogOut, FiFolder, FiPlus, FiBook, FiLayers, FiCheckSquare, FiTrendingUp, FiAward, FiShare2, FiStar, FiMoreVertical, FiUsers, FiFileText, FiEdit2, FiArrowLeft, FiChevronRight, FiSearch, FiGrid, FiList } from 'react-icons/fi';
+import { FiHome, FiSettings, FiLogOut, FiFolder, FiPlus, FiBook, FiLayers, FiCheckSquare, FiTrendingUp, FiAward, FiShare2, FiStar, FiMoreVertical, FiUsers, FiFileText, FiEdit2, FiArrowLeft, FiChevronRight, FiSearch, FiGrid, FiList, FiUpload } from 'react-icons/fi';
 import closedFolderIcon from '../assets/ClosedFolder.svg';
 import openFolderIcon from '../assets/OpenFolder.svg';
 import deckIcon from '../assets/deck.svg';
@@ -20,7 +20,7 @@ import './DashboardHome.css';
 
 function Dashboard() {
     const navigate = useNavigate(); // <-- Move here, top level
-    const { user, logout } = useAuth();
+    const { user, logout, login } = useAuth();
     const [showDropdown, setShowDropdown] = useState(false);
     const [showWelcome, setShowWelcome] = useState(false);
     const [isNewUser, setIsNewUser] = useState(false);
@@ -120,6 +120,14 @@ function Dashboard() {
 
     // Add this state at the top with other state declarations
     const [viewMode, setViewMode] = useState('grid');
+    const [showNewItemDropdown, setShowNewItemDropdown] = useState(false);
+    const fileInputRef = useRef(null);
+
+    const xpForLevel = (level) => Math.floor(100 * Math.pow(1.5, Math.max(level - 1, 0)));
+    const xp = user?.xp || 0;
+    const level = user?.level || 1;
+    const nextLevelXp = xpForLevel(level);
+    const progress = Math.max(0, Math.min((xp / nextLevelXp) * 100, 100));
 
     // Function to check if token is expired
     const isTokenExpired = (token) => {
@@ -247,9 +255,12 @@ function Dashboard() {
 
             if (response.ok) {
                 const foldersData = await response.json();
-                
-                // Process folders with their items and content_num
-                const foldersWithCounts = foldersData.map(folder => {
+                // If foldersData contains xp and level, update user
+                if (foldersData.xp !== undefined && foldersData.level !== undefined) {
+                    login({ ...user, xp: foldersData.xp, level: foldersData.level });
+                }
+                // foldersData.folders is the actual folders array
+                const foldersWithCounts = (foldersData.folders || foldersData).map(folder => {
                     return {
                         ...folder,
                         documentCount: folder.content_num || 0,
@@ -257,9 +268,7 @@ function Dashboard() {
                         quizCount: 0
                     };
                 });
-
                 setFolders(foldersWithCounts);
-
                 // Update selected folder if needed
                 if (selectedFolder && isMounted) {
                     const updatedSelectedFolder = foldersWithCounts.find(f => f.id === selectedFolder.id);
@@ -1284,6 +1293,9 @@ function Dashboard() {
         if (!e.target.closest('.settings-dropdown') && !e.target.closest('.action-icon-button')) {
             setShowSettingsDropdown(false);
         }
+        if (!e.target.closest('.new-item-container')) {
+            setShowNewItemDropdown(false);
+        }
     };
 
     // Function to show notification
@@ -1314,61 +1326,126 @@ function Dashboard() {
     };
 
     const handleCreateDocument = async () => {
-        if (!selectedFolder) return;
-
-            try {
+        try {
             const response = await makeAuthenticatedRequest(
                 `${import.meta.env.VITE_API_URL}documents/notes/${selectedFolder.id}/`,
                 {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
                     body: JSON.stringify({
-                        title: 'Untitled',
-                        notes: '',
-                        folder: selectedFolder.id
+                        title: 'Untitled Document',
+                        content: ''
                     })
                 }
             );
-                
-                if (!response) return;
+            
+            if (!response) return;
 
-                if (response.ok) {
+            if (response.ok) {
                 const newDocument = await response.json();
                 
-                // Fetch updated folder data
-                const folderResponse = await makeAuthenticatedRequest(
-                    `${import.meta.env.VITE_API_URL}folders/user/`
+                // Update the folder's items
+                setSelectedFolder(prevFolder => ({
+                    ...prevFolder,
+                    items: [...(prevFolder.items || []), {
+                        id: newDocument.id,
+                        type: 'document',
+                        title: newDocument.title,
+                        updated_at: newDocument.updated_at
+                    }]
+                }));
+
+                // Update folders state
+                setFolders(prevFolders => 
+                    prevFolders.map(folder => {
+                        if (folder.id === selectedFolder.id) {
+                            return {
+                                ...folder,
+                                items: [...(folder.items || []), {
+                                    id: newDocument.id,
+                                    type: 'document',
+                                    title: newDocument.title,
+                                    updated_at: newDocument.updated_at
+                                }]
+                            };
+                        }
+                        return folder;
+                    })
                 );
 
-                if (folderResponse && folderResponse.ok) {
-                    const foldersData = await folderResponse.json();
-                    const updatedFolder = foldersData.find(f => f.id === selectedFolder.id);
-                    
-                    if (updatedFolder) {
-                        // Update the selected folder with fresh data
-                        setSelectedFolder(updatedFolder);
-                        
-                        // Update the folders list
-                        setFolders(foldersData);
-
-                        // Fetch folder content
-                        await handleFolderClick(selectedFolder.id);
-                        
-                        // Navigate to document view with the new document
-                        setSelectedDocument(newDocument);
-                        setActiveView('document');
-                        showNotification('Document created successfully');
-                    }
-                }
+                showNotification('Document created successfully');
             } else {
                 console.error('Failed to create document:', await response.text());
             }
         } catch (error) {
             console.error('Error creating document:', error);
-            showNotification('Error creating document');
         }
+    };
+
+    const handleFileUpload = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('title', file.name);
+
+            const response = await makeAuthenticatedRequest(
+                `${import.meta.env.VITE_API_URL}documents/upload/${selectedFolder.id}/`,
+                {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        // Don't set Content-Type for FormData, let the browser set it
+                        'Authorization': `Bearer ${sessionStorage.getItem('jwt_token')}`,
+                    }
+                }
+            );
+            
+            if (!response) return;
+
+            if (response.ok) {
+                const uploadedDocument = await response.json();
+                
+                // Update the folder's items
+                setSelectedFolder(prevFolder => ({
+                    ...prevFolder,
+                    items: [...(prevFolder.items || []), {
+                        id: uploadedDocument.id,
+                        type: 'document',
+                        title: uploadedDocument.title,
+                        updated_at: uploadedDocument.updated_at
+                    }]
+                }));
+
+                // Update folders state
+                setFolders(prevFolders => 
+                    prevFolders.map(folder => {
+                        if (folder.id === selectedFolder.id) {
+                            return {
+                                ...folder,
+                                items: [...(folder.items || []), {
+                                    id: uploadedDocument.id,
+                                    type: 'document',
+                                    title: uploadedDocument.title,
+                                    updated_at: uploadedDocument.updated_at
+                                }]
+                            };
+                        }
+                        return folder;
+                    })
+                );
+
+                showNotification('Document uploaded successfully');
+            } else {
+                console.error('Failed to upload document:', await response.text());
+            }
+        } catch (error) {
+            console.error('Error uploading document:', error);
+        }
+
+        // Reset the file input
+        e.target.value = '';
     };
 
     const handleCreateQuiz = async () => {
@@ -1622,91 +1699,109 @@ function Dashboard() {
     }, [folders]);
 
     const renderContent = () => {
-        console.log('Rendering content with activeView:', activeView);
-        console.log('Selected folder in renderContent:', selectedFolder);
-        
-        if (activeView === 'document' && selectedDocument) {
-            return (
-                <div className={`content-section ${isTransitioning ? 'transitioning' : ''}`}>
-                    <DocumentEditor
-                        folderId={selectedFolder?.id}
-                        onClose={() => {
-                            setActiveView('folder');
-                            setSelectedDocument(null);
-                        }}
-                        documentId={selectedDocument.id}
-                    />
-                </div>
-            );
+        if (activeView === 'dashboard') {
+            return <DashboardHome />;
         }
 
         if (activeView === 'folder' && selectedFolder) {
+            const items = [
+                ...(selectedFolder.documents || []),
+                ...(selectedFolder.decks || []),
+                ...(selectedFolder.quizzes || []),
+            ];
+
             return (
-                <div className={`content-section ${isTransitioning ? 'transitioning' : ''}`}>
-                    <div className="folder-content-header">
-                        <h2>{selectedFolder.name}</h2>
-                        <div className="folder-tools">
-                            <div className="folder-search">
-                                <FiSearch />
-                                <input type="text" placeholder="Search in this folder..." />
-                            </div>
-                            <div className="folder-filters">
-                                <button className="filter-btn">All</button>
-                                <button className="filter-btn">Documents</button>
-                                <button className="filter-btn">Quizzes</button>
-                            </div>
-                            <div className="layout-toggles">
-                                <button 
-                                    className={`layout-toggle ${viewMode === 'grid' ? 'active' : ''}`}
-                                    onClick={() => setViewMode('grid')}
-                                >
-                                    <FiGrid />
-                                </button>
-                                <button 
-                                    className={`layout-toggle ${viewMode === 'list' ? 'active' : ''}`}
-                                    onClick={() => setViewMode('list')}
-                                >
-                                    <FiList />
-                                </button>
-                            </div>
-                        </div>
-                        <div className="add-item-buttons">
-                                        <button 
-                                className="add-item-btn"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleCreateDocument();
-                                }}
-                            >
-                                <FiFileText /> Add Document
-                                        </button>
-                                        <button 
-                                className="add-item-btn"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setShowNewQuizModal(true);
-                                }}
-                            >
-                                <FiFileText /> Add Quiz
-                                        </button>
-                                </div>
-                        </div>
-                    {isLoading.initialLoad ? (
-                        <div className="loading-container">
-                            <div className="loading-spinner"></div>
+                <div className="folder-view-container">
+                    <div className="folder-view-header">
+                        <h1><span className="folder-view-icon">📁</span> {selectedFolder.name}</h1>
+                        <p>{items.length} items</p>
                     </div>
-                    ) : (
-                        <div className={`folder-items ${viewMode}-view`}>
-                            {renderFolderItems(selectedFolder)}
-                </div>
-                    )}
+
+                    <div className="folder-view-actions">
+                        <div className="folder-view-search-bar">
+                            <FiSearch />
+                            <input type="text" placeholder="Search in this folder..." />
+                        </div>
+                        <div className="new-item-container">
+                            <button 
+                                className="folder-view-new-btn"
+                                onClick={() => setShowNewItemDropdown(!showNewItemDropdown)}
+                            >
+                                <FiPlus /> New
+                            </button>
+                            {showNewItemDropdown && (
+                                <div className="new-item-dropdown">
+                                    <button onClick={() => {
+                                        setShowNewItemDropdown(false);
+                                        handleCreateDocument();
+                                    }}>
+                                        <FiFileText /> Create Notes
+                                    </button>
+                                    <button onClick={() => {
+                                        setShowNewItemDropdown(false);
+                                        fileInputRef.current?.click();
+                                    }}>
+                                        <FiUpload /> Upload Document
+                                    </button>
+                                </div>
+                            )}
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                style={{ display: 'none' }}
+                                onChange={handleFileUpload}
+                                accept=".pdf,.doc,.docx,.txt"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="folder-view-grid">
+                        {items.map(item => (
+                            <div key={`${item.type}-${item.id}`} className="item-card" onClick={() => {
+                                if (item.type === 'deck') handleDeckClick(item.id);
+                                if (item.type === 'quiz') handleQuizClick(item.id);
+                                if (item.type === 'document') handleDocumentClick(item.id);
+                            }}>
+                                <div className="item-card-icon">
+                                    {item.type === 'deck' && '📚'}
+                                    {item.type === 'quiz' && '📝'}
+                                    {item.type === 'document' && '📄'}
+                                </div>
+                                <h3 className="item-card-title">{item.name || item.topic || item.title}</h3>
+                                <p className="item-card-info">
+                                    {item.type === 'deck' && `${item.card_count || 0} cards`}
+                                    {item.type === 'quiz' && `${item.question_count || 0} questions`}
+                                    {item.type === 'document' && `Updated ${new Date(item.updated_at).toLocaleDateString()}`}
+                                </p>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             );
         }
-
-        if (activeView === 'dashboard' || activeView === 'Home') {
+        
+        if (activeView === 'deck' && selectedDeck) {
             return (
-                <DashboardHome />
+                <div className="deck-view-container">
+                    <div className="deck-view-header">
+                        <button onClick={handleBack} className="deck-view-back-btn">
+                            <FiArrowLeft /> Back to Folder
+                        </button>
+                        <h1><span className="deck-view-icon">📚</span> {selectedDeck.name}</h1>
+                        <p>{cards.length} cards</p>
+                    </div>
+
+                    <div className="deck-view-grid">
+                        {cards.map(card => (
+                            <div key={card.id} className="card-item">
+                                <h3 className="card-title">{card.question}</h3>
+                                <p className="card-info">
+                                    {card.answer}
+                                </p>
+                            </div>
+                        ))}
+                    </div>
+                </div>
             );
         }
 
@@ -1733,9 +1828,10 @@ function Dashboard() {
                       <span className="nightowl-xp-moon" role="img" aria-label="moon">🌙</span>
                       <span className="nightowl-xp-label">XP</span>
                       <div className="nightowl-xp-bar">
-                        <div className="nightowl-xp-fill" style={{width: '68%'}}></div>
+                        <div className="nightowl-xp-fill" style={{width: `${progress}%`}}></div>
                             </div>
-                      <span className="nightowl-xp-label">Level 4</span>
+                      <span className="nightowl-xp-label">{xp} / {nextLevelXp} XP</span>
+                      <span className="nightowl-xp-label">Level {level}</span>
                     </div>
 
                     {/* Card Grid */}
@@ -1846,6 +1942,7 @@ function Dashboard() {
     };
 
     useEffect(() => {
+        // Fetch decks and update AuthContext user with latest XP/level
         const fetchDecks = async () => {
             const token = sessionStorage.getItem('jwt_token');
             if (!token) return;
@@ -1859,8 +1956,10 @@ function Dashboard() {
                 });
                 if (response.ok) {
                     const data = await response.json();
-                    console.log('Fetched decks:', data); // Debug log
-                    setDecks(data);
+                    if (data.xp !== undefined && data.level !== undefined) {
+                        login({ ...user, xp: data.xp, level: data.level });
+                    }
+                    setDecks(data.decks || data);
                 } else {
                     const errorText = await response.text();
                     console.error('Failed to fetch decks:', errorText);
@@ -1871,7 +1970,7 @@ function Dashboard() {
         };
 
         fetchDecks();
-    }, []);
+    }, [activeView, showNewCardModal, showNewDeckModal, showQuizModal]);
 
     // Add useEffect to handle background changes
     useEffect(() => {
@@ -2093,7 +2192,7 @@ function Dashboard() {
                     <div className="folders-section">
                         <div className="folders-header">
                             <h3>Folders</h3>
-                            <button className="create-folder-btn" onClick={handleCreateFolder}>
+                            <button className="create-folder-btn" onClick={() => setShowNewFolderModal(true)}>
                                 <FiPlus />
                             </button>
                         </div>
@@ -2180,6 +2279,25 @@ function Dashboard() {
                     {renderContent()}
                 </div>
             </div>
+
+            {showNewFolderModal && (
+                <div className="dashboard-modal-overlay">
+                    <div className="dashboard-modal">
+                        <h2>Create New Folder</h2>
+                        <input
+                            type="text"
+                            value={newFolderName}
+                            onChange={(e) => setNewFolderName(e.target.value)}
+                            placeholder="Enter folder name..."
+                            className="dashboard-modal-input"
+                        />
+                        <div className="dashboard-modal-actions">
+                            <button onClick={() => setShowNewFolderModal(false)} className="dashboard-modal-btn cancel">Cancel</button>
+                            <button onClick={handleCreateFolder} className="dashboard-modal-btn create">Create</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
