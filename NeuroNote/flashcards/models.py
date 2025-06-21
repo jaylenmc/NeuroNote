@@ -2,6 +2,7 @@ from django.db import models
 from authentication.models import AuthUser
 from datetime import date, timedelta
 import math
+from .utils import reward_xp
 
 class Deck(models.Model):
     title = models.TextField()
@@ -15,23 +16,20 @@ class Card(models.Model):
     question = models.TextField()
     answer = models.TextField()
     card_deck = models.ForeignKey(Deck, on_delete=models.CASCADE)
-    correct = models.IntegerField(null=True, blank=True)
-    incorrect = models.IntegerField(null=True, blank=True)
-    is_overdue = models.BooleanField(default=False)
 
     repetitions = models.IntegerField(default=0)
     difficulty = models.FloatField(default=5.0)
     stability = models.FloatField(default=1.0)
+    learning_status = models.CharField(max_length=255, default="Unseen")
 
     last_review_date = models.DateField(null=True, blank=True)
     scheduled_date = models.DateField(null=True, blank=True)
     
     def update_sm21(self, rating):
         today = date.today()
-
-        self.last_review_date = today
        
         elapsed_days = (today - self.last_review_date).days if self.last_review_date else 0
+        self.last_review_date = today
         self.repetitions += 1
 
         diff_change = 0.1 * (2 - rating) 
@@ -45,9 +43,22 @@ class Card(models.Model):
             gain = (0.1 + 0.1 * rating) * math.exp(1 - retrievability)
             self.stability *= 1 + gain
        
-        interval = int(10 * math.log(self.stability + 1)) 
-        interval = max(1, min(interval, 365))
+        if rating == 0:
+            interval = 1 
+        else:
+            interval = int(10 * math.log(self.stability + 1)) 
+            interval = max(1, min(interval, 365))
+
         self.scheduled_date = today + timedelta(days=interval) 
+
+        if interval < 10 and self.difficulty > 5.5:
+            self.learning_status = "Struggling"
+        elif interval > 45 and self.difficulty <= 4.0:
+            self.learning_status = "Mastered"
+        else:
+            self.learning_status = "In Progress"
+
+        reward_xp(self.card_deck.user, rating)
     
         ReviewLog.objects.create(card=self)
 

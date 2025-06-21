@@ -39,6 +39,9 @@ class AuthUser(AbstractBaseUser, PermissionsMixin):
     plan = models.CharField(max_length=255, default='Note Taker')
     token_amount = models.IntegerField(default=1000)
 
+    xp = models.IntegerField(default=0)
+    level = models.IntegerField(default=1)
+
     objects = UserManager()
 
     USERNAME_FIELD = 'email'
