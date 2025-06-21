@@ -156,7 +156,8 @@ const ReviewWidget = () => {
         throw new Error('Failed to fetch decks');
       }
 
-      const decks = await decksResponse.json();
+      const data = await decksResponse.json();
+      const decks = data.decks || [];
       console.log('Fetched decks:', decks);
 
       // Fetch cards for each deck

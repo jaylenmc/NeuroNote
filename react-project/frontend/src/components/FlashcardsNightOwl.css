@@ -147,7 +147,8 @@ body.nightowl-root-bg .content-section {
   background: linear-gradient(90deg, var(--nightowl-accent), var(--nightowl-accent-soft));
   border-radius: 8px;
   box-shadow: 0 0 16px 2px #5fffd755;
-  animation: nightowl-xp-sweep 2.2s cubic-bezier(.4,1.6,.6,1) forwards;
+  /* animation: nightowl-xp-sweep 2.2s cubic-bezier(.4,1.6,.6,1) forwards; */
+  transition: width 0.6s cubic-bezier(.4,1.6,.6,1);
 }
 @keyframes nightowl-xp-sweep {
   0% { width: 0; filter: brightness(0.7); }

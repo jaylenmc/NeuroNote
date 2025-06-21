@@ -348,6 +348,10 @@
     background: rgba(0, 0, 0, 0.2);
 }
 
+.quiz-table .quiz-th-center {
+    text-align: center;
+}
+
 .quiz-table td {
     padding: 1rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
@@ -358,20 +362,35 @@
 }
 
 .quiz-title {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
     font-weight: 500;
 }
 
 .quiz-icon {
     font-size: 1.2rem;
+    margin-right: 0.75rem;
+    vertical-align: middle;
+}
+
+.quiz-question-count {
+    text-align: center;
+}
+
+.quiz-td-center {
+    text-align: center;
+}
+
+.quiz-subject-subtitle {
+    font-size: 0.85rem;
+    color: var(--quiz-text-secondary);
+    margin-top: 4px;
+    font-style: italic;
 }
 
 .quiz-actions {
     display: flex;
     gap: 0.5rem;
     align-items: center;
+    justify-content: center;
 }
 
 .quiz-action-btn {

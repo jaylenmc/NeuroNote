@@ -23,6 +23,10 @@ import FocusPage from './pages/FocusPage';
 import ProgressPage from './pages/ProgressPage';
 import StudyGroups from './pages/StudyGroups';
 import Achievements from './pages/Achievements';
+import QuizCreatePage from './pages/QuizCreatePage';
+import QuizReviewPage from './pages/QuizReviewPage';
+import QuizTakePage from './pages/QuizTakePage';
+import QuizResultsPage from './pages/QuizResultsPage';
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
@@ -167,6 +171,38 @@ function AppContent() {
             } 
           />
           <Route path="/achievements" element={<Achievements />} />
+          <Route 
+            path="/quiz/create" 
+            element={
+              <ProtectedRoute>
+                <QuizCreatePage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/quiz/:quizId/review" 
+            element={
+              <ProtectedRoute>
+                <QuizReviewPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/quiz/:quizId/test" 
+            element={
+              <ProtectedRoute>
+                <QuizTakePage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/quiz/:quizId/results" 
+            element={
+              <ProtectedRoute>
+                <QuizResultsPage />
+              </ProtectedRoute>
+            } 
+          />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </main>

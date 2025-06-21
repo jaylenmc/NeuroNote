@@ -1,13 +1,16 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../auth/AuthContext';
 import './ProgressPage.css';
 
 const ProgressPage = () => {
     const navigate = useNavigate();
-    const [currentLevel] = useState(5);
-    const [currentXP] = useState(2450);
-    const [nextLevelXP] = useState(2500);
-    const [xpToNextLevel] = useState(50);
+    const { user } = useAuth();
+    const xpForLevel = (level) => Math.floor(100 * Math.pow(1.5, level - 1));
+    const currentLevel = user?.level || 1;
+    const currentXP = user?.xp || 0;
+    const nextLevelXP = xpForLevel(currentLevel);
+    const xpToNextLevel = nextLevelXP - currentXP;
 
     // Mock data for weekly XP
     const weeklyXP = [
@@ -37,9 +40,7 @@ const ProgressPage = () => {
         navigate('/study-room');
     };
 
-    const calculateProgress = () => {
-        return (currentXP / nextLevelXP) * 100;
-    };
+    const calculateProgress = () => (currentXP / nextLevelXP) * 100;
 
     const getEncouragement = () => {
         if (xpToNextLevel < 100) {
@@ -85,7 +86,7 @@ const ProgressPage = () => {
                             />
                         </svg>
                         <div className="progress-ring-content">
-                            <span className="progress-number">{currentXP}</span>
+                            <span className="progress-number">{currentXP} / {nextLevelXP}</span>
                             <span className="progress-label">XP</span>
                         </div>
                     </div>
