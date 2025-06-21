@@ -21,9 +21,16 @@ class DeckCollection(APIView):
             deck.num_of_cards = num_of_cards(deck)
             deck.save()
 
+        user = AuthUser.objects.filter(email=request.user.email).first()
         serialized = DeckSerializer(decks, many=True)
 
-        return Response(serialized.data, status=status.HTTP_200_OK)
+        data = {
+            'decks': serialized.data,
+            'xp': user.xp,
+            'level': user.level
+        }
+
+        return Response(data, status=status.HTTP_200_OK)
     
     def post(self, request):
         title = request.data.get('title')
@@ -125,14 +132,14 @@ class CardCollection(APIView):
         if answer:
             card.answer = answer
 
-        if scheduled_date is not None:  # Check if scheduled_date is provided (even if it's null)
-            if scheduled_date:  # If it has a value, parse it
+        if scheduled_date is not None:
+            if scheduled_date:
                 try:
                     parsed_date = datetime.strptime(scheduled_date, '%Y-%m-%d').date()
                     card.scheduled_date = parsed_date
                 except (ValueError, TypeError):
                     return Response({"Message": "Invalid date format"}, status=status.HTTP_400_BAD_REQUEST)
-            else:  # If it's empty/null, set to None
+            else:
                 card.scheduled_date = None
 
         card.save()
@@ -183,6 +190,6 @@ def review_card(request):
     reviewed_cards = check_past_week_cards()
     finalized_data = {
         'Message': 'Card reviewed and updated successfully',
-        'reviewed_dates': reviewed_cards
+        'reviewed_dates': reviewed_cards,
     }
     return Response(finalized_data, status=status.HTTP_200_OK)

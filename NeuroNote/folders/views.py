@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from .services import check_content_num
+from authentication.models import AuthUser
 
 class FolderView(APIView):
     permission_classes = [IsAuthenticated]
@@ -16,10 +17,9 @@ class FolderView(APIView):
             folder.content_num = check_content_num(folder)
             folder.save()
 
-
         serialized = FolderSerializer(folders, many=True)
 
-        return Response(serialized.data, status=status.HTTP_200_OK)
+        return Response({'folders': serialized.data}, status=status.HTTP_200_OK)
     
     def post(self, request):
         name = request.data.get('name')
