@@ -1,0 +1,98 @@
+/* NoteEditor.css */
+:root {
+    --editor-background: #373737;
+    --editor-text: #F5F5F5;
+    --input-background: #424242;
+    --placeholder-text: #AAAAAA;
+    --link-text: #A9BFFF;
+    --focus-shadow: 0 0 0 2px #555555;
+    --caret-color: #A9BFFF;
+}
+
+.note-editor-container {
+    background-color: var(--editor-background);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 0 1rem;
+}
+
+.note-editor-header {
+    position: sticky;
+    top: 0;
+    width: 100%;
+    max-width: 900px;
+    display: flex;
+    align-items: center;
+    padding: 1rem 0;
+    background-color: var(--editor-background);
+    z-index: 10;
+    border-bottom: 1px solid #4a4a4a;
+}
+
+.back-button {
+    background: none;
+    border: none;
+    color: var(--editor-text);
+    font-size: 1.5rem;
+    cursor: pointer;
+    margin-right: 1rem;
+    display: flex;
+    align-items: center;
+}
+
+.save-status {
+    color: var(--placeholder-text);
+    font-size: 0.9rem;
+    opacity: 0.8;
+    transition: opacity 0.3s ease;
+}
+
+.main-editor-area {
+    width: 100%;
+    max-width: 900px;
+    padding: 2rem 0;
+}
+
+.note-title-input {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: var(--editor-text);
+    font-size: 2.5rem;
+    font-weight: bold;
+    margin-bottom: 2rem;
+    padding: 0.5rem 0;
+}
+
+.note-title-input::placeholder {
+    color: var(--placeholder-text);
+    opacity: 0.6;
+}
+
+.note-title-input:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+.editor-wrapper .ProseMirror {
+    min-height: 50vh;
+    caret-color: var(--caret-color);
+}
+
+.editor-wrapper .ProseMirror:focus {
+    outline: none;
+}
+
+.editor-wrapper .ProseMirror p {
+    margin: 0;
+}
+
+.editor-wrapper .ProseMirror p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    color: var(--placeholder-text);
+    pointer-events: none;
+    height: 0;
+} 

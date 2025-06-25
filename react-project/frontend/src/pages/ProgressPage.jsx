@@ -33,8 +33,21 @@ const ProgressPage = () => {
     // Mock stats
     const stats = {
         quizzesCompleted: 12,
-        cardsReviewed: 240
+        cardsReviewed: 240,
+        streak: 5,
+        accuracy: 87
     };
+
+    // Mock streak data
+    const streakDays = [
+        { day: 'Mon', completed: true },
+        { day: 'Tue', completed: true },
+        { day: 'Wed', completed: true },
+        { day: 'Thu', completed: false },
+        { day: 'Fri', completed: true },
+        { day: 'Sat', completed: true },
+        { day: 'Sun', completed: false, today: true }
+    ];
 
     const handleBack = () => {
         navigate('/study-room');
@@ -56,8 +69,11 @@ const ProgressPage = () => {
                     <button className="back-button" onClick={handleBack}>
                         ← Back to Study Room
                     </button>
-                    <h1>🎯 Learning Progress</h1>
                 </div>
+                <h1>🎯 Learning Progress</h1>
+                <p className="motivation-quote">
+                    The only way to do great work is to love what you do
+                </p>
             </div>
 
             <div className="progress-grid">
@@ -135,6 +151,26 @@ const ProgressPage = () => {
                                 <div className="stat-progress-bar" style={{ width: '80%' }} />
                             </div>
                         </div>
+                        <div className="stat-item">
+                            <div className="stat-icon">🔥</div>
+                            <div className="stat-info">
+                                <span className="stat-value">{stats.streak}</span>
+                                <span className="stat-label">Day Streak</span>
+                            </div>
+                            <div className="stat-progress">
+                                <div className="stat-progress-bar" style={{ width: '70%' }} />
+                            </div>
+                        </div>
+                        <div className="stat-item">
+                            <div className="stat-icon">🎯</div>
+                            <div className="stat-info">
+                                <span className="stat-value">{stats.accuracy}%</span>
+                                <span className="stat-label">Average Accuracy</span>
+                            </div>
+                            <div className="stat-progress">
+                                <div className="stat-progress-bar" style={{ width: `${stats.accuracy}%` }} />
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -165,6 +201,21 @@ const ProgressPage = () => {
                     <p className="encouragement-message">{getEncouragement()}</p>
                     <div className="quote">
                         "Progress, not perfection."
+                    </div>
+                </div>
+
+                {/* Streak Tracker */}
+                <div className="progress-card streak-tracker">
+                    <h2>🔥 Study Streak</h2>
+                    <div className="streak-days">
+                        {streakDays.map((day, index) => (
+                            <div 
+                                key={index} 
+                                className={`streak-day ${day.completed ? 'completed' : ''} ${day.today ? 'today' : ''}`}
+                            >
+                                {day.day}
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>

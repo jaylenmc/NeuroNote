@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { FiHome, FiSettings, FiLogOut, FiFolder, FiPlus, FiBook, FiLayers, FiCheckSquare, FiTrendingUp, FiAward, FiShare2, FiStar, FiMoreVertical, FiUsers, FiFileText, FiEdit2, FiArrowLeft, FiChevronRight, FiSearch, FiGrid, FiList, FiUpload } from 'react-icons/fi';
+import { FiHome, FiSettings, FiLogOut, FiFolder, FiPlus, FiBook, FiLayers, FiCheckSquare, FiTrendingUp, FiAward, FiShare2, FiStar, FiMoreVertical, FiUsers, FiFileText, FiEdit2, FiArrowLeft, FiChevronRight, FiSearch, FiGrid, FiList, FiUpload, FiClock, FiGlobe, FiTag, FiSave } from 'react-icons/fi';
 import closedFolderIcon from '../assets/ClosedFolder.svg';
 import openFolderIcon from '../assets/OpenFolder.svg';
 import deckIcon from '../assets/deck.svg';
@@ -122,6 +122,26 @@ function Dashboard() {
     const [viewMode, setViewMode] = useState('grid');
     const [showNewItemDropdown, setShowNewItemDropdown] = useState(false);
     const fileInputRef = useRef(null);
+    const [isNotesMode, setIsNotesMode] = useState(false);
+    const [noteTitle, setNoteTitle] = useState('Untitled Note');
+    const [noteContent, setNoteContent] = useState('');
+    const [noteTags, setNoteTags] = useState([]);
+    const [newTag, setNewTag] = useState('');
+    const [lastSaved, setLastSaved] = useState(null);
+    const [isSaving, setIsSaving] = useState(false);
+    const [isPublished, setIsPublished] = useState(false);
+    const [blocks, setBlocks] = useState([
+        { id: '1', type: 'paragraph', content: '', checked: false }
+    ]);
+    const [activeBlockId, setActiveBlockId] = useState('1');
+    const [showBlockMenu, setShowBlockMenu] = useState({ blockId: null, x: 0, y: 0 });
+    const [hoveredBlockId, setHoveredBlockId] = useState(null);
+    const [selectedMenuIndex, setSelectedMenuIndex] = useState(0);
+    const [editingBlocks, setEditingBlocks] = useState(new Set()); // Track which blocks are being edited
+
+    // Add a ref map for block textareas
+    const blockRefs = useRef({});
+    const [justAddedBlockId, setJustAddedBlockId] = useState(null);
 
     const xpForLevel = (level) => Math.floor(100 * Math.pow(1.5, Math.max(level - 1, 0)));
     const xp = user?.xp || 0;
@@ -1296,7 +1316,18 @@ function Dashboard() {
         if (!e.target.closest('.new-item-container')) {
             setShowNewItemDropdown(false);
         }
+        if (!e.target.closest('.block-type-menu') && !e.target.closest('.block-menu-button')) {
+            handleBlockMenuClose();
+        }
     };
+
+    // Add useEffect to handle block menu clicks outside
+    useEffect(() => {
+        document.addEventListener('click', handleClickOutside);
+        return () => {
+            document.removeEventListener('click', handleClickOutside);
+        };
+    }, []);
 
     // Function to show notification
     const showNotification = (message) => {
@@ -1610,7 +1641,7 @@ function Dashboard() {
                                                             className="add-item-btn"
                             onClick={(e) => {
                                 e.stopPropagation();
-                                handleCreateDocument();
+                                setIsNotesMode(true);
                             }}
                                                         >
                             <FiFileText /> Add Document
@@ -1710,6 +1741,653 @@ function Dashboard() {
                 ...(selectedFolder.quizzes || []),
             ];
 
+            // Show notes editor if in notes mode
+            if (isNotesMode) {
+                return (
+                    <div className="notes-page">
+                        {/* Header */}
+                        <div className="notes-header">
+                            <div className="notes-header-left">
+                                <button className="back-button" onClick={handleExitNotesMode}>
+                                    <FiArrowLeft />
+                                    <span>Back</span>
+                                </button>
+                            </div>
+                            
+                            <div className="notes-header-right">
+                                {lastSaved && (
+                                    <div className="save-status">
+                                        <FiClock />
+                                        <span>Last saved {formatLastSaved()}</span>
+                                    </div>
+                                )}
+                                
+                                <button 
+                                    className={`save-button ${isSaving ? 'saving' : ''}`}
+                                    onClick={handleSave}
+                                    disabled={isSaving}
+                                >
+                                    <FiSave />
+                                    <span>{isSaving ? 'Saving...' : 'Save'}</span>
+                                </button>
+                                
+                                <button 
+                                    className={`publish-button ${isPublished ? 'published' : ''}`}
+                                    onClick={handlePublish}
+                                    disabled={isSaving}
+                                >
+                                    <FiGlobe />
+                                    <span>{isPublished ? 'Published' : 'Publish'}</span>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        {/* Main Content */}
+                        <div className="notes-container">
+                            {/* Title Input */}
+                            <div className="title-section">
+                                <input
+                                    type="text"
+                                    className="title-input"
+                                    value={noteTitle}
+                                    onChange={(e) => setNoteTitle(e.target.value)}
+                                    placeholder="Untitled Note"
+                                />
+                            </div>
+                            
+                            {/* Tags Section */}
+                            <div className="tags-section">
+                                <div className="tags-container">
+                                    {noteTags.map((tag, index) => (
+                                        <span key={index} className="tag">
+                                            <FiTag />
+                                            {tag}
+                                            <button 
+                                                className="tag-remove"
+                                                onClick={() => handleRemoveTag(tag)}
+                                            >
+                                                ×
+                                            </button>
+                                        </span>
+                                    ))}
+                                </div>
+                                
+                                <form onSubmit={handleAddTag} className="tag-form">
+                                    <input
+                                        type="text"
+                                        className="tag-input"
+                                        value={newTag}
+                                        onChange={(e) => setNewTag(e.target.value)}
+                                        placeholder="Add a tag..."
+                                    />
+                                    <button type="submit" className="tag-add-btn">
+                                        Add
+                                    </button>
+                                </form>
+                            </div>
+                            
+                            {/* Main Editor */}
+                            <div className="editor-section">
+                                <div className="blocks-container">
+                                    {blocks.map((block, index) => {
+                                        const prevBlock = blocks[index - 1];
+                                        let paragraphStyle = {};
+                                        let paragraphClass = 'block-input paragraph';
+                                        if (block.type === 'paragraph' && prevBlock && ['h1', 'h2', 'h3'].includes(prevBlock.type)) {
+                                            paragraphStyle.marginTop = 0;
+                                            paragraphClass += ' paragraph-after-heading';
+                                        }
+                                        // Placeholder text for each block type
+                                        const placeholders = {
+                                            paragraph: "Text",
+                                            h1: 'Heading 1',
+                                            h2: 'Heading 2',
+                                            h3: 'Heading 3',
+                                            checklist: 'Checklist item...',
+                                            quote: 'Quote...',
+                                            code: 'Code...'
+                                        };
+                                        // Handler for Enter key to create new block
+                                        function handleBlockKeyDown(e, blockId, type) {
+                                            if (e.key === 'Enter' && !e.shiftKey) {
+                                                e.preventDefault();
+                                                createNewBlock(blockId, 'paragraph');
+                                            }
+                                        }
+                                        // Helper: show placeholder if block is completely empty
+                                        const isFocused = activeBlockId === block.id;
+                                        const liveContent = isFocused ? editingContent : block.content;
+                                        const isEmpty = !liveContent || liveContent.replace(/<[^>]+>/g, '').trim() === '';
+                                        const showPlaceholder = isEmpty;
+
+                                        // On focus, if block is empty, select all content so first keystroke replaces placeholder
+                                        function handleBlockFocus(e, blockId) {
+                                            setActiveBlockId(blockId);
+                                            const el = e.currentTarget;
+                                            if (!el.innerText.trim()) {
+                                                // Select all content (the placeholder span)
+                                                const range = document.createRange();
+                                                range.selectNodeContents(el);
+                                                const sel = window.getSelection();
+                                                sel.removeAllRanges();
+                                                sel.addRange(range);
+                                            }
+                                        }
+                                        return (
+                                            <div
+                                                key={block.id}
+                                                className={`block-wrapper ${activeBlockId === block.id ? 'active' : ''}`}
+                                                onMouseEnter={() => setHoveredBlockId(block.id)}
+                                                onMouseLeave={() => setHoveredBlockId(null)}
+                                            >
+                                                {/* Block Menu Button */}
+                                                {(hoveredBlockId === block.id || activeBlockId === block.id) && (
+                                                    <button
+                                                        className="block-menu-button"
+                                                        onClick={(e) => handleBlockMenuClick(e, block.id)}
+                                                        onMouseDown={(e) => e.preventDefault()}
+                                                    >
+                                                        +
+                                                    </button>
+                                                )}
+                                                
+                                                {/* Block Content */}
+                                                <div className="block-content" style={{position: 'relative'}}>
+                                                    {showPlaceholder && (
+                                                        <span
+                                                          className={`block-placeholder ${block.type}`}
+                                                          style={
+                                                            block.type === 'h1'
+                                                              ? { fontSize: '32px', lineHeight: '1.2', fontWeight: 700, color: '#F5F5F5' }
+                                                              : block.type === 'h2'
+                                                              ? { fontSize: '24px', lineHeight: '1.3', fontWeight: 600, color: '#F5F5F5' }
+                                                              : block.type === 'h3'
+                                                              ? { fontSize: '20px', lineHeight: '1.4', fontWeight: 600, color: '#F5F5F5' }
+                                                              : block.type === 'paragraph'
+                                                              ? { fontSize: '16px', lineHeight: '1.5' }
+                                                              : {}
+                                                          }
+                                                        >
+                                                          {placeholders[block.type]}
+                                                        </span>
+                                                    )}
+                                                    {block.type === 'paragraph' && (
+                                                        <div
+                                                            className={paragraphClass}
+                                                            contentEditable
+                                                            suppressContentEditableWarning
+                                                            spellCheck={true}
+                                                            data-block-id={block.id}
+                                                            style={{...paragraphStyle, background: 'transparent', position: 'relative'}}
+                                                            ref={el => blockRefs.current[block.id] = el}
+                                                            onFocus={e => {
+                                                                handleBlockFocus(e, block.id);
+                                                                setEditingBlockId(block.id);
+                                                                setEditingContent(e.currentTarget.innerHTML);
+                                                            }}
+                                                            onInput={e => {
+                                                                setEditingContent(e.currentTarget.innerHTML);
+                                                                if (e.currentTarget.innerText.length > 0) {
+                                                                    setEditingBlocks(prev => new Set(prev).add(block.id));
+                                                                } else {
+                                                                    setEditingBlocks(prev => {
+                                                                        const newSet = new Set(prev);
+                                                                        newSet.delete(block.id);
+                                                                        return newSet;
+                                                                    });
+                                                                }
+                                                            }}
+                                                            onBlur={e => {
+                                                                updateBlockContent(block.id, e.currentTarget.innerHTML);
+                                                                setEditingBlockId(null);
+                                                                setEditingContent('');
+                                                            }}
+                                                            onMouseUp={e => handleSelection(e, block.id)}
+                                                            onKeyUp={e => handleSelection(e, block.id)}
+                                                            onKeyDown={e => {
+                                                                if (e.key === 'Backspace' && e.currentTarget.innerText.length === 0) {
+                                                                    e.preventDefault();
+                                                                    // Only delete if more than one block exists
+                                                                    if (blocks.length > 1) {
+                                                                        const idx = blocks.findIndex(b => b.id === block.id);
+                                                                        if (idx > 0) {
+                                                                            const prevBlockId = blocks[idx - 1].id;
+                                                                            deleteBlock(block.id);
+                                                                            setTimeout(() => {
+                                                                                const prevEl = blockRefs.current[prevBlockId];
+                                                                                if (prevEl) {
+                                                                                    prevEl.focus();
+                                                                                }
+                                                                            }, 0);
+                                                                        }
+                                                                    }
+                                                                } else {
+                                                                    handleBlockKeyDown(e, block.id, block.type);
+                                                                }
+                                                            }}
+                                                        />
+                                                    )}
+                                                    
+                                                    {block.type === 'h1' && (
+                                                        <div
+                                                            className="block-input heading-1"
+                                                            contentEditable
+                                                            suppressContentEditableWarning
+                                                            spellCheck={true}
+                                                            data-block-id={block.id}
+                                                            style={{background: 'transparent'}}
+                                                            ref={el => blockRefs.current[block.id] = el}
+                                                            onFocus={e => {
+                                                                handleBlockFocus(e, block.id);
+                                                                setEditingBlockId(block.id);
+                                                                setEditingContent(e.currentTarget.innerHTML);
+                                                            }}
+                                                            onInput={e => {
+                                                                setEditingContent(e.currentTarget.innerHTML);
+                                                                if (e.currentTarget.innerText.length > 0) {
+                                                                    setEditingBlocks(prev => new Set(prev).add(block.id));
+                                                                } else {
+                                                                    setEditingBlocks(prev => {
+                                                                        const newSet = new Set(prev);
+                                                                        newSet.delete(block.id);
+                                                                        return newSet;
+                                                                    });
+                                                                }
+                                                            }}
+                                                            onBlur={e => {
+                                                                updateBlockContent(block.id, e.currentTarget.innerHTML);
+                                                                setEditingBlockId(null);
+                                                                setEditingContent('');
+                                                            }}
+                                                            onMouseUp={e => handleSelection(e, block.id)}
+                                                            onKeyUp={e => handleSelection(e, block.id)}
+                                                            onKeyDown={e => {
+                                                                if (e.key === 'Backspace' && e.currentTarget.innerText.length === 0) {
+                                                                    e.preventDefault();
+                                                                    // Only delete if more than one block exists
+                                                                    if (blocks.length > 1) {
+                                                                        const idx = blocks.findIndex(b => b.id === block.id);
+                                                                        if (idx > 0) {
+                                                                            const prevBlockId = blocks[idx - 1].id;
+                                                                            deleteBlock(block.id);
+                                                                            setTimeout(() => {
+                                                                                const prevEl = blockRefs.current[prevBlockId];
+                                                                                if (prevEl) {
+                                                                                    prevEl.focus();
+                                                                                }
+                                                                            }, 0);
+                                                                        }
+                                                                    }
+                                                                } else {
+                                                                    handleBlockKeyDown(e, block.id, block.type);
+                                                                }
+                                                            }}
+                                                        />
+                                                    )}
+                                                    
+                                                    {block.type === 'h2' && (
+                                                        <div
+                                                            className="block-input heading-2"
+                                                            contentEditable
+                                                            suppressContentEditableWarning
+                                                            spellCheck={true}
+                                                            data-block-id={block.id}
+                                                            style={{background: 'transparent'}}
+                                                            ref={el => blockRefs.current[block.id] = el}
+                                                            onFocus={e => {
+                                                                handleBlockFocus(e, block.id);
+                                                                setEditingBlockId(block.id);
+                                                                setEditingContent(e.currentTarget.innerHTML);
+                                                            }}
+                                                            onInput={e => {
+                                                                setEditingContent(e.currentTarget.innerHTML);
+                                                                if (e.currentTarget.innerText.length > 0) {
+                                                                    setEditingBlocks(prev => new Set(prev).add(block.id));
+                                                                } else {
+                                                                    setEditingBlocks(prev => {
+                                                                        const newSet = new Set(prev);
+                                                                        newSet.delete(block.id);
+                                                                        return newSet;
+                                                                    });
+                                                                }
+                                                            }}
+                                                            onBlur={e => {
+                                                                updateBlockContent(block.id, e.currentTarget.innerHTML);
+                                                                setEditingBlockId(null);
+                                                                setEditingContent('');
+                                                            }}
+                                                            onMouseUp={e => handleSelection(e, block.id)}
+                                                            onKeyUp={e => handleSelection(e, block.id)}
+                                                            onKeyDown={e => {
+                                                                if (e.key === 'Backspace' && e.currentTarget.innerText.length === 0) {
+                                                                    e.preventDefault();
+                                                                    // Only delete if more than one block exists
+                                                                    if (blocks.length > 1) {
+                                                                        const idx = blocks.findIndex(b => b.id === block.id);
+                                                                        if (idx > 0) {
+                                                                            const prevBlockId = blocks[idx - 1].id;
+                                                                            deleteBlock(block.id);
+                                                                            setTimeout(() => {
+                                                                                const prevEl = blockRefs.current[prevBlockId];
+                                                                                if (prevEl) {
+                                                                                    prevEl.focus();
+                                                                                }
+                                                                            }, 0);
+                                                                        }
+                                                                    }
+                                                                } else {
+                                                                    handleBlockKeyDown(e, block.id, block.type);
+                                                                }
+                                                            }}
+                                                        />
+                                                    )}
+                                                    
+                                                    {block.type === 'h3' && (
+                                                        <div
+                                                            className="block-input heading-3"
+                                                            contentEditable
+                                                            suppressContentEditableWarning
+                                                            spellCheck={true}
+                                                            data-block-id={block.id}
+                                                            style={{background: 'transparent'}}
+                                                            ref={el => blockRefs.current[block.id] = el}
+                                                            onFocus={e => {
+                                                                handleBlockFocus(e, block.id);
+                                                                setEditingBlockId(block.id);
+                                                                setEditingContent(e.currentTarget.innerHTML);
+                                                            }}
+                                                            onInput={e => {
+                                                                setEditingContent(e.currentTarget.innerHTML);
+                                                                if (e.currentTarget.innerText.length > 0) {
+                                                                    setEditingBlocks(prev => new Set(prev).add(block.id));
+                                                                } else {
+                                                                    setEditingBlocks(prev => {
+                                                                        const newSet = new Set(prev);
+                                                                        newSet.delete(block.id);
+                                                                        return newSet;
+                                                                    });
+                                                                }
+                                                            }}
+                                                            onBlur={e => {
+                                                                updateBlockContent(block.id, e.currentTarget.innerHTML);
+                                                                setEditingBlockId(null);
+                                                                setEditingContent('');
+                                                            }}
+                                                            onMouseUp={e => handleSelection(e, block.id)}
+                                                            onKeyUp={e => handleSelection(e, block.id)}
+                                                            onKeyDown={e => {
+                                                                if (e.key === 'Backspace' && e.currentTarget.innerText.length === 0) {
+                                                                    e.preventDefault();
+                                                                    // Only delete if more than one block exists
+                                                                    if (blocks.length > 1) {
+                                                                        const idx = blocks.findIndex(b => b.id === block.id);
+                                                                        if (idx > 0) {
+                                                                            const prevBlockId = blocks[idx - 1].id;
+                                                                            deleteBlock(block.id);
+                                                                            setTimeout(() => {
+                                                                                const prevEl = blockRefs.current[prevBlockId];
+                                                                                if (prevEl) {
+                                                                                    prevEl.focus();
+                                                                                }
+                                                                            }, 0);
+                                                                        }
+                                                                    }
+                                                                } else {
+                                                                    handleBlockKeyDown(e, block.id, block.type);
+                                                                }
+                                                            }}
+                                                        />
+                                                    )}
+                                                    
+                                                    {block.type === 'checklist' && (
+                                                        <div className="checklist-block">
+                                                            <button
+                                                                className="checkbox"
+                                                                onClick={() => toggleChecklistItem(block.id)}
+                                                            >
+                                                                {block.checked ? '☑' : '☐'}
+                                                            </button>
+                                                            <div
+                                                                className="block-input checklist"
+                                                                contentEditable
+                                                                suppressContentEditableWarning
+                                                                spellCheck={true}
+                                                                data-block-id={block.id}
+                                                                style={{background: 'transparent', position: 'relative'}}
+                                                                ref={el => blockRefs.current[block.id] = el}
+                                                                onFocus={e => {
+                                                                    handleBlockFocus(e, block.id);
+                                                                    setEditingBlockId(block.id);
+                                                                    setEditingContent(e.currentTarget.innerHTML);
+                                                                }}
+                                                                onInput={e => {
+                                                                    setEditingContent(e.currentTarget.innerHTML);
+                                                                    if (e.currentTarget.innerText.length > 0) {
+                                                                        setEditingBlocks(prev => new Set(prev).add(block.id));
+                                                                    } else {
+                                                                        setEditingBlocks(prev => {
+                                                                            const newSet = new Set(prev);
+                                                                            newSet.delete(block.id);
+                                                                            return newSet;
+                                                                        });
+                                                                    }
+                                                                }}
+                                                                onBlur={e => {
+                                                                    updateBlockContent(block.id, e.currentTarget.innerHTML);
+                                                                    setEditingBlockId(null);
+                                                                    setEditingContent('');
+                                                                }}
+                                                                onMouseUp={e => handleSelection(e, block.id)}
+                                                                onKeyUp={e => handleSelection(e, block.id)}
+                                                                onKeyDown={e => {
+                                                                    if (e.key === 'Backspace' && e.currentTarget.innerText.length === 0) {
+                                                                        e.preventDefault();
+                                                                        // Only delete if more than one block exists
+                                                                        if (blocks.length > 1) {
+                                                                            const idx = blocks.findIndex(b => b.id === block.id);
+                                                                            if (idx > 0) {
+                                                                                const prevBlockId = blocks[idx - 1].id;
+                                                                                deleteBlock(block.id);
+                                                                                setTimeout(() => {
+                                                                                    const prevEl = blockRefs.current[prevBlockId];
+                                                                                    if (prevEl) {
+                                                                                        prevEl.focus();
+                                                                                    }
+                                                                                }, 0);
+                                                                            }
+                                                                        }
+                                                                    } else {
+                                                                        handleBlockKeyDown(e, block.id, block.type);
+                                                                    }
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                    
+                                                    {block.type === 'divider' && (
+                                                        <div className="divider-block">
+                                                            <hr />
+                                                        </div>
+                                                    )}
+                                                    
+                                                    {block.type === 'quote' && (
+                                                        <div
+                                                            className="block-input quote"
+                                                            contentEditable
+                                                            suppressContentEditableWarning
+                                                            spellCheck={true}
+                                                            data-block-id={block.id}
+                                                            style={{background: 'transparent', position: 'relative'}}
+                                                            ref={el => blockRefs.current[block.id] = el}
+                                                            onFocus={e => {
+                                                                handleBlockFocus(e, block.id);
+                                                                setEditingBlockId(block.id);
+                                                                setEditingContent(e.currentTarget.innerHTML);
+                                                            }}
+                                                            onInput={e => {
+                                                                setEditingContent(e.currentTarget.innerHTML);
+                                                                if (e.currentTarget.innerText.length > 0) {
+                                                                    setEditingBlocks(prev => new Set(prev).add(block.id));
+                                                                } else {
+                                                                    setEditingBlocks(prev => {
+                                                                        const newSet = new Set(prev);
+                                                                        newSet.delete(block.id);
+                                                                        return newSet;
+                                                                    });
+                                                                }
+                                                            }}
+                                                            onBlur={e => {
+                                                                updateBlockContent(block.id, e.currentTarget.innerHTML);
+                                                                setEditingBlockId(null);
+                                                                setEditingContent('');
+                                                            }}
+                                                            onMouseUp={e => handleSelection(e, block.id)}
+                                                            onKeyUp={e => handleSelection(e, block.id)}
+                                                            onKeyDown={e => {
+                                                                if (e.key === 'Backspace' && e.currentTarget.innerText.length === 0) {
+                                                                    e.preventDefault();
+                                                                    // Only delete if more than one block exists
+                                                                    if (blocks.length > 1) {
+                                                                        const idx = blocks.findIndex(b => b.id === block.id);
+                                                                        if (idx > 0) {
+                                                                            const prevBlockId = blocks[idx - 1].id;
+                                                                            deleteBlock(block.id);
+                                                                            setTimeout(() => {
+                                                                                const prevEl = blockRefs.current[prevBlockId];
+                                                                                if (prevEl) {
+                                                                                    prevEl.focus();
+                                                                                }
+                                                                            }, 0);
+                                                                        }
+                                                                    }
+                                                                } else {
+                                                                    handleBlockKeyDown(e, block.id, block.type);
+                                                                }
+                                                            }}
+                                                        />
+                                                    )}
+                                                    
+                                                    {block.type === 'code' && (
+                                                        <div
+                                                            className="block-input code"
+                                                            contentEditable
+                                                            suppressContentEditableWarning
+                                                            spellCheck={true}
+                                                            data-block-id={block.id}
+                                                            style={{background: 'transparent', position: 'relative'}}
+                                                            ref={el => blockRefs.current[block.id] = el}
+                                                            onFocus={e => {
+                                                                handleBlockFocus(e, block.id);
+                                                                setEditingBlockId(block.id);
+                                                                setEditingContent(e.currentTarget.innerHTML);
+                                                            }}
+                                                            onInput={e => {
+                                                                setEditingContent(e.currentTarget.innerHTML);
+                                                                if (e.currentTarget.innerText.length > 0) {
+                                                                    setEditingBlocks(prev => new Set(prev).add(block.id));
+                                                                } else {
+                                                                    setEditingBlocks(prev => {
+                                                                        const newSet = new Set(prev);
+                                                                        newSet.delete(block.id);
+                                                                        return newSet;
+                                                                    });
+                                                                }
+                                                            }}
+                                                            onBlur={e => {
+                                                                updateBlockContent(block.id, e.currentTarget.innerHTML);
+                                                                setEditingBlockId(null);
+                                                                setEditingContent('');
+                                                            }}
+                                                            onMouseUp={e => handleSelection(e, block.id)}
+                                                            onKeyUp={e => handleSelection(e, block.id)}
+                                                            onKeyDown={e => {
+                                                                if (e.key === 'Backspace' && e.currentTarget.innerText.length === 0) {
+                                                                    e.preventDefault();
+                                                                    // Only delete if more than one block exists
+                                                                    if (blocks.length > 1) {
+                                                                        const idx = blocks.findIndex(b => b.id === block.id);
+                                                                        if (idx > 0) {
+                                                                            const prevBlockId = blocks[idx - 1].id;
+                                                                            deleteBlock(block.id);
+                                                                            setTimeout(() => {
+                                                                                const prevEl = blockRefs.current[prevBlockId];
+                                                                                if (prevEl) {
+                                                                                    prevEl.focus();
+                                                                                }
+                                                                            }, 0);
+                                                                        }
+                                                                    }
+                                                                } else {
+                                                                    handleBlockKeyDown(e, block.id, block.type);
+                                                                }
+                                                            }}
+                                                        />
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                    {/* Plus button under the last block */}
+                                    <div style={{ display: 'flex', justifyContent: 'center', margin: '8px 0' }}>
+                                        <button
+                                            className="add-block-btn"
+                                            onClick={() => createNewBlock(blocks[blocks.length - 1]?.id)}
+                                            style={{
+                                                background: 'none',
+                                                border: 'none',
+                                                color: '#A59BFF',
+                                                fontSize: '1.5rem',
+                                                cursor: 'pointer',
+                                                borderRadius: '50%',
+                                                width: '32px',
+                                                height: '32px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                transition: 'background 0.2s',
+                                            }}
+                                            title="Add new block"
+                                            tabIndex={0}
+                                            aria-label="Add new block"
+                                            onMouseOver={e => e.currentTarget.style.background = '#232323'}
+                                            onMouseOut={e => e.currentTarget.style.background = 'none'}
+                                        >
+                                            +
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                {/* Block Type Menu */}
+                                {showBlockMenu.blockId && (
+                                    <div
+                                        className="block-type-menu"
+                                        ref={blockMenuRef}
+                                        style={{
+                                            position: 'fixed',
+                                            left: showBlockMenu.x,
+                                            top: blockMenuTop !== null ? blockMenuTop : showBlockMenu.y,
+                                            zIndex: 1000
+                                        }}
+                                    >
+                                        {blockTypes.map((blockType, index) => (
+                                            <button
+                                                key={blockType.type}
+                                                className={`block-type-option ${selectedMenuIndex === index ? 'selected' : ''}`}
+                                                onClick={() => updateBlockType(showBlockMenu.blockId, blockType.type)}
+                                                onMouseEnter={() => setSelectedMenuIndex(index)}
+                                            >
+                                                <span className="block-type-icon">{blockType.icon}</span>
+                                                <span className="block-type-label">{blockType.label}</span>
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
             return (
                 <div className="folder-view-container">
                     <div className="folder-view-header">
@@ -1733,7 +2411,7 @@ function Dashboard() {
                                 <div className="new-item-dropdown">
                                     <button onClick={() => {
                                         setShowNewItemDropdown(false);
-                                        handleCreateDocument();
+                                        setIsNotesMode(true);
                                     }}>
                                         <FiFileText /> Create Notes
                                     </button>
@@ -1937,7 +2615,6 @@ function Dashboard() {
             }
         } catch (error) {
             console.error('Error deleting document:', error);
-            showNotification('Error deleting document');
         }
     };
 
@@ -2013,7 +2690,8 @@ function Dashboard() {
             });
 
             if (!decksResponse.ok) return;
-            const decks = await decksResponse.json();
+            const decksData = await decksResponse.json();
+            const decks = Array.isArray(decksData.decks) ? decksData.decks : [];
 
             // Fetch cards for each deck and count due today
             let dueToday = 0;
@@ -2074,7 +2752,8 @@ function Dashboard() {
             });
 
             if (!decksResponse.ok) return;
-            const decks = await decksResponse.json();
+            const decksData = await decksResponse.json();
+            const decks = Array.isArray(decksData.decks) ? decksData.decks : [];
 
             // Fetch cards for each deck and filter for next 7 days
             let upcoming = [];
@@ -2124,6 +2803,322 @@ function Dashboard() {
             fetchUpcomingCards();
         }
     }, [activeView]);
+
+    // Notes-related functions
+    const handleSave = async () => {
+        if (!user) return;
+        
+        setIsSaving(true);
+        try {
+            // Simulate API call for saving
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            setLastSaved(new Date());
+            setIsSaving(false);
+        } catch (error) {
+            console.error('Error saving note:', error);
+            setIsSaving(false);
+        }
+    };
+    
+    const handlePublish = async () => {
+        if (!user) return;
+        
+        setIsSaving(true);
+        try {
+            // Simulate API call for publishing
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            setIsPublished(true);
+            setLastSaved(new Date());
+            setIsSaving(false);
+        } catch (error) {
+            console.error('Error publishing note:', error);
+            setIsSaving(false);
+        }
+    };
+    
+    const handleAddTag = (e) => {
+        e.preventDefault();
+        if (newTag.trim() && !noteTags.includes(newTag.trim())) {
+            setNoteTags([...noteTags, newTag.trim()]);
+            setNewTag('');
+        }
+    };
+    
+    const handleRemoveTag = (tagToRemove) => {
+        setNoteTags(noteTags.filter(tag => tag !== tagToRemove));
+    };
+    
+    const formatLastSaved = () => {
+        if (!lastSaved) return null;
+        
+        const now = new Date();
+        const diffMs = now - lastSaved;
+        const diffMins = Math.floor(diffMs / 60000);
+        
+        if (diffMins < 1) return 'Just now';
+        if (diffMins === 1) return '1 minute ago';
+        if (diffMins < 60) return `${diffMins} minutes ago`;
+        
+        const diffHours = Math.floor(diffMins / 60);
+        if (diffHours === 1) return '1 hour ago';
+        if (diffHours < 24) return `${diffHours} hours ago`;
+        
+        const diffDays = Math.floor(diffHours / 24);
+        if (diffDays === 1) return '1 day ago';
+        return `${diffDays} days ago`;
+    };
+
+    const handleExitNotesMode = () => {
+        setIsNotesMode(false);
+        setNoteTitle('Untitled Note');
+        setNoteContent('');
+        setNoteTags([]);
+        setNewTag('');
+        setLastSaved(null);
+        setIsSaving(false);
+        setIsPublished(false);
+        setBlocks([{ id: '1', type: 'paragraph', content: '', checked: false }]);
+        setActiveBlockId('1');
+        setShowBlockMenu({ blockId: null, x: 0, y: 0 });
+        setHoveredBlockId(null);
+    };
+
+    // Block management functions
+    const createNewBlock = (afterId, type = 'paragraph') => {
+        const newId = Date.now().toString();
+        const newBlock = { id: newId, type, content: '', checked: false };
+        
+        setBlocks(prevBlocks => {
+            const index = prevBlocks.findIndex(block => block.id === afterId);
+            const newBlocks = [...prevBlocks];
+            newBlocks.splice(index + 1, 0, newBlock);
+            return newBlocks;
+        });
+        
+        setActiveBlockId(newId);
+        setJustAddedBlockId(newId);
+        return newId;
+    };
+
+    const updateBlockContent = (blockId, content) => {
+        setBlocks(prevBlocks =>
+            prevBlocks.map(block =>
+                block.id === blockId ? { ...block, content } : block
+            )
+        );
+        
+        // Auto-resize textarea
+        setTimeout(() => {
+            const textarea = document.querySelector(`[data-block-id="${blockId}"]`);
+            if (textarea) {
+                textarea.style.height = 'auto';
+                textarea.style.height = textarea.scrollHeight + 'px';
+            }
+        }, 0);
+    };
+
+    const updateBlockType = (blockId, newType) => {
+        setBlocks(prevBlocks =>
+            prevBlocks.map(block =>
+                block.id === blockId ? { ...block, type: newType } : block
+            )
+        );
+        setShowBlockMenu({ blockId: null, x: 0, y: 0 });
+    };
+
+    const toggleChecklistItem = (blockId) => {
+        setBlocks(prevBlocks =>
+            prevBlocks.map(block =>
+                block.id === blockId ? { ...block, checked: !block.checked } : block
+            )
+        );
+    };
+
+    const deleteBlock = (blockId) => {
+        if (blocks.length === 1) return; // Don't delete the last block
+        
+        setBlocks(prevBlocks => {
+            const newBlocks = prevBlocks.filter(block => block.id !== blockId);
+            if (activeBlockId === blockId) {
+                const index = prevBlocks.findIndex(block => block.id === blockId);
+                const newActiveId = newBlocks[index]?.id || newBlocks[index - 1]?.id || newBlocks[0]?.id;
+                setActiveBlockId(newActiveId);
+            }
+            return newBlocks;
+        });
+    };
+
+    const handleBlockKeyDown = (e, blockId) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            createNewBlock(blockId);
+        } else if (e.key === 'Backspace' && blocks.find(b => b.id === blockId)?.content === '') {
+            e.preventDefault();
+            deleteBlock(blockId);
+        } else if (e.key === 'Tab') {
+            e.preventDefault();
+            // Handle indentation here if needed
+        }
+    };
+
+    const handleBlockMenuClick = (e, blockId) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const rect = e.currentTarget.getBoundingClientRect();
+        setShowBlockMenu({
+            blockId,
+            x: rect.right + 10,
+            y: rect.top
+        });
+    };
+
+    const handleBlockMenuClose = () => {
+        setShowBlockMenu({ blockId: null, x: 0, y: 0 });
+        setSelectedMenuIndex(0);
+    };
+
+    const handleBlockMenuKeyDown = (e) => {
+        if (!showBlockMenu.blockId) return;
+        
+        switch (e.key) {
+            case 'ArrowDown':
+                e.preventDefault();
+                setSelectedMenuIndex(prev => 
+                    prev < blockTypes.length - 1 ? prev + 1 : 0
+                );
+                break;
+            case 'ArrowUp':
+                e.preventDefault();
+                setSelectedMenuIndex(prev => 
+                    prev > 0 ? prev - 1 : blockTypes.length - 1
+                );
+                break;
+            case 'Enter':
+                e.preventDefault();
+                if (blockTypes[selectedMenuIndex]) {
+                    updateBlockType(showBlockMenu.blockId, blockTypes[selectedMenuIndex].type);
+                }
+                break;
+            case 'Escape':
+                e.preventDefault();
+                handleBlockMenuClose();
+                break;
+        }
+    };
+
+    // Add keyboard event listener for block menu
+    useEffect(() => {
+        if (showBlockMenu.blockId) {
+            document.addEventListener('keydown', handleBlockMenuKeyDown);
+            return () => {
+                document.removeEventListener('keydown', handleBlockMenuKeyDown);
+            };
+        }
+    }, [showBlockMenu.blockId, selectedMenuIndex]);
+
+    const blockTypes = [
+        { type: 'paragraph', label: 'Text', icon: '📝' },
+        { type: 'h1', label: 'Heading 1', icon: '📋' },
+        { type: 'h2', label: 'Heading 2', icon: '📄' },
+        { type: 'h3', label: 'Heading 3', icon: '📑' },
+        { type: 'checklist', label: 'Checklist', icon: '☑️' },
+        { type: 'divider', label: 'Divider', icon: '➖' },
+        { type: 'quote', label: 'Quote', icon: '💬' },
+        { type: 'code', label: 'Code', icon: '💻' }
+    ];
+
+    // Auto-resize effect for all blocks on mount and when blocks/content change
+    useEffect(() => {
+        blocks.forEach(block => {
+            const ref = blockRefs.current[block.id];
+            if (ref) {
+                ref.style.height = 'auto';
+                ref.style.height = ref.scrollHeight + 'px';
+            }
+        });
+    }, [blocks]);
+
+    const [blockMenuTop, setBlockMenuTop] = useState(null);
+    const blockMenuRef = useRef(null);
+
+    useEffect(() => {
+        if (showBlockMenu.blockId && blockMenuRef.current) {
+            // Calculate menu position only once after mount
+            const menuRect = blockMenuRef.current.getBoundingClientRect();
+            const overflow = menuRect.bottom - window.innerHeight;
+            if (overflow > 0) {
+                setBlockMenuTop(showBlockMenu.y - overflow - 8);
+            } else {
+                setBlockMenuTop(showBlockMenu.y);
+            }
+        } else {
+            setBlockMenuTop(null);
+        }
+    }, [showBlockMenu]);
+
+    const [formatBar, setFormatBar] = useState({ show: false, x: 0, y: 0 });
+    const [formatBlockId, setFormatBlockId] = useState(null);
+    const formatBarRef = useRef(null);
+
+    // Handler to show formatting bar on text selection
+    function handleSelection(e, blockId) {
+        const selection = window.getSelection();
+        if (selection && selection.rangeCount > 0 && !selection.isCollapsed) {
+            const range = selection.getRangeAt(0);
+            const rect = range.getBoundingClientRect();
+            setFormatBar({
+                show: true,
+                x: rect.left + window.scrollX + rect.width / 2,
+                y: rect.top + window.scrollY - 40 // 40px above selection
+            });
+            setFormatBlockId(blockId);
+        } else {
+            setFormatBar({ show: false, x: 0, y: 0 });
+            setFormatBlockId(null);
+        }
+    }
+
+    // Hide format bar on click outside
+    useEffect(() => {
+        function handleClick(e) {
+            if (formatBarRef.current && !formatBarRef.current.contains(e.target)) {
+                setFormatBar({ show: false, x: 0, y: 0 });
+                setFormatBlockId(null);
+            }
+        }
+        if (formatBar.show) {
+            document.addEventListener('mousedown', handleClick);
+        }
+        return () => document.removeEventListener('mousedown', handleClick);
+    }, [formatBar.show]);
+
+    // Formatting functions
+    function formatSelection(cmd, value = null) {
+        document.execCommand(cmd, false, value);
+        setFormatBar({ show: false, x: 0, y: 0 });
+        setFormatBlockId(null);
+    }
+
+    // Focus and move caret to end of new block
+    useEffect(() => {
+        if (justAddedBlockId && blockRefs.current[justAddedBlockId]) {
+            const el = blockRefs.current[justAddedBlockId];
+            el.focus();
+            // Move caret to end
+            const range = document.createRange();
+            range.selectNodeContents(el);
+            range.collapse(false);
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(range);
+            setJustAddedBlockId(null);
+        }
+    }, [justAddedBlockId]);
+
+    const [editingContent, setEditingContent] = useState('');
+    const [editingBlockId, setEditingBlockId] = useState(null);
 
     return (
         <div className="dashboard-container" style={{ 
@@ -2296,6 +3291,30 @@ function Dashboard() {
                             <button onClick={handleCreateFolder} className="dashboard-modal-btn create">Create</button>
                         </div>
                     </div>
+                </div>
+            )}
+            {/* Floating Format Bar */}
+            {formatBar.show && (
+                <div
+                    ref={formatBarRef}
+                    style={{
+                        position: 'absolute',
+                        left: formatBar.x,
+                        top: formatBar.y,
+                        zIndex: 2000,
+                        background: '#232323',
+                        borderRadius: 8,
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
+                        padding: '6px 12px',
+                        display: 'flex',
+                        gap: 12,
+                        alignItems: 'center',
+                        border: '1px solid #444',
+                    }}
+                >
+                    <button onClick={() => formatSelection('bold')} style={{fontWeight: 'bold', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 18}}>B</button>
+                    <button onClick={() => formatSelection('italic')} style={{fontStyle: 'italic', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 18}}>I</button>
+                    <button onClick={() => formatSelection('hiliteColor', 'rgba(255,250,205,0.5)')} style={{background: 'rgba(255,250,205,0.5)', border: 'none', color: '#232323', cursor: 'pointer', fontSize: 18, borderRadius: 4, padding: '0 8px'}}>H</button>
                 </div>
             )}
         </div>

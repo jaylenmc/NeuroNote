@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FiEdit2, FiTrash2, FiPlus, FiSearch, FiStar, FiClock, FiTag, FiArrowLeft, FiX, FiFilter, FiCheck } from 'react-icons/fi';
 import './DeckContent.css';
@@ -41,6 +41,10 @@ export default function DeckContent() {
   const [showNotesModal, setShowNotesModal] = useState(false);
   const [selectedCard, setSelectedCard] = useState(null);
   const [cardNotes, setCardNotes] = useState({});
+  const [generatedPrompt, setGeneratedPrompt] = useState('');
+  const [generatedCards, setGeneratedCards] = useState([]);
+  const [generating, setGenerating] = useState(false);
+  const generatedInputRef = useRef(null);
 
   const ribbonColors = [
     { value: null, label: 'All Cards', color: '#666' },
@@ -530,6 +534,70 @@ export default function DeckContent() {
     );
   };
 
+  // Helper to parse Claude's response into Q&A pairs
+  function parseGeneratedCards(text) {
+    // Try to split by Q: ... A: ...
+    const cards = [];
+    const regex = /Q\s*[:\-\.]?\s*(.+?)\s*A\s*[:\-\.]?\s*(.+?)(?=(?:Q\s*[:\-\.]|$))/gs;
+    let match;
+    while ((match = regex.exec(text)) !== null) {
+      cards.push({ question: match[1].trim(), answer: match[2].trim() });
+    }
+    // Fallback: if nothing matched, treat each line as a card
+    if (cards.length === 0) {
+      text.split('\n').forEach(line => {
+        const [q, a] = line.split(/\s*-\s*/);
+        if (q && a) cards.push({ question: q.trim(), answer: a.trim() });
+      });
+    }
+    return cards;
+  }
+
+  async function handleGenerateFlashcards() {
+    if (!generatedPrompt.trim()) return;
+    setGenerating(true);
+    setGeneratedCards([]);
+    setError(null);
+    try {
+      const token = sessionStorage.getItem('jwt_token');
+      if (!token) {
+        setError('Please log in to generate flashcards');
+        setGenerating(false);
+        return;
+      }
+      const response = await fetch(`${API_URL}tutor/cardsgen/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ prompt: generatedPrompt, deck_id: deckId })
+      });
+      if (!response.ok) {
+        const errorText = await response.text();
+        setError(errorText);
+        setGenerating(false);
+        return;
+      }
+      // After generating, fetch the latest cards for this deck to get scheduled_date and id
+      const cardsRes = await fetch(`${API_URL}flashcards/cards/${deckId}/`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const allCards = await cardsRes.json();
+      // Try to match generated cards by front/back to get their DB info
+      const generated = (await response.json()).Cards;
+      const matched = generated.map(gen => {
+        const found = allCards.find(c => c.question === gen.front && c.answer === gen.back);
+        return found ? found : gen;
+      });
+      setGeneratedCards(matched);
+      setGenerating(false);
+    } catch (err) {
+      setError('Error generating flashcards');
+      setGenerating(false);
+    }
+  }
+
   return (
     <div className="deck-content-page">
       <button className="deck-back-btn" onClick={() => navigate('/study-room/decks')}><FiArrowLeft /> Back to Decks</button>
@@ -591,7 +659,82 @@ export default function DeckContent() {
         </div>
       </div>
       <button className="add-card-btn" onClick={() => setShowAdd(true)} disabled={!deck}><FiPlus /> Add New Card</button>
+      <div className="claude-flashcard-generator" style={{ marginBottom: '2rem', background: '#23272f', padding: '1rem', borderRadius: '12px' }}>
+        <h3>Generate Flashcards with Claude</h3>
+        <textarea
+          ref={generatedInputRef}
+          value={generatedPrompt}
+          onChange={e => setGeneratedPrompt(e.target.value)}
+          placeholder="Enter a topic, chapter, or concept to generate flashcards..."
+          rows={3}
+          style={{ width: '100%', marginBottom: '0.5rem', borderRadius: '8px', padding: '0.5rem', border: '1px solid #444', background: '#18181b', color: '#fff' }}
+        />
+        <button onClick={handleGenerateFlashcards} disabled={generating || !generatedPrompt.trim()} style={{ padding: '0.5rem 1.5rem', borderRadius: '8px', background: '#0CBABA', color: '#fff', border: 'none', fontWeight: 600 }}>
+          {generating ? 'Generating...' : 'Generate Flashcards'}
+        </button>
+        {error && <div style={{ color: 'red', marginTop: '0.5rem' }}>{error}</div>}
+      </div>
       <div className="card-list-grid cards-grid">
+        {/* Render generated cards first */}
+        {generatedCards.length > 0 && generatedCards.map((card, idx) => {
+          const genId = `generated-${idx}`;
+          const isOpen = openCardId === genId;
+          // Add delete handler for generated cards
+          const handleDeleteGeneratedCard = async () => {
+            try {
+              const token = sessionStorage.getItem('jwt_token');
+              await fetch(`${API_URL}flashcards/cards/delete/${deckId}/${card.id}/`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+              });
+              setGeneratedCards(generatedCards => generatedCards.filter((_, i) => i !== idx));
+            } catch (err) {
+              alert('Failed to delete card');
+            }
+          };
+          // Use the same ribbon and structure as user cards
+          return (
+            <div
+              className={`card-preview card-theme-dark`}
+              key={genId}
+              style={{ position: 'relative', border: '2px dashed #0CBABA' }}
+              onClick={() => setOpenCardId(isOpen ? null : genId)}
+            >
+              {/* Ribbon and tooltip structure */}
+              <div className="ribbon-tooltip-wrapper">
+                <div className={`card-ribbon-bookmark ribbon-soft-blue`}>&nbsp;</div>
+                <span className="badge-tooltip badge-tooltip-outside show" style={{ background: '#0CBABA' }}>Generated by AI</span>
+              </div>
+              {/* Generated badge */}
+              <div style={{ position: 'absolute', top: 8, right: 8, background: '#0CBABA', color: '#fff', borderRadius: 6, padding: '2px 8px', fontSize: 12, fontWeight: 700, zIndex: 2 }}>
+                Generated
+              </div>
+              <div className="card-preview-inner">
+                {/* Only show the front if not open, only show the back if open */}
+                {!isOpen && (
+                  <div className="card-content-stack">
+                    <span className="card-preview-label">Question</span>
+                    <div className="card-preview-content">{card.front}</div>
+                  </div>
+                )}
+                {isOpen && (
+                  <>
+                    <div className="card-preview-label">Answer</div>
+                    <div className="card-preview-content" style={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{card.back}</div>
+                    {card.scheduled_date && (
+                      <div className="card-preview-date">
+                        Scheduled: {new Date(card.scheduled_date).toLocaleDateString()}
+                      </div>
+                    )}
+                    <button className="card-action-btn delete" style={{ marginTop: 16 }} onClick={e => { e.stopPropagation(); handleDeleteGeneratedCard(); }}>
+                      Delete
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })}
         {loading ? <div className="loading">Loading...</div> :
           filteredCards.map(card => {
             const isEditing = editingCardId === card.id;

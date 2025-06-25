@@ -1,13 +1,24 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { FiArrowLeft, FiSend, FiMic, FiPaperclip, FiClock, FiBookmark, FiSettings, FiTrash2 } from 'react-icons/fi';
 import './ChatPage.css';
 
 const ChatPage = () => {
     const navigate = useNavigate();
-    const [messages, setMessages] = useState([]);
+    const [messages, setMessages] = useState([
+        {
+            id: 1,
+            content: "Hello! I'm your AI-powered study assistant. How can I help you today?",
+            type: 'ai',
+            timestamp: new Date(Date.now() - 60000).toISOString(),
+            avatar: '🤖'
+        }
+    ]);
     const [input, setInput] = useState('');
     const [isTyping, setIsTyping] = useState(false);
-    const [isContextOpen, setIsContextOpen] = useState(false);
+    const [isSidePanelOpen, setIsSidePanelOpen] = useState(false);
+    const [currentSubject, setCurrentSubject] = useState('Biology');
+    const [currentFocus, setCurrentFocus] = useState('Chapter 3: Cell Biology');
     const messagesEndRef = useRef(null);
     const inputRef = useRef(null);
 
@@ -23,9 +34,11 @@ const ChatPage = () => {
         if (!input.trim()) return;
 
         const userMessage = {
+            id: Date.now(),
             content: input,
             type: 'user',
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            avatar: '👤'
         };
 
         setMessages(prev => [...prev, userMessage]);
@@ -54,18 +67,22 @@ const ChatPage = () => {
             const data = await response.json();
             
             const aiMessage = {
+                id: Date.now() + 1,
                 content: data.Message,
                 type: 'ai',
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                avatar: '🤖'
             };
 
             setMessages(prev => [...prev, aiMessage]);
         } catch (error) {
             console.error('Error sending message:', error);
             setMessages(prev => [...prev, {
+                id: Date.now() + 1,
                 content: 'Sorry, I encountered an error. Please try again.',
                 type: 'ai',
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                avatar: '🤖'
             }]);
         } finally {
             setIsTyping(false);
@@ -83,6 +100,16 @@ const ChatPage = () => {
         navigator.clipboard.writeText(content);
     };
 
+    const handleClearChat = () => {
+        setMessages([{
+            id: Date.now(),
+            content: "Hello! I'm your AI-powered study assistant. How can I help you today?",
+            type: 'ai',
+            timestamp: new Date().toISOString(),
+            avatar: '🤖'
+        }]);
+    };
+
     const formatTime = (timestamp) => {
         return new Date(timestamp).toLocaleTimeString([], { 
             hour: '2-digit', 
@@ -91,7 +118,6 @@ const ChatPage = () => {
     };
 
     const formatMessage = (content) => {
-        // Split content by newlines and wrap each paragraph in a div
         return content.split('\n').map((paragraph, index) => (
             <React.Fragment key={index}>
                 {paragraph}
@@ -100,97 +126,210 @@ const ChatPage = () => {
         ));
     };
 
+    const quickPrompts = [
+        { title: "Summarize this note", icon: "📘", prompt: "Can you summarize the key points of this note..." },
+        { title: "Explain a flashcard", icon: "❓", prompt: "Can you explain this flashcard concept in detail..." },
+        { title: "Make a 5-question quiz", icon: "🧪", prompt: "Create a 5-question quiz based on..." }
+    ];
+
+    const handlePromptClick = (prompt) => {
+        setInput(prompt.prompt);
+        inputRef.current?.focus();
+    };
+
     return (
         <div className="chat-page">
-            <div className="chat-container">
-                <div className="chat-header">
+            {/* Top Section - Page Header Card */}
+            <div className="page-header-card">
+                <div className="header-content">
                     <div className="header-left">
                         <button 
                             className="back-button"
                             onClick={() => navigate('/study-room')}
                         >
-                            ← Back to Study Room
+                            <FiArrowLeft /> Back
                         </button>
-                        <div className="chat-title">
-                            <div className="ai-brain-icon">
-                                🧠
+                        <div className="header-title-section">
+                            <div className="header-icon">💬</div>
+                            <div className="header-text">
+                                <h1 className="page-title">Ask NeuroNote</h1>
+                                <p className="page-subtitle">Your AI-powered study assistant.</p>
                             </div>
-                            <span>NeuroNote Chat</span>
                         </div>
                     </div>
-                    <button 
-                        className="action-button"
-                        onClick={() => setIsContextOpen(!isContextOpen)}
-                    >
-                        {isContextOpen ? '✕' : '☰'}
-                    </button>
+                    <div className="header-actions">
+                        <button 
+                            className="action-button"
+                            onClick={handleClearChat}
+                            title="Clear chat"
+                        >
+                            <FiTrash2 />
+                        </button>
+                        <button 
+                            className="action-button"
+                            onClick={() => setIsSidePanelOpen(!isSidePanelOpen)}
+                            title="Chat tools"
+                        >
+                            ☰
+                        </button>
+                    </div>
                 </div>
+            </div>
 
-                <div className="chat-messages">
-                    {messages.map((message, index) => (
-                        <div key={index} className={`message ${message.type}`}>
-                            <div className="message-content">
-                                {formatMessage(message.content)}
-                            </div>
-                            <div className="message-time">
-                                {formatTime(message.timestamp)}
-                            </div>
-                            <div className="message-actions">
-                                <button 
-                                    className="action-button"
-                                    onClick={() => handleCopy(message.content)}
-                                    title="Copy message"
-                                >
-                                    📋
-                                </button>
+           
+
+            {/* Middle Section - Chat Interface Card */}
+            <div className="chat-interface-card">
+                <div className="messages-container">
+                    {messages.map((message) => (
+                        <div key={message.id} className={`message ${message.type}`}>
+                            <div className="message-bubble">
+                                <div className="message-content">
+                                    {formatMessage(message.content)}
+                                </div>
+                                <div className="message-timestamp">
+                                    {formatTime(message.timestamp)}
+                                </div>
+                                <div className="message-actions">
+                                    <button 
+                                        className="message-action-btn"
+                                        onClick={() => handleCopy(message.content)}
+                                        title="Copy message"
+                                    >
+                                        📋
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     ))}
+                    
                     {isTyping && (
-                        <div className="typing-indicator">
-                            <div className="typing-dot"></div>
-                            <div className="typing-dot"></div>
-                            <div className="typing-dot"></div>
+                        <div className="message ai">
+                            <div className="message-bubble">
+                                <div className="typing-indicator">
+                                    <span>AI is thinking</span>
+                                    <div className="typing-dots">
+                                        <span></span>
+                                        <span></span>
+                                        <span></span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     )}
                     <div ref={messagesEndRef} />
                 </div>
+            </div>
 
-                <div className="chat-input-container">
-                    <div className="chat-input-wrapper">
-                        <input
+            {/* Bottom Section - Input Bar Card */}
+            <div className="input-bar-card">
+                <div className="input-container">
+                    <div className="input-wrapper">
+                        <textarea
                             ref={inputRef}
-                            className="chat-input"
+                            className="message-input"
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
                             onKeyPress={handleKeyPress}
-                            placeholder="Ask NeuroNote anything..."
+                            placeholder="Ask me anything..."
+                            rows="1"
                         />
-                        <button 
-                            className="send-button"
-                            onClick={handleSend}
-                            disabled={!input.trim()}
-                        >
-                            ➤
-                        </button>
+                        <div className="input-actions">
+                            <button className="input-action-btn" title="Attach file">
+                                <FiPaperclip />
+                            </button>
+                            <button className="input-action-btn" title="Voice input">
+                                <FiMic />
+                            </button>
+                            <button 
+                                className="send-button"
+                                onClick={handleSend}
+                                disabled={!input.trim()}
+                                title="Send message"
+                            >
+                                <FiSend />
+                            </button>
+                        </div>
+                    </div>
+                    <div className="input-helper">
+                        Press Enter to send, Shift+Enter for new line
                     </div>
                 </div>
             </div>
 
-            <div className={`context-drawer ${isContextOpen ? 'open' : ''}`}>
-                <div className="context-header">
-                    <h3>Chat Context</h3>
+            {/* Side Panel */}
+            <div className={`side-panel ${isSidePanelOpen ? 'open' : ''}`}>
+                <div className="side-panel-header">
+                    <h3>Chat Tools</h3>
                     <button 
-                        className="close-drawer"
-                        onClick={() => setIsContextOpen(false)}
+                        className="close-panel"
+                        onClick={() => setIsSidePanelOpen(false)}
                     >
                         ✕
                     </button>
                 </div>
-                <div className="context-content">
-                    <p>Chat history and context will appear here.</p>
+                
+                <div className="side-panel-content">
+                    <div className="panel-section">
+                        <h4>Study Context</h4>
+                        <div className="study-context">
+                            <div className="context-item">
+                                <strong>Current Subject:</strong>
+                                <span>{currentSubject}</span>
+                            </div>
+                            <div className="context-item">
+                                <strong>Current Focus:</strong>
+                                <span>{currentFocus}</span>
+                            </div>
+                            <div className="context-item">
+                                <strong>Session Time:</strong>
+                                <span>45 minutes</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="panel-section">
+                        <h4>Quick Prompts</h4>
+                        <div className="prompt-templates">
+                            {quickPrompts.map((prompt, index) => (
+                                <button
+                                    key={index}
+                                    className="prompt-template"
+                                    onClick={() => handlePromptClick(prompt)}
+                                >
+                                    {prompt.icon} {prompt.title}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="panel-section">
+                        <h4>Recent Conversations</h4>
+                        <div className="chat-history">
+                            <div className="history-item">
+                                <FiClock />
+                                <span>Biology Q&A</span>
+                            </div>
+                            <div className="history-item">
+                                <FiClock />
+                                <span>Math Help</span>
+                            </div>
+                            <div className="history-item">
+                                <FiClock />
+                                <span>Study Tips</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
+
+            {/* Overlay for side panel */}
+            {isSidePanelOpen && (
+                <div 
+                    className="side-panel-overlay"
+                    onClick={() => setIsSidePanelOpen(false)}
+                />
+            )}
         </div>
     );
 };

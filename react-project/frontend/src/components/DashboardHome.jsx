@@ -219,7 +219,6 @@ const DashboardHome = () => {
 
       {/* Achievements Section */}
       <div className="dashboard-achievements">
-        <div className="section-header">
           <div className="achievements-header">
             <div className="achievements-title">
               <h2><Trophy size={24} /> Achievements</h2>
@@ -232,7 +231,6 @@ const DashboardHome = () => {
               View Achievements
             </button>
           </div>
-        </div>
         <div className="achievements-grid">
           {achievements.map((achievement, index) => (
             <div key={index} className={`achievement-card ${achievement.isNew ? 'new' : ''}`}>

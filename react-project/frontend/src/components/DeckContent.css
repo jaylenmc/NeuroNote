@@ -1222,4 +1222,16 @@
 
 .form-group input[type="date"]::-webkit-calendar-picker-indicator:hover {
   opacity: 1;
+}
+
+.generated-card-preview-back {
+  position: static !important;
+  height: auto !important;
+  min-height: 0 !important;
+  background: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
 } 
