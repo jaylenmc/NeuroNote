@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/5.1/ref/settings/
 
 from pathlib import Path
 import pymysql
+from corsheaders.defaults import default_headers
 pymysql.install_as_MySQLdb()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -76,6 +77,10 @@ CORS_ALLOWED_ORIGINS = ['http://localhost:5173']
 CSRF_TRUSTED_ORIGINS = [
     "http://127.0.0.1:8000/",
     "http://localhost:5173",
+]
+
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    'jwt_token',
 ]
 
 MIDDLEWARE = [
