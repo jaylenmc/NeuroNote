@@ -1,198 +1,363 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiArrowLeft, FiCheck, FiX, FiVolume2, FiVolumeX } from 'react-icons/fi';
-import { FaFire, FaThumbtack } from 'react-icons/fa';
+import { FiArrowLeft, FiCheck, FiX, FiPlus, FiClock, FiCalendar, FiMusic, FiLock, FiStar } from 'react-icons/fi';
+import { FaFire, FaThumbtack, FaPlay, FaPause } from 'react-icons/fa';
 import './FocusPage.css';
-
-const habitIcons = {
-    Meditate: '🧘‍♂️',
-    Exercise: '🏃‍♂️',
-    Read: '📚',
-    Hydrate: '💧',
-};
 
 const FocusPage = () => {
     const navigate = useNavigate();
-    const [focusTasks, setFocusTasks] = useState([
-        { id: 1, text: '', completed: false },
-        { id: 2, text: '', completed: false },
-        { id: 3, text: '', completed: false },
+    
+    // Daily Intentions
+    const [dailyIntention, setDailyIntention] = useState('');
+    
+    // Tasks/To-Do List
+    const [tasks, setTasks] = useState([
+        { id: 1, title: 'Complete flashcards', tag: 'Study', completed: false, dueTime: '10:00 AM' },
+        { id: 2, title: 'Review notes', tag: 'Study', completed: false, dueTime: '2:00 PM' },
+        { id: 3, title: 'Take a break', tag: 'Break', completed: false, dueTime: '12:00 PM' }
     ]);
-    const [distractions, setDistractions] = useState([]);
-    const [distractionInput, setDistractionInput] = useState('');
-    const [focusStreak, setFocusStreak] = useState(7); // Example streak
-    const [currentQuote, setCurrentQuote] = useState('');
-    const [isAmbientSoundOn, setIsAmbientSoundOn] = useState(false);
-    const [volume, setVolume] = useState(50);
-    const [habits, setHabits] = useState([
-        { id: 1, name: 'Meditate', completed: false },
-        { id: 2, name: 'Exercise', completed: false },
-        { id: 3, name: 'Read', completed: false },
-        { id: 4, name: 'Hydrate', completed: false }
-    ]);
+    const [newTaskTitle, setNewTaskTitle] = useState('');
+    const [newTaskTag, setNewTaskTag] = useState('Study');
+    const [showCompleted, setShowCompleted] = useState(false);
+    
+    // Distraction Journal
+    const [distractionNotes, setDistractionNotes] = useState('');
+    const [distractionHistory, setDistractionHistory] = useState([]);
+    
+    // Focus Tracker/Stats
+    const [focusStats, setFocusStats] = useState({
+        totalFocusTime: 0,
+        tasksCompleted: 0,
+        focusStreak: 7,
+        todayTasks: 3
+    });
+    
+    // Pomodoro Timer
+    const [pomodoroTime, setPomodoroTime] = useState(25 * 60); // 25 minutes in seconds
+    const [isPomodoroActive, setIsPomodoroActive] = useState(false);
+    const [pomodoroRound, setPomodoroRound] = useState(1);
+    const [totalRounds, setTotalRounds] = useState(4);
+    
+    // Focus Mode Lock
     const [isFocusMode, setIsFocusMode] = useState(false);
-    const [allTasksComplete, setAllTasksComplete] = useState(false);
-
-    const quotes = [
-        "Focus on being productive instead of busy.",
-        "The key is not to prioritize what's on your schedule, but to schedule your priorities.",
-        "Where focus goes, energy flows.",
-        "Stay focused, go after your dreams and keep moving toward your goals.",
-        "Focus on the journey, not the destination."
-    ];
-
-    useEffect(() => {
-        setCurrentQuote(quotes[Math.floor(Math.random() * quotes.length)]);
-        const quoteInterval = setInterval(() => {
-            setCurrentQuote(quotes[Math.floor(Math.random() * quotes.length)]);
-        }, 30000);
-        return () => clearInterval(quoteInterval);
-    }, []);
-
-    useEffect(() => {
-        setAllTasksComplete(focusTasks.every(t => t.text && t.completed));
-    }, [focusTasks]);
+    
+    // Ambient Sound
+    const [ambientSound, setAmbientSound] = useState('silence');
+    const [isSoundOn, setIsSoundOn] = useState(false);
+    
+    // Daily Highlight
+    const [dailyHighlight, setDailyHighlight] = useState('');
+    
+    // Task groups
+    const todayTasks = tasks.filter(task => !task.completed);
+    const completedTasks = tasks.filter(task => task.completed);
+    const upcomingTasks = tasks.filter(task => !task.completed && task.dueTime);
 
     // Handlers
-    const handleTaskChange = (id, value) => {
-        setFocusTasks(tasks => tasks.map(t => t.id === id ? { ...t, text: value } : t));
-    };
-    const handleTaskToggle = (id) => {
-        setFocusTasks(tasks => tasks.map(t => t.id === id ? { ...t, completed: !t.completed } : t));
-    };
-    const handleDistractionSubmit = (e) => {
-        e.preventDefault();
-        if (distractionInput.trim()) {
-            const newDistraction = {
+    const handleAddTask = () => {
+        if (newTaskTitle.trim()) {
+            const newTask = {
                 id: Date.now(),
-                text: distractionInput,
-                timestamp: new Date().toLocaleTimeString()
+                title: newTaskTitle,
+                tag: newTaskTag,
+                completed: false,
+                dueTime: null
             };
-            setDistractions([...distractions, newDistraction]);
-            setDistractionInput('');
+            setTasks([...tasks, newTask]);
+            setNewTaskTitle('');
+            setNewTaskTag('Study');
         }
     };
-    const toggleHabit = (habitId) => {
-        setHabits(habits.map(habit =>
-            habit.id === habitId ? { ...habit, completed: !habit.completed } : habit
+
+    const handleToggleTask = (taskId) => {
+        setTasks(tasks.map(task => 
+            task.id === taskId ? { ...task, completed: !task.completed } : task
         ));
     };
-    const toggleAmbientSound = () => {
-        setIsAmbientSoundOn(!isAmbientSoundOn);
+
+    const handleDeleteTask = (taskId) => {
+        setTasks(tasks.filter(task => task.id !== taskId));
+    };
+
+    const handleSaveDistraction = () => {
+        if (distractionNotes.trim()) {
+            const newDistraction = {
+                id: Date.now(),
+                text: distractionNotes,
+                timestamp: new Date().toLocaleTimeString(),
+                label: 'General'
+            };
+            setDistractionHistory([newDistraction, ...distractionHistory]);
+            setDistractionNotes('');
+        }
+    };
+
+    const handlePomodoroToggle = () => {
+        setIsPomodoroActive(!isPomodoroActive);
+    };
+
+    const handleFocusModeToggle = () => {
+        setIsFocusMode(!isFocusMode);
+    };
+
+    const handleSaveHighlight = () => {
+        // Save daily highlight
+        console.log('Daily highlight saved:', dailyHighlight);
+    };
+
+    // Pomodoro timer effect
+    useEffect(() => {
+        let interval;
+        if (isPomodoroActive && pomodoroTime > 0) {
+            interval = setInterval(() => {
+                setPomodoroTime(prev => {
+                    if (prev <= 1) {
+                        setIsPomodoroActive(false);
+                        setPomodoroRound(prev => prev + 1);
+                        return 25 * 60; // Reset to 25 minutes
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+        }
+        return () => clearInterval(interval);
+    }, [isPomodoroActive, pomodoroTime]);
+
+    // Format time for display
+    const formatTime = (seconds) => {
+        const mins = Math.floor(seconds / 60);
+        const secs = seconds % 60;
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
     return (
         <div className={`focus-page ${isFocusMode ? 'focus-mode' : ''}`}>
+            {/* Header */}
             <div className="focus-header">
                 <button className="back-button" onClick={() => navigate('/study-room')}>
                     <FiArrowLeft /> Back to Study Room
                 </button>
                 <button 
                     className="focus-mode-toggle"
-                    onClick={() => setIsFocusMode(!isFocusMode)}
+                    onClick={handleFocusModeToggle}
                 >
                     {isFocusMode ? 'Exit Focus Mode' : 'Enter Focus Mode'}
                 </button>
             </div>
 
-            <div className="focus-grid-layout">
-                {/* Top Left: Focus Streak Widget */}
-                <section className="focus-streak-widget">
-                    <div className="focus-section-header">
-                        <span className="focus-section-bar" />
-                        <span className="focus-section-title">Focus Streak</span>
-                    </div>
-                    <div className="focus-streak-ring-container">
-                        <svg className="focus-streak-ring" width="90" height="90">
-                            <circle cx="45" cy="45" r="40" stroke="#4EE1C1" strokeWidth="7" fill="none" opacity="0.2" />
-                            <circle cx="45" cy="45" r="40" stroke="#4EE1C1" strokeWidth="7" fill="none" strokeDasharray={251.2} strokeDashoffset={251.2 - (focusStreak/30)*251.2} style={{ filter: 'drop-shadow(0 0 12px #4EE1C1)' }} />
-                        </svg>
-                        <div className="focus-streak-number-glow">
-                            <FaFire className="focus-streak-flame" />
-                            <span className="focus-streak-number">{focusStreak}</span>
-                        </div>
-                    </div>
-                    <div className="focus-streak-label">🔥 {focusStreak}-Day Focus Streak</div>
-                    <div className="focus-streak-subtext">Keep it going!</div>
-                </section>
-
-                {/* Top Right: Micro Habit Tracker */}
-                <section className="micro-habit-tracker">
-                    <div className="focus-section-header">
-                        <span className="focus-section-bar" />
-                        <span className="focus-section-title">Today's Micro Habits</span>
-                    </div>
-                    <div className="micro-habits-grid">
-                        {habits.map(habit => (
-                            <button
-                                key={habit.id}
-                                className={`micro-habit-card${habit.completed ? ' completed' : ''}`}
-                                onClick={() => toggleHabit(habit.id)}
-                            >
-                                <span className="micro-habit-icon">{habitIcons[habit.name]}</span>
-                                <span className="micro-habit-name">{habit.name}</span>
-                                {habit.completed && <span className="micro-habit-checkmark"><FiCheck /></span>}
-                            </button>
-                        ))}
-                    </div>
-                </section>
-
-                {/* Center: Today's Focus Tasks */}
-                <section className="focus-tasks-section">
-                    <div className="focus-section-header">
-                        <span className="focus-section-bar" />
-                        <span className="focus-section-title">Today's Focus Tasks</span>
-                    </div>
-                    <div className="focus-tasks-card">
-                        <FaThumbtack className="focus-tasks-pin" />
-                        <ul className="focus-tasks-list">
-                            {focusTasks.map(task => (
-                                <li key={task.id} className="focus-task-item">
-                                    <label className="focus-task-checkbox-label">
-                                        <input
-                                            type="checkbox"
-                                            checked={task.completed}
-                                            onChange={() => handleTaskToggle(task.id)}
-                                        />
-                                        <span className="focus-task-custom-checkbox" />
-                                    </label>
-                                    <input
-                                        type="text"
-                                        value={task.text}
-                                        onChange={e => handleTaskChange(task.id, e.target.value)}
-                                        className="focus-task-input"
-                                        placeholder="Task..."
-                                    />
-                                </li>
-                            ))}
-                        </ul>
-                        {allTasksComplete && <div className="focus-tasks-completed-badge">Completed!</div>}
-                    </div>
-                </section>
-
-                {/* Bottom: Distraction Log */}
-                <section className="distraction-log-section">
-                    <div className="focus-section-header">
-                        <span className="focus-section-bar" />
-                        <span className="focus-section-title">Distraction Log</span>
-                    </div>
-                    <form onSubmit={handleDistractionSubmit} className="distraction-form-modern">
+            {/* 1. Daily Intentions / Mindset Header */}
+            <section className="daily-intentions">
+                <div className="intention-container">
+                    <h2 className="intention-title">🧘 Today's Focus</h2>
+                    <div className="intention-input-wrapper">
                         <input
                             type="text"
-                            value={distractionInput}
-                            onChange={(e) => setDistractionInput(e.target.value)}
-                            placeholder="What distracted you?"
-                            className="distraction-input-modern"
+                            value={dailyIntention}
+                            onChange={(e) => setDailyIntention(e.target.value)}
+                            placeholder="Set your intention for today..."
+                            className="intention-input"
                         />
-                        <button type="submit" className="distraction-log-btn">+ Log Distraction</button>
-                    </form>
-                    <div className="distraction-list-modern">
-                        {distractions.map(distraction => (
-                            <div key={distraction.id} className="distraction-item-modern">
-                                <span className="distraction-text-modern">{distraction.text}</span>
-                                <span className="distraction-time-modern">{distraction.timestamp}</span>
+                        <span className="intention-icon">🎯</span>
+                    </div>
+                </div>
+            </section>
+
+            <div className="focus-main-grid">
+                {/* 2. Tasks / To-Do List Section */}
+                <section className="tasks-section">
+                    <div className="section-header">
+                        <h3>✅ Today's Tasks</h3>
+                        <button 
+                            className="show-completed-toggle"
+                            onClick={() => setShowCompleted(!showCompleted)}
+                        >
+                            {showCompleted ? 'Hide' : 'Show'} Completed
+                        </button>
+                    </div>
+
+                    {/* Add new task */}
+                    <div className="add-task-form">
+                        <input
+                            type="text"
+                            value={newTaskTitle}
+                            onChange={(e) => setNewTaskTitle(e.target.value)}
+                            placeholder="Add a new task..."
+                            className="task-input"
+                        />
+                        <select 
+                            value={newTaskTag} 
+                            onChange={(e) => setNewTaskTag(e.target.value)}
+                            className="task-tag-select"
+                        >
+                            <option value="Study">Study</option>
+                            <option value="Break">Break</option>
+                            <option value="Exercise">Exercise</option>
+                            <option value="Other">Other</option>
+                        </select>
+                        <button onClick={handleAddTask} className="add-task-btn">
+                            <FiPlus />
+                        </button>
+                    </div>
+
+                    {/* Task list */}
+                    <div className="tasks-list">
+                        {todayTasks.map(task => (
+                            <div key={task.id} className="task-item">
+                                <label className="task-checkbox">
+                                    <input
+                                        type="checkbox"
+                                        checked={task.completed}
+                                        onChange={() => handleToggleTask(task.id)}
+                                    />
+                                    <span className="checkmark"></span>
+                                </label>
+                                <div className="task-content">
+                                    <span className="task-title">{task.title}</span>
+                                    <span className="task-tag">{task.tag}</span>
+                                    {task.dueTime && <span className="task-time">{task.dueTime}</span>}
+                                </div>
+                                <button 
+                                    onClick={() => handleDeleteTask(task.id)}
+                                    className="delete-task-btn"
+                                >
+                                    <FiX />
+                                </button>
                             </div>
                         ))}
+                        
+                        {showCompleted && completedTasks.map(task => (
+                            <div key={task.id} className="task-item completed">
+                                <label className="task-checkbox">
+                                    <input
+                                        type="checkbox"
+                                        checked={task.completed}
+                                        onChange={() => handleToggleTask(task.id)}
+                                    />
+                                    <span className="checkmark"></span>
+                                </label>
+                                <div className="task-content">
+                                    <span className="task-title">{task.title}</span>
+                                    <span className="task-tag">{task.tag}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+
+                {/* 3. Distraction Journal */}
+                <section className="distraction-journal">
+                    <div className="section-header">
+                        <h3>📝 Distraction Dump</h3>
+                    </div>
+                    <div className="distraction-container">
+                        <textarea
+                            value={distractionNotes}
+                            onChange={(e) => setDistractionNotes(e.target.value)}
+                            placeholder="Dump your intrusive thoughts here... (e.g., 'Need to check social media', 'Hungry for snacks')"
+                            className="distraction-textarea"
+                        />
+                        <button onClick={handleSaveDistraction} className="save-distraction-btn">
+                            Save Note
+                        </button>
+                    </div>
+                    
+                    {/* Distraction history */}
+                    <div className="distraction-history">
+                        <h4>Recent Distractions</h4>
+                        <div className="distraction-list">
+                            {distractionHistory.slice(0, 5).map(distraction => (
+                                <div key={distraction.id} className="distraction-item">
+                                    <span className="distraction-text">{distraction.text}</span>
+                                    <span className="distraction-time">{distraction.timestamp}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </section>
+
+                {/* 4. Focus Tracker / Stats */}
+                <section className="focus-stats">
+                    <div className="section-header">
+                        <h3>📊 Focus Stats</h3>
+                    </div>
+                    <div className="stats-grid">
+                        <div className="stat-card">
+                            <div className="stat-icon">⏱️</div>
+                            <div className="stat-content">
+                                <span className="stat-value">{focusStats.totalFocusTime}h</span>
+                                <span className="stat-label">Focus Time Today</span>
+                            </div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-icon">✅</div>
+                            <div className="stat-content">
+                                <span className="stat-value">{focusStats.tasksCompleted}</span>
+                                <span className="stat-label">Tasks Completed</span>
+                            </div>
+                        </div>
+                        <div className="stat-card">
+                            <div className="stat-icon">🔥</div>
+                            <div className="stat-content">
+                                <span className="stat-value">{focusStats.focusStreak}</span>
+                                <span className="stat-label">Day Streak</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                {/* 5. Bonus Features */}
+                <section className="bonus-features">
+                    {/* Pomodoro Timer */}
+                    <div className="pomodoro-widget">
+                        <div className="section-header">
+                            <h3>🌿 Pomodoro Timer</h3>
+                        </div>
+                        <div className="pomodoro-display">
+                            <div className="pomodoro-time">{formatTime(pomodoroTime)}</div>
+                            <div className="pomodoro-rounds">🍅 {pomodoroRound}/{totalRounds}</div>
+                            <button onClick={handlePomodoroToggle} className="pomodoro-toggle">
+                                {isPomodoroActive ? <FaPause /> : <FaPlay />}
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Ambient Sound */}
+                    <div className="ambient-sound">
+                        <div className="section-header">
+                            <h3>🎵 Focus Vibe</h3>
+                        </div>
+                        <select 
+                            value={ambientSound} 
+                            onChange={(e) => setAmbientSound(e.target.value)}
+                            className="sound-select"
+                        >
+                            <option value="silence">Silence</option>
+                            <option value="rain">Rain</option>
+                            <option value="lofi">Lo-Fi</option>
+                            <option value="nature">Nature</option>
+                        </select>
+                        <button 
+                            onClick={() => setIsSoundOn(!isSoundOn)}
+                            className={`sound-toggle ${isSoundOn ? 'active' : ''}`}
+                        >
+                            <FiMusic />
+                        </button>
+                    </div>
+
+                    {/* Daily Highlight */}
+                    <div className="daily-highlight">
+                        <div className="section-header">
+                            <h3>✨ Today's Win</h3>
+                        </div>
+                        <textarea
+                            value={dailyHighlight}
+                            onChange={(e) => setDailyHighlight(e.target.value)}
+                            placeholder="What's your biggest win today?"
+                            className="highlight-textarea"
+                        />
+                        <button onClick={handleSaveHighlight} className="save-highlight-btn">
+                            <FiStar /> Save Win
+                        </button>
                     </div>
                 </section>
             </div>
