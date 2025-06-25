@@ -1,10 +1,12 @@
 import anthropic
-import os
+import re
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
+from flashcards.models import Card, Deck
+from datetime import date
 
 client = anthropic.Anthropic(
     api_key='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'
@@ -63,5 +65,62 @@ class NoteTakerAi(APIView):
             )
             print(f'This is the message: {text_only}')
             return Response({'Message': text_only}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'Error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
+class CardsGen(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        prompt = request.data.get('prompt')
+        deck_id = request.data.get('deck_id')
+        if not prompt:
+            return Response({'Error': 'Prompt is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            message = client.messages.create(
+                model="claude-3-7-sonnet-20250219",
+                max_tokens=1000,
+                temperature=0.7,
+                system="Generate a list of flashcards based on the prompt. Each card should be separated by '## Card', and each card should follow this format:\n## Card\n**Front**: <front>\n**Back**: <back>. Just respond with the flashcards, no other text.",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [{"type": "text", "text": prompt}]
+                    }
+                ]
+            )
+
+            raw_output = message.content
+            text_output = "".join(
+                block.text for block in raw_output if getattr(block, 'type', "") == 'text'
+            )
+
+
+            cards = []
+            pattern = re.compile(
+                r"## Card\s*\d*\s*\*\*Front\*\*:\s*(.+?)\s*\n\*\*Back\*\*:\s*((?:.|\n)*?)(?=\n## Card|\Z)",
+                re.MULTILINE
+            )
+            matches = pattern.findall(text_output)
+
+            for front, back in matches:
+                cards.append({
+                    'front': front.strip(),
+                    'back': back.strip()
+                })
+            print(f'AI Flashcards: {cards}')
+            
+            for card in cards:
+                print(f"This is the card: {card['front']}")
+                print(f"This is the card: {card['back']}")
+                Card.objects.create(
+                    question=card['front'],
+                    answer=card['back'],
+                    card_deck=Deck.objects.filter(id=deck_id).first(),
+                    scheduled_date=date.today()
+                )
+
+            return Response({'Cards': cards}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'Error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
