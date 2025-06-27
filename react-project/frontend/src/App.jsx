@@ -13,7 +13,7 @@ import DeckContent from './components/DeckContent';
 import { useAuth, AuthProvider } from './auth/AuthContext'; // or wherever it's defined
 import { ThemeProvider } from './contexts/ThemeContext';
 import StudyDecks from './components/StudyDecks';
-import ReviewSession from './components/ReviewSession';
+import ReviewSession from './pages/ReviewSession';
 import ReviewPage from './pages/ReviewPage';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -27,6 +27,7 @@ import QuizCreatePage from './pages/QuizCreatePage';
 import QuizReviewPage from './pages/QuizReviewPage';
 import QuizTakePage from './pages/QuizTakePage';
 import QuizResultsPage from './pages/QuizResultsPage';
+import NightOwlFlashcardsPage from './pages/NightOwlFlashcardsPage';
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
@@ -200,6 +201,14 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <QuizResultsPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/night-owl-flashcards" 
+            element={
+              <ProtectedRoute>
+                <NightOwlFlashcardsPage />
               </ProtectedRoute>
             } 
           />

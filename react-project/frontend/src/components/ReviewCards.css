@@ -224,6 +224,7 @@
 
 .progress-section {
     margin-top: 16px;
+    height: 2.2rem;
 }
 
 .progress-label {
@@ -264,7 +265,6 @@
 .progress-text {
     font-size: 14px;
     color: #888;
-    margin: 0;
 }
 
 /* List view specific styles */
@@ -1380,7 +1380,7 @@
 
 .review-header .progress-fill {
     height: 100% !important;
-    background: #888 !important;
+    background: white !important;
     border-radius: 8px !important;
     transition: width 0.3s !important;
 }

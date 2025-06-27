@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import './DashboardHome.css';
 import { useNavigate } from 'react-router-dom';
+import { makeAuthenticatedRequest } from '../utils/api';
 
 const DashboardHome = () => {
   const { user } = useAuth();
@@ -19,33 +20,33 @@ const DashboardHome = () => {
     bonusXp: 50
   });
 
-  // Stock data for demonstration
-  const stockAchievements = [
-    {
-      name: "Knowledge Explorer",
-      description: "Completed 10 study sessions",
-      type: "knowledge",
-      tier: "bronze",
-      progress: 80,
-      isNew: true
-    },
-    {
-      name: "Streak Master",
-      description: "Maintained a 7-day study streak",
-      type: "streak",
-      tier: "silver",
-      progress: 100,
-      isNew: false
-    },
-    {
-      name: "Social Butterfly",
-      description: "Joined 5 study groups",
-      type: "social",
-      tier: "gold",
-      progress: 60,
-      isNew: false
-    }
-  ];
+  // State for achievements
+  const [achievements, setAchievements] = useState([]);
+  const [achievementsLoading, setAchievementsLoading] = useState(true);
+  const [achievementsError, setAchievementsError] = useState(null);
+
+  // Fetch achievements from API
+  useEffect(() => {
+    const fetchAchievements = async () => {
+      setAchievementsLoading(true);
+      setAchievementsError(null);
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/';
+        const response = await makeAuthenticatedRequest(`${apiUrl}achievements/user/`);
+        if (!response) throw new Error('No response from server');
+        if (!response.ok) throw new Error(await response.text());
+        const data = await response.json();
+        setAchievements(data);
+      } catch (err) {
+        setAchievementsError(err.message || 'Failed to fetch achievements');
+        // Fallback to empty array if API fails
+        setAchievements([]);
+      } finally {
+        setAchievementsLoading(false);
+      }
+    };
+    fetchAchievements();
+  }, []);
 
   const stockCollaborations = [
     {
@@ -112,7 +113,6 @@ const DashboardHome = () => {
     }
   ];
 
-  const [achievements] = useState(stockAchievements);
   const [collaborations] = useState(stockCollaborations);
   const [leaderboard] = useState(stockLeaderboard);
   const [studyChats] = useState(stockChats);
@@ -140,6 +140,42 @@ const DashboardHome = () => {
       case 'gold': return '#ffd700';
       default: return '#4ecdc4';
     }
+  };
+
+  // Helper function to determine achievement type from family
+  const getAchievementType = (family) => {
+    if (!family) return 'general';
+    const familyLower = family.toLowerCase();
+    if (familyLower.includes('flashcard') || familyLower.includes('study')) return 'knowledge';
+    if (familyLower.includes('streak') || familyLower.includes('consistency')) return 'streak';
+    if (familyLower.includes('social') || familyLower.includes('group')) return 'social';
+    if (familyLower.includes('mastery') || familyLower.includes('quiz')) return 'mastery';
+    return 'general';
+  };
+
+  // Get display achievements (limit to 3 for dashboard)
+  const getDisplayAchievements = () => {
+    if (achievementsLoading) {
+      return [
+        { name: "Loading...", description: "Fetching achievements", type: "general", tier: "general", progress: 0, isNew: false }
+      ];
+    }
+    
+    if (achievementsError || achievements.length === 0) {
+      return [
+        { name: "No Achievements", description: "Complete tasks to earn achievements", type: "general", tier: "general", progress: 0, isNew: false }
+      ];
+    }
+
+    // Take first 3 achievements and format them for display
+    return achievements.slice(0, 3).map(achievement => ({
+      name: achievement.name || achievement.title || "Achievement",
+      description: achievement.description || "Complete this achievement",
+      type: getAchievementType(achievement.family),
+      tier: achievement.tier || "general",
+      progress: achievement.progress || 0,
+      isNew: false // You could add logic to determine if achievement is new
+    }));
   };
 
   const xpForLevel = (level) => Math.floor(100 * Math.pow(1.5, level - 1));
@@ -219,20 +255,22 @@ const DashboardHome = () => {
 
       {/* Achievements Section */}
       <div className="dashboard-achievements">
+        <div className="section-header">
           <div className="achievements-header">
             <div className="achievements-title">
               <h2><Trophy size={24} /> Achievements</h2>
               <p>Track your learning milestones and accomplishments</p>
             </div>
-            <button 
-              className="view-achievements-btn"
-              onClick={() => navigate('/achievements')}
-            >
-              View Achievements
-            </button>
           </div>
+          <button 
+            className="view-achievements-btn"
+            onClick={() => navigate('/achievements')}
+          >
+            View Achievements
+          </button>
+        </div>
         <div className="achievements-grid">
-          {achievements.map((achievement, index) => (
+          {getDisplayAchievements().map((achievement, index) => (
             <div key={index} className={`achievement-card ${achievement.isNew ? 'new' : ''}`}>
               <div className="achievement-icon" style={{ background: getAchievementTier(achievement.tier) }}>
                 {getAchievementIcon(achievement.type)}
