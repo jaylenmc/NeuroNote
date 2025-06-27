@@ -102,7 +102,7 @@ const StudyRoom = () => {
     };
 
     const handleBackToFlashcards = () => {
-        navigate('/dashboard?tab=flashcards');
+        navigate('/night-owl-flashcards');
     };
 
     const handleProgressClick = () => {

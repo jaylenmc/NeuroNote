@@ -60,7 +60,10 @@
 
 .dashboard-sidebar {
     width: 250px;
-    height: calc(100vh - 48px);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
     background: rgba(30, 30, 30, 0.7);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
@@ -564,23 +567,107 @@
 }
 
 .folder-content-item {
-    background: #2A2A2A;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 8px;
-    padding: 8px 12px;
-    margin: 4px 0;
-    cursor: pointer;
-    transition: all 0.2s ease;
+    display: flex !important;
+    align-items: center !important;
+    background: #2A2A2A !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    border-radius: 6px !important;
+    padding: 6px 10px !important;
+    margin-bottom: 4px !important;
+    cursor: pointer !important;
+    transition: all 0.2s ease !important;
+    height: 45px !important;
+    box-shadow: none !important;
+    position: static !important;
+}
+.folders-list .folder-content-item:hover {
+    background: #2A2A2A !important;
+    border-color: rgba(255, 255, 255, 0.05) !important;
+    transform: none !important;
+}
+.folders-list .folder-content-item.active {
+    background: #333333 !important;
+    border-color: rgba(255, 255, 255, 0.15) !important;
+}
+.folders-list .folder-content-item .content-icon {
+    width: 16px !important;
+    height: 16px !important;
+    object-fit: contain !important;
+    margin-right: 6px !important;
+    position: relative !important;
+    top: 7px !important;
+    font-size: 1.1rem !important;
+    color: #888 !important;
+}
+.folders-list .folder-content-item .content-name {
+    flex: 1 !important;
+    font-size: 13px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    margin-right: 6px !important;
+    color: #888 !important;
+    line-height: 1 !important;
+    position: relative !important;
+    top: 2px !important;
+    display: flex !important;
+    align-items: center !important;
+}
+.folders-list .folder-content-item .item-meta,
+.folders-list .folder-content-item .item-tag,
+.folders-list .folder-content-item .item-actions {
+    display: none !important;
 }
 
 .folder-content-item:hover {
-    background: #333333;
-    border-color: rgba(255, 255, 255, 0.1);
+    background: #2A2A2A;
+    border-color: rgba(255, 255, 255, 0.05);
 }
 
 .folder-content-item.active {
     background: #333333;
     border-color: rgba(255, 255, 255, 0.15);
+}
+
+.folder-content-item .content-icon {
+    width: 16px;
+    height: 16px;
+    object-fit: contain;
+    margin-right: 6px;
+    position: relative;
+    top: 7px;
+    font-size: 1.1rem;
+    color: #888;
+}
+
+.folder-content-item .content-name {
+    flex: 1;
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-right: 6px;
+    color: #888;
+    line-height: 1;
+    position: relative;
+    top: 2px;
+}
+
+.folder-content-item .item-meta {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.folder-content-item .item-actions {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+}
+
+.folder-content-item:hover .item-actions {
+    opacity: 1;
 }
 
 .content-icon {
@@ -931,11 +1018,13 @@
 
 /* Folders Section */
 .folders-section {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
     margin-top: 24px;
     padding: 16px;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
-    flex: 1;
-    overflow-y: auto;
     overflow-x: hidden; /* Prevent horizontal scroll */
     max-height: calc(100vh - 200px);
     padding-right: 10px; /* Space for scrollbar */
@@ -1003,9 +1092,21 @@
 }
 
 .folders-list {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: 50vh;
+    overflow-y: auto;
+    padding-right: 16px;
+    box-sizing: border-box;
+}
+
+.folders-list::-webkit-scrollbar {
+    width: 8px;
+    background: transparent;
+}
+.folders-list::-webkit-scrollbar-thumb {
+    background: #444;
+    border-radius: 6px;
 }
 
 .folder-item {
@@ -1093,7 +1194,6 @@
 .folder-contents {
     margin-left: 20px;
     border-left: 1px solid #333;
-    padding-left: 6px;
     max-height: 0;
     overflow: hidden;
     transition: max-height 0.3s ease, opacity 0.3s ease;
@@ -3114,8 +3214,7 @@
 
 .block-input {
   width: 100%;
-  height: 100%;
-  min-height: 100%;
+  min-height: 2rem;
   background: transparent;
   border: none;
   color: #E0E0E0;
@@ -3126,8 +3225,6 @@
   resize: none;
   font-family: inherit;
   transition: all 0.2s ease;
-  display: flex;
-  align-items: stretch;
   box-sizing: border-box;
 }
 
@@ -3143,6 +3240,12 @@
 .block-input.paragraph {
   font-size: 16px !important;
   line-height: 1.5 !important;
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  height: auto !important;
+  min-height: 2rem !important;
+  z-index: auto !important;
 }
 
 .block-input.heading-1 {
@@ -3150,6 +3253,12 @@
   line-height: 1.2 !important;
   font-weight: 700 !important;
   color: #F5F5F5;
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  height: auto !important;
+  min-height: 2rem !important;
+  z-index: auto !important;
 }
 
 .block-input.heading-2 {
@@ -3157,6 +3266,12 @@
   line-height: 1.3 !important;
   font-weight: 600 !important;
   color: #F5F5F5;
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  height: auto !important;
+  min-height: 2rem !important;
+  z-index: auto !important;
 }
 
 .block-input.heading-3 {
@@ -3164,6 +3279,12 @@
   line-height: 1.4 !important;
   font-weight: 600 !important;
   color: #F5F5F5;
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  height: auto !important;
+  min-height: 2rem !important;
+  z-index: auto !important;
 }
 
 .block-input.quote {
@@ -3369,4 +3490,59 @@
 
 .block-input.code::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.3);
+}
+
+.block-input[contenteditable="true"]:empty:before {
+  content: attr(data-placeholder);
+  color: #888;
+  opacity: 0.7;
+  pointer-events: none;
+  font-style: italic;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  display: block;
+}
+
+.block-input[contenteditable="true"]:focus:before {
+  opacity: 0.7;
+}
+
+.folder-item.active {
+    background: #333333;
+    border-color: rgba(255, 255, 255, 0.15);
+}
+
+.subfolder-item {
+    margin-bottom: 2px;
+    margin-left: 0 !important;
+    padding-left: 6px !important;
+}
+
+.subfolder-item .folder-item {
+    background: #222222;
+    border-color: rgba(255, 255, 255, 0.03);
+    height: 35px;
+    padding: 4px 8px;
+}
+
+.subfolder-item .folder-item:hover {
+    background: #2A2A2A;
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+.subfolder-item .folder-item.active {
+    background: #2A2A2A;
+    border-color: rgba(255, 255, 255, 0.12);
+}
+
+.subfolder-item .folder-name {
+    font-size: 12px;
+    color: #777;
+}
+
+.subfolder-item .folder-count {
+    font-size: 11px;
+    color: #666;
 }

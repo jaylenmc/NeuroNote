@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api/axios';
-import { FiArrowLeft } from 'react-icons/fi';
-import './QuizCreatePage.css';
+import { FiArrowLeft, FiChevronRight, FiEdit3, FiSmile, FiMeh, FiFrown, FiClock, FiCheckCircle, FiXCircle, FiChevronLeft } from 'react-icons/fi';
+import './QuizTakePage.css';
 
 const QuizTakePage = () => {
   const { quizId } = useParams();
@@ -15,9 +15,108 @@ const QuizTakePage = () => {
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const [userAnswersData, setUserAnswersData] = useState(null); // For review mode
+  
+  // Animation and interaction states
+  const [isIdle, setIsIdle] = useState(false);
+  const [streakCount, setStreakCount] = useState(0);
+  const [lastActivity, setLastActivity] = useState(Date.now());
+  const [questionTransition, setQuestionTransition] = useState(false);
+  const [ambientPulse, setAmbientPulse] = useState(0);
+  
+  // New UI enhancement states
+  const [notes, setNotes] = useState({}); // { questionId: note }
+  const [confidence, setConfidence] = useState({}); // { questionId: confidence }
+  const [showNoteModal, setShowNoteModal] = useState(false);
+  const [currentNote, setCurrentNote] = useState('');
+  const [showConfidenceMeter, setShowConfidenceMeter] = useState(false);
+  const [paceProgress, setPaceProgress] = useState(0);
+  const [visitedQuestions, setVisitedQuestions] = useState(new Set()); // Track visited questions
+  const [showTooltip, setShowTooltip] = useState(false);
+  
+  const idleTimeoutRef = useRef(null);
+  const ambientIntervalRef = useRef(null);
+  const [flipExplanation, setFlipExplanation] = useState(false);
+  const correctOptionRef = useRef(null);
+  const tooltipTimeout = useRef();
 
   // Detect review mode by checking if the path ends with /review
   const reviewMode = window.location.pathname.endsWith('/review');
+
+  // Move currentQuestion declaration above useEffect
+  const currentQuestion = reviewMode && userAnswersData 
+    ? userAnswersData[activeQuestion] 
+    : questions[activeQuestion];
+
+  // Idle detection and ambient effects
+  useEffect(() => {
+    const handleActivity = () => {
+      setLastActivity(Date.now());
+      setIsIdle(false);
+      if (idleTimeoutRef.current) {
+        clearTimeout(idleTimeoutRef.current);
+      }
+      idleTimeoutRef.current = setTimeout(() => setIsIdle(true), 10000);
+    };
+
+    // Ambient pulse effect
+    ambientIntervalRef.current = setInterval(() => {
+      setAmbientPulse(prev => (prev + 1) % 100);
+    }, 100);
+
+    // Pace progress simulation
+    const paceInterval = setInterval(() => {
+      setPaceProgress(prev => Math.min(prev + 0.5, 100));
+    }, 1000);
+
+    // Track user activity
+    const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart'];
+    events.forEach(event => document.addEventListener(event, handleActivity));
+    
+    handleActivity(); // Initialize
+
+    return () => {
+      events.forEach(event => document.removeEventListener(event, handleActivity));
+      if (idleTimeoutRef.current) clearTimeout(idleTimeoutRef.current);
+      if (ambientIntervalRef.current) clearInterval(ambientIntervalRef.current);
+      clearInterval(paceInterval);
+    };
+  }, []);
+
+  // Question transition effect
+  useEffect(() => {
+    setQuestionTransition(true);
+    const timer = setTimeout(() => setQuestionTransition(false), 300);
+    return () => clearTimeout(timer);
+  }, [activeQuestion]);
+
+  // Track when user navigates away from a question without answering
+  useEffect(() => {
+    if (activeQuestion > 0 && questions[activeQuestion - 1]?.id) {
+      const previousQuestion = questions[activeQuestion - 1];
+      if (!answers[previousQuestion.id]) {
+        setVisitedQuestions(prev => new Set([...prev, previousQuestion.id]));
+      }
+    }
+  }, [activeQuestion, questions, answers]);
+
+  // Handle note taking
+  const handleNoteClick = () => {
+    const currentQuestionId = reviewMode && userAnswersData ? userAnswersData[activeQuestion]?.id : questions[activeQuestion]?.id;
+    setCurrentNote(notes[currentQuestionId] || '');
+    setShowNoteModal(true);
+  };
+
+  const handleSaveNote = () => {
+    const currentQuestionId = reviewMode && userAnswersData ? userAnswersData[activeQuestion]?.id : questions[activeQuestion]?.id;
+    setNotes(prev => ({ ...prev, [currentQuestionId]: currentNote }));
+    setShowNoteModal(false);
+  };
+
+  const handleConfidenceSelect = (level) => {
+    const currentQuestionId = reviewMode && userAnswersData ? userAnswersData[activeQuestion]?.id : questions[activeQuestion]?.id;
+    setConfidence(prev => ({ ...prev, [currentQuestionId]: level }));
+    setShowConfidenceMeter(false);
+  };
 
   useEffect(() => {
     const fetchQuiz = async () => {
@@ -101,6 +200,40 @@ const QuizTakePage = () => {
     ? `${activeQuestion + 1}/${userAnswersData?.length || 0}`
     : `${activeQuestion + 1}/${questions.length}`;
 
+  const totalQuestions = reviewMode ? (userAnswersData?.length || 0) : questions.length;
+  const currentConfidence = confidence[currentQuestion?.id];
+
+  // Check if there are any visited but unanswered questions
+  const hasUnansweredVisitedQuestions = !reviewMode && questions.length > 0 && 
+    questions.some(q => visitedQuestions.has(q.id) && !answers[q.id]);
+
+  // Get list of unanswered visited questions for tooltip (as numbers)
+  const unansweredList = questions
+    .filter(q => visitedQuestions.has(q.id) && !answers[q.id])
+    .map(q => questions.findIndex(question => question.id === q.id) + 1);
+
+  const getUnansweredQuestionsList = () => {
+    if (reviewMode) return '';
+    if (unansweredList.length === 1) {
+      return (
+        <>Question <button className="quiz-take-tooltip-jump" onClick={() => setActiveQuestion(unansweredList[0] - 1)}>{unansweredList[0]}</button> not answered</>
+      );
+    }
+    return (
+      <>
+        Questions {unansweredList.map((num, i) => (
+          <button
+            key={num}
+            className="quiz-take-tooltip-jump"
+            onClick={() => setActiveQuestion(num - 1)}
+          >
+            {num}
+          </button>
+        )).reduce((prev, curr) => [prev, ', ', curr])} not answered
+      </>
+    );
+  };
+
   const handleSelect = (qIdx, oIdx) => {
     const q = questions[qIdx];
     const selectedAnswerId = q.answerIds[oIdx];
@@ -168,159 +301,413 @@ const QuizTakePage = () => {
     }
   };
 
-  if (loading) return <div className="quiz-create-bg"><div className="loading">Loading quiz...</div></div>;
-  if (error) return <div className="quiz-create-bg"><div className="error-message">{error}</div></div>;
+  useEffect(() => {
+    if (correctOptionRef.current && currentQuestion) {
+      const rect = correctOptionRef.current.getBoundingClientRect();
+      // If the right edge + bubble width > window width, flip
+      if (rect.right + 340 > window.innerWidth) {
+        setFlipExplanation(true);
+      } else {
+        setFlipExplanation(false);
+      }
+    }
+  }, [currentQuestion, activeQuestion]);
 
-  // In review mode, use userAnswersData
-  const currentQuestion = reviewMode && userAnswersData 
-    ? userAnswersData[activeQuestion] 
-    : questions[activeQuestion];
+  const handleTooltipEnter = () => {
+    clearTimeout(tooltipTimeout.current);
+    setShowTooltip(true);
+  };
+  const handleTooltipLeave = () => {
+    tooltipTimeout.current = setTimeout(() => setShowTooltip(false), 250);
+  };
+
+  if (loading) return <div className="quiz-review-bg"><div className="loading">Loading quiz...</div></div>;
+  if (error) return <div className="quiz-review-bg"><div className="error-message">{error}</div></div>;
 
   if (reviewMode && !userAnswersData) {
-    return <div className="quiz-create-bg"><div className="error-message">No review data found.</div></div>;
+    return <div className="quiz-review-bg"><div className="error-message">No review data found.</div></div>;
+  }
+
+  // --- MONOCHROME REVIEW UI ---
+  if (reviewMode) {
+    const totalQuestions = userAnswersData?.length || 0;
+    const progressPercent = totalQuestions ? ((activeQuestion + 1) / totalQuestions) * 100 : 0;
+    // Timer placeholder (implement if available)
+    const timerDisplay = currentQuestion?.time_taken ? `${currentQuestion.time_taken}s` : '';
+    
+    // Calculate ambient pulse effect
+    const pulseOpacity = 0.03 + (Math.sin(ambientPulse * 0.1) * 0.02);
+    const pulseScale = 1 + (Math.sin(ambientPulse * 0.05) * 0.02);
+    
+    // Get current question data
+    const currentQuestionId = userAnswersData?.[activeQuestion]?.id;
+    const currentNote = notes[currentQuestionId] || '';
+    const currentConfidence = confidence[currentQuestionId];
+    
+    return (
+      <div className="quiz-review-bg">
+        {/* Enhanced themed background */}
+        <div className="quiz-review-gradient-bg" />
+        <div 
+          className="quiz-review-ambient-pulse"
+          style={{
+            opacity: pulseOpacity,
+            transform: `scale(${pulseScale})`,
+          }}
+        />
+        <div className="quiz-review-noise-overlay" />
+        
+        {/* Top Floating Bar */}
+        <div className={`quiz-review-topbar${isIdle ? ' idle' : ''}${streakCount > 2 ? ' streak' : ''}`}>
+          <button
+            className="quiz-review-topbar-back-btn"
+            onClick={() => navigate('/quiz')}
+            aria-label="Back to Quiz List"
+          >
+            <FiArrowLeft />
+            <span>Back</span>
+          </button>
+          <div className="quiz-review-topbar-progress">
+            <div className="quiz-review-progress-bar">
+              <div 
+                className="quiz-review-progress-fill" 
+                style={{ 
+                  width: `${progressPercent}%`,
+                  animationDelay: `${ambientPulse * 0.01}s`
+                }} 
+              />
+            </div>
+          </div>
+          <div className="quiz-review-topbar-title">{quizTitle}</div>
+          <div className="quiz-review-topbar-timer">{timerDisplay}</div>
+        </div>
+
+        {/* Main Body */}
+        <div className={`quiz-review-main${questionTransition ? ' transitioning' : ''}`}>
+          {/* Question header with type icon and note button */}
+          <div className="quiz-review-question-header">
+            <div className="quiz-review-question-type">
+              <FiCheckCircle className="question-type-icon" />
+              <span>Multiple Choice</span>
+            </div>
+            <button 
+              className="quiz-review-note-btn"
+              onClick={handleNoteClick}
+              aria-label="Add note"
+            >
+              <FiEdit3 />
+              {currentNote && <span className="note-indicator" />}
+            </button>
+          </div>
+          
+          <div className="quiz-review-question">{currentQuestion?.question_input}</div>
+          <div className="quiz-review-subtext">Question {activeQuestion + 1} of {totalQuestions}</div>
+          
+          {/* Pace indicator */}
+          <div className="quiz-review-pace-indicator">
+            <FiClock />
+            <div className="pace-bar">
+              <div 
+                className="pace-fill" 
+                style={{ width: `${paceProgress}%` }}
+              />
+            </div>
+            <span>Pace: {Math.round(paceProgress)}%</span>
+          </div>
+          
+          <div className="quiz-review-options">
+            {currentQuestion?.answers?.map((answer, oIdx) => {
+              const isSelected = answer.is_user_answer;
+              const isCorrect = answer.answer_status === 'Correct';
+              const isIncorrect = answer.answer_status === 'Incorrect';
+              
+              let optionClass = 'quiz-review-option';
+              if (isCorrect) {
+                optionClass += ' correct';
+              } else if (isIncorrect) {
+                optionClass += ' incorrect';
+              } else if (isSelected) {
+                optionClass += ' selected';
+              }
+              
+              if (isCorrect) {
+                return (
+                  <div
+                    key={oIdx}
+                    className={optionClass}
+                    style={{ position: 'relative', animationDelay: `${oIdx * 0.1}s` }}
+                  >
+                    {(isSelected || isCorrect || isIncorrect) && <span className="quiz-review-option-dot" />}
+                    {answer.answer_input}
+                    {typeof answer.answer_status === 'string' && (
+                      <span className="quiz-review-feedback-row">
+                        <span className="quiz-review-feedback-icon correct">✓</span>
+                      </span>
+                    )}
+                    <div className="quiz-review-explanation below">
+                      <div className="explanation-header">
+                        <FiCheckCircle className="explanation-icon" />
+                        <span>Explanation</span>
+                      </div>
+                      <p>This question tests your understanding of the core concepts. Review the material if you found it challenging.</p>
+                    </div>
+                  </div>
+                );
+              }
+  return (
+                <button
+                  key={oIdx}
+                  className={optionClass}
+                  disabled
+                  type="button"
+                  style={{ animationDelay: `${oIdx * 0.1}s` }}
+                >
+                  {(isSelected || isCorrect || isIncorrect) && <span className="quiz-review-option-dot" />}
+                  {answer.answer_input}
+                  {typeof answer.answer_status === 'string' && (
+                    <span className="quiz-review-feedback-row">
+                      {isCorrect ? (
+                        <span className="quiz-review-feedback-icon correct">✓</span>
+                      ) : isIncorrect ? (
+                        <span className="quiz-review-feedback-icon incorrect">✗</span>
+                      ) : null}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          
+          {/* Confidence meter */}
+          {!currentConfidence && (
+            <div className="quiz-review-confidence-meter">
+              <p>How confident were you with this answer?</p>
+              <div className="confidence-options">
+                <button 
+                  className="confidence-btn"
+                  onClick={() => handleConfidenceSelect('low')}
+                >
+                  <FiFrown />
+                  <span>Not sure</span>
+                </button>
+                <button 
+                  className="confidence-btn"
+                  onClick={() => handleConfidenceSelect('medium')}
+                >
+                  <FiMeh />
+                  <span>Somewhat</span>
+                </button>
+                <button 
+                  className="confidence-btn"
+                  onClick={() => handleConfidenceSelect('high')}
+                >
+                  <FiSmile />
+                  <span>Very confident</span>
+                </button>
+              </div>
+            </div>
+          )}
+          
+          {/* Current confidence display */}
+          {currentConfidence && (
+            <div className="quiz-review-confidence-display">
+              <span>Confidence: </span>
+              {currentConfidence === 'high' && <FiSmile className="confidence-icon high" />}
+              {currentConfidence === 'medium' && <FiMeh className="confidence-icon medium" />}
+              {currentConfidence === 'low' && <FiFrown className="confidence-icon low" />}
+            </div>
+          )}
+        </div>
+
+        {/* Bottom Bar */}
+        <div className="quiz-review-bottom">
+          <button
+            className="quiz-review-bottom-btn"
+            onClick={() => setActiveQuestion(q => Math.max(0, q - 1))}
+            disabled={activeQuestion === 0}
+            aria-label="Previous Question"
+          >
+            <FiArrowLeft />
+          </button>
+          <button
+            className="quiz-review-bottom-btn next"
+            onClick={() => setActiveQuestion(q => Math.min(totalQuestions - 1, q + 1))}
+            disabled={activeQuestion === totalQuestions - 1}
+            aria-label="Next Question"
+            style={{ 
+              visibility: activeQuestion < totalQuestions - 1 ? 'visible' : 'hidden',
+              animationDelay: '0.2s'
+            }}
+          >
+            <FiChevronRight />
+          </button>
+        </div>
+
+        {/* Note Modal */}
+        {showNoteModal && (
+          <div className="quiz-review-note-modal-overlay" onClick={() => setShowNoteModal(false)}>
+            <div className="quiz-review-note-modal" onClick={e => e.stopPropagation()}>
+              <h3>Add Note</h3>
+              <textarea
+                value={currentNote}
+                onChange={(e) => setCurrentNote(e.target.value)}
+                placeholder="Write your thoughts about this question..."
+                rows={4}
+              />
+              <div className="note-modal-actions">
+                <button onClick={() => setShowNoteModal(false)}>Cancel</button>
+                <button onClick={handleSaveNote} className="save-btn">Save Note</button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (
-    <div className="quiz-create-bg quiz-create-scrollbar">
-      {/* Navbar with quiz title and progress */}
-      <nav className="quiz-create-navbar">
-        <div className="quiz-create-navbar-left">
-          <div className="quiz-create-navbar-title-static">{quizTitle}</div>
-        </div>
-        <div className="quiz-create-navbar-center-fixed">
-          <span className="quiz-create-navbar-questions-count">{progress}</span>
-        </div>
-        <div className="quiz-create-navbar-right">
-          <button className="quiz-create-navbar-back-btn" onClick={handleBack}>
+    <div className="quiz-take-bg">
+      {/* Navbar with back button on left, progress in center, title on right */}
+      <nav className="quiz-take-navbar">
+        <div className="quiz-take-navbar-left">
+          <button className="quiz-take-navbar-back-btn" onClick={handleBack}>
             <FiArrowLeft style={{ marginRight: 6 }} /> Back
           </button>
         </div>
+        <div className="quiz-take-navbar-center-fixed">
+          <div className="quiz-take-progress-container">
+            <div className="quiz-take-progress-bar">
+              <div 
+                className="quiz-take-progress-fill" 
+                style={{ width: `${((activeQuestion + 1) / totalQuestions) * 100}%` }}
+              />
+            </div>
+            <span className="quiz-take-questions-left">{activeQuestion + 1}/{totalQuestions}</span>
+          </div>
+        </div>
+        <div className="quiz-take-navbar-right">
+          <div className="quiz-take-navbar-title">{quizTitle}</div>
+        </div>
       </nav>
 
-      <div className="quiz-create-main-layout">
-        {/* Sidebar: Question List */}
-        <aside className="quiz-create-question-list-nav quiz-create-scrollbar">
-          {(reviewMode ? userAnswersData : questions).map((_, idx) => (
-            <button
-              key={idx}
-              className={`quiz-create-question-list-item${activeQuestion === idx ? ' active' : ''}${answers[questions[idx]?.id] !== undefined ? ' answered' : ''}`}
-              onClick={() => setActiveQuestion(idx)}
-              tabIndex={0}
+      {/* Main Content */}
+      <div className="quiz-take-main">
+        <div className="quiz-take-question-card">
+          {/* Warning indicator if there are visited but unanswered questions */}
+          {hasUnansweredVisitedQuestions && (
+            <div
+              className="quiz-take-warning-indicator"
+              onMouseEnter={handleTooltipEnter}
+              onMouseLeave={handleTooltipLeave}
             >
-              {idx + 1}
-            </button>
-          ))}
-        </aside>
-
-        {/* Main Content: Question Viewer */}
-        <main className="quiz-create-main-content">
-          <div className="quiz-create-section-header">Question {activeQuestion + 1}</div>
-          <div className={`quiz-create-question-card fade-slide`}>
-            <div className="quiz-create-question-card-top">
-              <span className="quiz-create-question-label">Q{activeQuestion + 1}</span>
+              <span>!</span>
+              <div
+                className={`quiz-take-tooltip${showTooltip ? ' visible' : ''}`}
+                onMouseEnter={handleTooltipEnter}
+                onMouseLeave={handleTooltipLeave}
+              >
+                <div className="quiz-take-tooltip-arrow"></div>
+                <div className="quiz-take-tooltip-content">
+                  {getUnansweredQuestionsList()}
+                </div>
+              </div>
             </div>
-            <div className="quiz-create-question-prompt-view">
+          )}
+          
+          <div className="quiz-take-question-header">Question {activeQuestion + 1}</div>
+          <div className="quiz-take-question-prompt">
               {reviewMode ? currentQuestion?.question_input : currentQuestion?.prompt}
             </div>
             
+          <div className="quiz-take-pace-display">
+            <span className="quiz-take-pace-label">Pace:</span>
+            <span className="quiz-take-pace-number">{Math.round(paceProgress)}</span>
+          </div>
+          
+          <div className="quiz-take-options-list">
             {reviewMode ? (
               // Review mode - show user answers data
-              <div className="quiz-create-options-list">
-                {currentQuestion?.answers?.map((answer, oIdx) => {
-                  console.log('Processing answer:', answer);
-                  let optionClass = 'quiz-review-option';
-                  if (answer.answer_status === 'Correct') {
+              currentQuestion?.answers?.map((answer, oIdx) => {
+                const isSelected = answer.is_user_answer;
+                const isCorrect = answer.answer_status === 'Correct';
+                const isIncorrect = answer.answer_status === 'Incorrect';
+                
+                let optionClass = 'quiz-take-option';
+                if (isCorrect) {
                     optionClass += ' correct';
-                  } else if (answer.answer_status === 'Incorrect') {
+                } else if (isIncorrect) {
                     optionClass += ' incorrect';
+                } else if (isSelected) {
+                  optionClass += ' selected';
                   }
-                  console.log('Final class:', optionClass);
                   
                   return (
                     <button
                       key={oIdx}
                       className={optionClass}
                       disabled={true}
-                      tabIndex={0}
                       type="button"
-                      style={{
-                        // Add inline styles as backup
-                        ...(answer.answer_status === 'Correct' && {
-                          border: '2px solid #4ecb7b',
-                          background: 'linear-gradient(135deg, #4ecb7b 0%, #3dbb6b 100%)',
-                          color: '#1a1a1a',
-                          fontWeight: '700',
-                          boxShadow: '0 4px 16px rgba(78, 203, 123, 0.4)'
-                        }),
-                        ...(answer.answer_status === 'Incorrect' && {
-                          border: '2px solid #ff6b6b',
-                          background: 'linear-gradient(135deg, #ff6b6b 0%, #ff5252 100%)',
-                          color: '#1a1a1a',
-                          fontWeight: '700',
-                          boxShadow: '0 4px 16px rgba(255, 107, 107, 0.4)'
-                        })
-                      }}
                     >
                       {answer.answer_input}
-                      {answer.answer_status === 'Correct' && (
-                        <span style={{ marginLeft: 8, color: '#4ecb7b', fontWeight: 700 }}>(Correct)</span>
-                      )}
-                      {answer.answer_status === 'Incorrect' && (
-                        <span style={{ marginLeft: 8, color: '#ff6b6b', fontWeight: 700 }}>(Your Answer)</span>
-                      )}
                     </button>
                   );
-                })}
-              </div>
+              })
             ) : (
               // Test mode - show interactive questions
-              currentQuestion?.question_type === 'MC' ? (
-                <div className="quiz-create-options-list">
-                  {currentQuestion.options.map((opt, oIdx) => {
-                    let optionClass = 'quiz-review-option';
+              currentQuestion?.options?.map((option, oIdx) => {
                     const selectedAnswerId = currentQuestion.answerIds[oIdx];
-                    if (answers[currentQuestion.id] === selectedAnswerId) optionClass += ' selected';
+                const isSelected = answers[currentQuestion.id] === selectedAnswerId;
+                
+                let optionClass = 'quiz-take-option';
+                if (isSelected) {
+                  optionClass += ' selected';
+                }
                     
                     return (
                       <button
                         key={oIdx}
                         className={optionClass}
                         onClick={() => handleSelect(activeQuestion, oIdx)}
-                        tabIndex={0}
                         type="button"
                       >
-                        {opt}
+                    {option}
                       </button>
                     );
-                  })}
-                </div>
-              ) : (
-                <textarea
-                  className="quiz-create-question-prompt"
-                  value={answers[currentQuestion.id] || ''}
-                  onChange={e => handleWrittenChange(activeQuestion, e.target.value)}
-                  placeholder="Type your answer…"
-                  rows={3}
-                  spellCheck={false}
-                  style={{ marginTop: '1.2rem', width: '100%' }}
-                />
-              )
+              })
             )}
           </div>
-        </main>
+        </div>
       </div>
 
-      {/* Sticky Footer: Submit */}
-      {!reviewMode && (
-        <footer className="quiz-create-footer">
+      {/* Navigation buttons in bottom corners */}
+      <button 
+        className="quiz-take-nav-btn quiz-take-nav-btn-back"
+        onClick={() => setActiveQuestion(q => Math.max(0, q - 1))}
+        disabled={activeQuestion === 0}
+        title="Previous question"
+      >
+        <FiChevronLeft />
+      </button>
+      
+      {/* Show submit button on last question, otherwise show next arrow */}
+      {!reviewMode && activeQuestion === totalQuestions - 1 ? (
           <button
-            className="quiz-create-save-btn"
+          className="quiz-take-nav-btn quiz-take-nav-btn-submit"
             onClick={handleSubmit}
-            disabled={Object.keys(answers).length !== questions.length || submitting}
-          >
-            {submitting ? 'Submitting...' : 'Submit Quiz'}
+          disabled={submitting || Object.keys(answers).length < questions.length}
+          title={Object.keys(answers).length < questions.length ? 'Answer all questions to submit' : 'Submit quiz'}
+        >
+          {submitting ? '...' : '✓'}
+        </button>
+      ) : (
+        <button 
+          className="quiz-take-nav-btn quiz-take-nav-btn-forward"
+          onClick={() => setActiveQuestion(q => Math.min(totalQuestions - 1, q + 1))}
+          disabled={activeQuestion === totalQuestions - 1}
+          title="Next question"
+        >
+          <FiChevronRight />
           </button>
-        </footer>
       )}
     </div>
   );

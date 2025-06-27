@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import { FiBell, FiSettings, FiCheck, FiClock, FiAlertCircle, FiGrid, FiList, FiTrendingUp, FiPlus, FiTrash2, FiEdit2, FiBook, FiHelpCircle, FiX, FiArrowRight, FiShuffle, FiPause, FiLayers, FiType, FiRotateCcw, FiArrowLeft, FiPlay } from 'react-icons/fi';
 import { Line, Bar } from 'react-chartjs-2';
 import {
@@ -45,6 +46,7 @@ styleSheet.innerText = confettiStyles;
 document.head.appendChild(styleSheet);
 
 const ReviewCards = ({ onViewModeChange }) => {
+  const navigate = useNavigate();
   const [cards, setCards] = useState([]);
   const [decks, setDecks] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -785,13 +787,8 @@ const ReviewCards = ({ onViewModeChange }) => {
       return;
     }
 
-    setReviewCards(dueCards);
-    setCurrentReviewCardIndex(0);
-    setShowReviewModal(true);
-    setIsFlipped(false);
-    setShowAnswer(false);
-    setUserAnswer('');
-    setSelectedDeck(null); // Set to null since we're reviewing all cards for the day
+    // Navigate to the dedicated review session page
+    navigate('/review-session');
   };
 
   const renderMyFlashcardsContent = () => {
@@ -1239,7 +1236,6 @@ const ReviewCards = ({ onViewModeChange }) => {
         </div>
       )}
       {renderModals()}
-      {showReviewModal && renderReviewModal()}
       {viewMode !== 'deck-details' && (
         <>
           <div className="study-room-header">

@@ -14,12 +14,13 @@ import Calendar from './Calendar';
 import ReviewCardsDashboard from './ReviewCardsDashboard';
 import DocumentEditor from './DocumentEditor';
 import bookshelfImg from '../assets/bookshelf.jpg';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import DashboardHome from './DashboardHome';
 import './DashboardHome.css';
 
-function Dashboard() {
+function Dashboard({ initialView }) {
     const navigate = useNavigate(); // <-- Move here, top level
+    const location = useLocation();
     const { user, logout, login } = useAuth();
     const [showDropdown, setShowDropdown] = useState(false);
     const [showWelcome, setShowWelcome] = useState(false);
@@ -28,7 +29,7 @@ function Dashboard() {
     const [showNewFolderModal, setShowNewFolderModal] = useState(false);
     const [newFolderName, setNewFolderName] = useState('');
     const [selectedFolder, setSelectedFolder] = useState(null);
-    const [activeView, setActiveView] = useState('dashboard');
+    const [activeView, setActiveView] = useState(initialView || 'dashboard');
     const [selectedTab, setSelectedTab] = useState(null);
     const [expandedFolders, setExpandedFolders] = useState({});
     const [selectedQuiz, setSelectedQuiz] = useState(null);
@@ -285,7 +286,9 @@ function Dashboard() {
                         ...folder,
                         documentCount: folder.content_num || 0,
                         deckCount: 0,
-                        quizCount: 0
+                        quizCount: 0,
+                        // Ensure sub_folders is properly handled
+                        sub_folders: folder.sub_folders || []
                     };
                 });
                 setFolders(foldersWithCounts);
@@ -333,24 +336,37 @@ function Dashboard() {
         };
     }, []);
 
-    const handleCreateFolder = async () => {
-        if (newFolderName.trim()) {
+    const handleCreateFolder = async (name = newFolderName, parentId = null) => {
+        if (name.trim()) {
             try {
                 const token = sessionStorage.getItem('jwt_token');
+                const body = parentId
+                    ? JSON.stringify({ name: name.trim(), folder_id: parentId })
+                    : JSON.stringify({ name: name.trim() });
                 const response = await fetch(`${import.meta.env.VITE_API_URL}folders/user/`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`
                     },
-                    body: JSON.stringify({ name: newFolderName.trim() })
+                    body
                 });
                 
                 if (response.ok) {
-                    const newFolder = await response.json();
-                    setFolders([...folders, newFolder]);
-                    setNewFolderName('');
-                    setShowNewFolderModal(false);
+                    const newFolderData = await response.json();
+                    // Handle both regular folders and subfolders
+                    if (newFolderData.folder) {
+                        // Regular folder created
+                        setFolders(prev => [...prev, newFolderData.folder]);
+                        setNewFolderName('');
+                        setShowNewFolderModal(false);
+                    } else if (newFolderData.sub_folder) {
+                        // Subfolder created, refresh folders to get updated structure
+                        fetchFolders();
+                        setShowNewSubfolderModal(false);
+                        setNewSubfolderName('');
+                        setSubfolderParentId(null);
+                    }
                 } else {
                     console.error('Failed to create folder:', await response.text());
                 }
@@ -854,7 +870,8 @@ function Dashboard() {
         // Prevent handling if this is a double click
         if (e.detail > 1) return;
         
-        const folder = folders.find(f => f.id === folderId);
+        const folder = folders.find(f => f.id === folderId) ||
+                       folders.flatMap(f => f.sub_folders || []).find(sf => sf.id === folderId);
         console.log('Initial folder state:', folder);
         
         // Start transition
@@ -916,15 +933,22 @@ function Dashboard() {
 
             // Update the folders state
             setFolders(prevFolders => {
-                const newFolders = prevFolders.map(f => {
+                return prevFolders.map(f => {
                     if (f.id === folderId) {
                         return updatedFolder;
                     }
+                    if (f.sub_folders) {
+                        return {
+                            ...f,
+                            sub_folders: f.sub_folders.map(sf => sf.id === folderId ? updatedFolder : sf)
+                        };
+                    }
                     return f;
                 });
-                console.log('New folders state:', newFolders);
-                return newFolders;
             });
+            // After updating folders, also update selectedFolder to the updatedFolder (for both folders and subfolders)
+            setSelectedFolder(updatedFolder);
+            setActiveView('folder');
         
         // Set new timeout
         const timeout = setTimeout(() => {
@@ -935,8 +959,6 @@ function Dashboard() {
         
             // Update the selected folder and view
             console.log('Setting selected folder to:', updatedFolder);
-            setSelectedFolder(updatedFolder);
-            setActiveView('folder');
         } catch (error) {
             console.error('Error fetching folder contents:', error);
             setIsTransitioning(false);
@@ -1632,92 +1654,93 @@ function Dashboard() {
     };
 
     const renderFolderItems = (folder) => {
-        if (!folder.items || folder.items.length === 0) {
-            return (
-                                                <div className="empty-folder-content">
-                                                    <p>No items in this folder</p>
-                                                    <div className="empty-folder-actions">
-                                                        <button 
-                                                            className="add-item-btn"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setIsNotesMode(true);
-                            }}
-                                                        >
-                            <FiFileText /> Add Document
-                                                        </button>
-                                                        <button 
-                                                            className="add-item-btn"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                setShowNewQuizModal(true);
-                            }}
-                                                        >
-                                                            <FiFileText /> Add Quiz
-                                                        </button>
-                                                    </div>
-                                                </div>
-            );
-        }
-
-        return folder.items.map(item => {
-            if (item.type === 'document') {
-                return (
-                    <div 
-                        key={item.id} 
-                        className={`folder-content-item ${selectedDocument?.id === item.id && activeView === 'document' ? 'active' : ''}`}
-                        onClick={() => handleDocumentClick(item)}
-                        onContextMenu={(e) => handleContextMenu(e, 'document', item.id)}
+        // Render subfolders at the top of the content area
+        const subfolders = folder.sub_folders || [];
+        const items = folder.items || [];
+        return (
+            <>
+                {subfolders.length > 0 && subfolders.map(subfolder => (
+                    <div
+                        key={subfolder.id}
+                        className={`folder-content-item`}
+                        onClick={(e) => { handleFolderClick(subfolder.id, e); }}
+                        style={{ cursor: 'pointer' }}
                     >
-                        <FiFileText className="content-icon" />
-                        <span className="content-name">{item.title}</span>
-                        <div className="item-meta">
-                            <span className="item-tag">Document</span>
-                            <span>{new Date(item.created_at).toLocaleDateString()}</span>
-                        </div>
-                        <div className="item-actions">
-                        <button 
-                                className="delete-btn"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteDocument(item.id);
-                                }}
+                        <img
+                            src={closedFolderIcon}
+                            alt="subfolder"
+                            className="content-icon"
+                            style={{ width: '1.5rem', height: '1.5rem', marginBottom: 0, marginRight: 10 }}
+                        />
+                        <span className="content-name" title={subfolder.name}>{subfolder.name.length > 18 ? subfolder.name.slice(0, 15) + '...' : subfolder.name}</span>
+                    </div>
+                ))}
+                {items.length === 0 && subfolders.length === 0 && (
+                    <div className="empty-folder-content">
+                        <p>No items in this folder</p>
+                    </div>
+                )}
+                {items.map(item => {
+                    if (item.type === 'document') {
+                        return (
+                            <div
+                                key={item.id}
+                                className={`folder-content-item ${selectedDocument?.id === item.id && activeView === 'document' ? 'active' : ''}`}
+                                onClick={() => handleDocumentClick(item)}
+                                onContextMenu={(e) => handleContextMenu(e, 'document', item.id)}
                             >
-                                ×
-                        </button>
-                    </div>
-                    </div>
-                );
-            } else if (item.type === 'quiz') {
-                return (
-                    <div 
-                        key={item.id} 
-                        className={`folder-content-item ${selectedQuiz?.id === item.id && activeView === 'quiz' ? 'active' : ''}`}
-                        onClick={(e) => handleQuizClick(item.id, e)}
-                        onContextMenu={(e) => handleContextMenu(e, 'quiz', item.id)}
-                    >
-                        <FiFileText className="content-icon" />
-                        <span className="content-name">{item.topic}</span>
-                        <div className="item-meta">
-                            <span className="item-tag">Quiz</span>
-                            <span>{item.subject}</span>
-                        </div>
-                        <div className="item-actions">
-                            <button 
-                                className="delete-btn"
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleDeleteQuiz(item.id);
-                                }}
+                                <FiFileText className="content-icon" />
+                                <span className="content-name">{item.title}</span>
+                                <div className="item-meta">
+                                    <span className="item-tag">Document</span>
+                                    <span>{new Date(item.created_at).toLocaleDateString()}</span>
+                                </div>
+                                <div className="item-actions">
+                                    <button
+                                        className="delete-btn"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteDocument(item.id);
+                                        }}
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    }
+                    if (item.type === 'quiz') {
+                        return (
+                            <div
+                                key={item.id}
+                                className={`folder-content-item ${selectedQuiz?.id === item.id && activeView === 'quiz' ? 'active' : ''}`}
+                                onClick={(e) => handleQuizClick(item.id, e)}
+                                onContextMenu={(e) => handleContextMenu(e, 'quiz', item.id)}
                             >
-                                ×
-                            </button>
-                        </div>
-                    </div>
-                );
-            }
-            return null;
-        });
+                                <FiFileText className="content-icon" />
+                                <span className="content-name">{item.topic}</span>
+                                <div className="item-meta">
+                                    <span className="item-tag">Quiz</span>
+                                    <span>{item.subject}</span>
+                                </div>
+                                <div className="item-actions">
+                                    <button
+                                        className="delete-btn"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleDeleteQuiz(item.id);
+                                        }}
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    }
+                    return null;
+                })}
+            </>
+        );
     };
 
     // Add useEffect to monitor state changes
@@ -1918,6 +1941,7 @@ function Dashboard() {
                                                             suppressContentEditableWarning
                                                             spellCheck={true}
                                                             data-block-id={block.id}
+                                                            data-placeholder="Text"
                                                             style={{...paragraphStyle, background: 'transparent', position: 'relative'}}
                                                             ref={el => blockRefs.current[block.id] = el}
                                                             onFocus={e => {
@@ -1926,7 +1950,11 @@ function Dashboard() {
                                                                 setEditingContent(e.currentTarget.innerHTML);
                                                             }}
                                                             onInput={e => {
-                                                                setEditingContent(e.currentTarget.innerHTML);
+                                                                let html = e.currentTarget.innerHTML;
+                                                                if (html === '<br>' || html.trim() === '') {
+                                                                    html = '';
+                                                                }
+                                                                setEditingContent(html);
                                                                 if (e.currentTarget.innerText.length > 0) {
                                                                     setEditingBlocks(prev => new Set(prev).add(block.id));
                                                                 } else {
@@ -1938,7 +1966,11 @@ function Dashboard() {
                                                                 }
                                                             }}
                                                             onBlur={e => {
-                                                                updateBlockContent(block.id, e.currentTarget.innerHTML);
+                                                                let html = e.currentTarget.innerHTML;
+                                                                if (html === '<br>' || html.trim() === '') {
+                                                                    html = '';
+                                                                }
+                                                                updateBlockContent(block.id, html);
                                                                 setEditingBlockId(null);
                                                                 setEditingContent('');
                                                             }}
@@ -1947,7 +1979,6 @@ function Dashboard() {
                                                             onKeyDown={e => {
                                                                 if (e.key === 'Backspace' && e.currentTarget.innerText.length === 0) {
                                                                     e.preventDefault();
-                                                                    // Only delete if more than one block exists
                                                                     if (blocks.length > 1) {
                                                                         const idx = blocks.findIndex(b => b.id === block.id);
                                                                         if (idx > 0) {
@@ -1975,6 +2006,7 @@ function Dashboard() {
                                                             suppressContentEditableWarning
                                                             spellCheck={true}
                                                             data-block-id={block.id}
+                                                            data-placeholder="Heading 1"
                                                             style={{background: 'transparent'}}
                                                             ref={el => blockRefs.current[block.id] = el}
                                                             onFocus={e => {
@@ -1983,7 +2015,11 @@ function Dashboard() {
                                                                 setEditingContent(e.currentTarget.innerHTML);
                                                             }}
                                                             onInput={e => {
-                                                                setEditingContent(e.currentTarget.innerHTML);
+                                                                let html = e.currentTarget.innerHTML;
+                                                                if (html === '<br>' || html.trim() === '') {
+                                                                    html = '';
+                                                                }
+                                                                setEditingContent(html);
                                                                 if (e.currentTarget.innerText.length > 0) {
                                                                     setEditingBlocks(prev => new Set(prev).add(block.id));
                                                                 } else {
@@ -1995,7 +2031,11 @@ function Dashboard() {
                                                                 }
                                                             }}
                                                             onBlur={e => {
-                                                                updateBlockContent(block.id, e.currentTarget.innerHTML);
+                                                                let html = e.currentTarget.innerHTML;
+                                                                if (html === '<br>' || html.trim() === '') {
+                                                                    html = '';
+                                                                }
+                                                                updateBlockContent(block.id, html);
                                                                 setEditingBlockId(null);
                                                                 setEditingContent('');
                                                             }}
@@ -2004,7 +2044,6 @@ function Dashboard() {
                                                             onKeyDown={e => {
                                                                 if (e.key === 'Backspace' && e.currentTarget.innerText.length === 0) {
                                                                     e.preventDefault();
-                                                                    // Only delete if more than one block exists
                                                                     if (blocks.length > 1) {
                                                                         const idx = blocks.findIndex(b => b.id === block.id);
                                                                         if (idx > 0) {
@@ -2032,6 +2071,7 @@ function Dashboard() {
                                                             suppressContentEditableWarning
                                                             spellCheck={true}
                                                             data-block-id={block.id}
+                                                            data-placeholder="Heading 2"
                                                             style={{background: 'transparent'}}
                                                             ref={el => blockRefs.current[block.id] = el}
                                                             onFocus={e => {
@@ -2040,7 +2080,11 @@ function Dashboard() {
                                                                 setEditingContent(e.currentTarget.innerHTML);
                                                             }}
                                                             onInput={e => {
-                                                                setEditingContent(e.currentTarget.innerHTML);
+                                                                let html = e.currentTarget.innerHTML;
+                                                                if (html === '<br>' || html.trim() === '') {
+                                                                    html = '';
+                                                                }
+                                                                setEditingContent(html);
                                                                 if (e.currentTarget.innerText.length > 0) {
                                                                     setEditingBlocks(prev => new Set(prev).add(block.id));
                                                                 } else {
@@ -2052,7 +2096,11 @@ function Dashboard() {
                                                                 }
                                                             }}
                                                             onBlur={e => {
-                                                                updateBlockContent(block.id, e.currentTarget.innerHTML);
+                                                                let html = e.currentTarget.innerHTML;
+                                                                if (html === '<br>' || html.trim() === '') {
+                                                                    html = '';
+                                                                }
+                                                                updateBlockContent(block.id, html);
                                                                 setEditingBlockId(null);
                                                                 setEditingContent('');
                                                             }}
@@ -2061,7 +2109,6 @@ function Dashboard() {
                                                             onKeyDown={e => {
                                                                 if (e.key === 'Backspace' && e.currentTarget.innerText.length === 0) {
                                                                     e.preventDefault();
-                                                                    // Only delete if more than one block exists
                                                                     if (blocks.length > 1) {
                                                                         const idx = blocks.findIndex(b => b.id === block.id);
                                                                         if (idx > 0) {
@@ -2089,6 +2136,7 @@ function Dashboard() {
                                                             suppressContentEditableWarning
                                                             spellCheck={true}
                                                             data-block-id={block.id}
+                                                            data-placeholder="Heading 3"
                                                             style={{background: 'transparent'}}
                                                             ref={el => blockRefs.current[block.id] = el}
                                                             onFocus={e => {
@@ -2097,7 +2145,11 @@ function Dashboard() {
                                                                 setEditingContent(e.currentTarget.innerHTML);
                                                             }}
                                                             onInput={e => {
-                                                                setEditingContent(e.currentTarget.innerHTML);
+                                                                let html = e.currentTarget.innerHTML;
+                                                                if (html === '<br>' || html.trim() === '') {
+                                                                    html = '';
+                                                                }
+                                                                setEditingContent(html);
                                                                 if (e.currentTarget.innerText.length > 0) {
                                                                     setEditingBlocks(prev => new Set(prev).add(block.id));
                                                                 } else {
@@ -2109,7 +2161,11 @@ function Dashboard() {
                                                                 }
                                                             }}
                                                             onBlur={e => {
-                                                                updateBlockContent(block.id, e.currentTarget.innerHTML);
+                                                                let html = e.currentTarget.innerHTML;
+                                                                if (html === '<br>' || html.trim() === '') {
+                                                                    html = '';
+                                                                }
+                                                                updateBlockContent(block.id, html);
                                                                 setEditingBlockId(null);
                                                                 setEditingContent('');
                                                             }}
@@ -2118,7 +2174,6 @@ function Dashboard() {
                                                             onKeyDown={e => {
                                                                 if (e.key === 'Backspace' && e.currentTarget.innerText.length === 0) {
                                                                     e.preventDefault();
-                                                                    // Only delete if more than one block exists
                                                                     if (blocks.length > 1) {
                                                                         const idx = blocks.findIndex(b => b.id === block.id);
                                                                         if (idx > 0) {
@@ -2153,6 +2208,7 @@ function Dashboard() {
                                                                 suppressContentEditableWarning
                                                                 spellCheck={true}
                                                                 data-block-id={block.id}
+                                                                data-placeholder="Checklist item..."
                                                                 style={{background: 'transparent', position: 'relative'}}
                                                                 ref={el => blockRefs.current[block.id] = el}
                                                                 onFocus={e => {
@@ -2161,7 +2217,11 @@ function Dashboard() {
                                                                     setEditingContent(e.currentTarget.innerHTML);
                                                                 }}
                                                                 onInput={e => {
-                                                                    setEditingContent(e.currentTarget.innerHTML);
+                                                                    let html = e.currentTarget.innerHTML;
+                                                                    if (html === '<br>' || html.trim() === '') {
+                                                                        html = '';
+                                                                    }
+                                                                    setEditingContent(html);
                                                                     if (e.currentTarget.innerText.length > 0) {
                                                                         setEditingBlocks(prev => new Set(prev).add(block.id));
                                                                     } else {
@@ -2173,7 +2233,11 @@ function Dashboard() {
                                                                     }
                                                                 }}
                                                                 onBlur={e => {
-                                                                    updateBlockContent(block.id, e.currentTarget.innerHTML);
+                                                                    let html = e.currentTarget.innerHTML;
+                                                                    if (html === '<br>' || html.trim() === '') {
+                                                                        html = '';
+                                                                    }
+                                                                    updateBlockContent(block.id, html);
                                                                     setEditingBlockId(null);
                                                                     setEditingContent('');
                                                                 }}
@@ -2182,7 +2246,6 @@ function Dashboard() {
                                                                 onKeyDown={e => {
                                                                     if (e.key === 'Backspace' && e.currentTarget.innerText.length === 0) {
                                                                         e.preventDefault();
-                                                                        // Only delete if more than one block exists
                                                                         if (blocks.length > 1) {
                                                                             const idx = blocks.findIndex(b => b.id === block.id);
                                                                             if (idx > 0) {
@@ -2217,6 +2280,7 @@ function Dashboard() {
                                                             suppressContentEditableWarning
                                                             spellCheck={true}
                                                             data-block-id={block.id}
+                                                            data-placeholder="Quote..."
                                                             style={{background: 'transparent', position: 'relative'}}
                                                             ref={el => blockRefs.current[block.id] = el}
                                                             onFocus={e => {
@@ -2225,7 +2289,11 @@ function Dashboard() {
                                                                 setEditingContent(e.currentTarget.innerHTML);
                                                             }}
                                                             onInput={e => {
-                                                                setEditingContent(e.currentTarget.innerHTML);
+                                                                let html = e.currentTarget.innerHTML;
+                                                                if (html === '<br>' || html.trim() === '') {
+                                                                    html = '';
+                                                                }
+                                                                setEditingContent(html);
                                                                 if (e.currentTarget.innerText.length > 0) {
                                                                     setEditingBlocks(prev => new Set(prev).add(block.id));
                                                                 } else {
@@ -2237,7 +2305,11 @@ function Dashboard() {
                                                                 }
                                                             }}
                                                             onBlur={e => {
-                                                                updateBlockContent(block.id, e.currentTarget.innerHTML);
+                                                                let html = e.currentTarget.innerHTML;
+                                                                if (html === '<br>' || html.trim() === '') {
+                                                                    html = '';
+                                                                }
+                                                                updateBlockContent(block.id, html);
                                                                 setEditingBlockId(null);
                                                                 setEditingContent('');
                                                             }}
@@ -2246,7 +2318,6 @@ function Dashboard() {
                                                             onKeyDown={e => {
                                                                 if (e.key === 'Backspace' && e.currentTarget.innerText.length === 0) {
                                                                     e.preventDefault();
-                                                                    // Only delete if more than one block exists
                                                                     if (blocks.length > 1) {
                                                                         const idx = blocks.findIndex(b => b.id === block.id);
                                                                         if (idx > 0) {
@@ -2274,6 +2345,7 @@ function Dashboard() {
                                                             suppressContentEditableWarning
                                                             spellCheck={true}
                                                             data-block-id={block.id}
+                                                            data-placeholder="Code..."
                                                             style={{background: 'transparent', position: 'relative'}}
                                                             ref={el => blockRefs.current[block.id] = el}
                                                             onFocus={e => {
@@ -2282,7 +2354,11 @@ function Dashboard() {
                                                                 setEditingContent(e.currentTarget.innerHTML);
                                                             }}
                                                             onInput={e => {
-                                                                setEditingContent(e.currentTarget.innerHTML);
+                                                                let html = e.currentTarget.innerHTML;
+                                                                if (html === '<br>' || html.trim() === '') {
+                                                                    html = '';
+                                                                }
+                                                                setEditingContent(html);
                                                                 if (e.currentTarget.innerText.length > 0) {
                                                                     setEditingBlocks(prev => new Set(prev).add(block.id));
                                                                 } else {
@@ -2294,7 +2370,11 @@ function Dashboard() {
                                                                 }
                                                             }}
                                                             onBlur={e => {
-                                                                updateBlockContent(block.id, e.currentTarget.innerHTML);
+                                                                let html = e.currentTarget.innerHTML;
+                                                                if (html === '<br>' || html.trim() === '') {
+                                                                    html = '';
+                                                                }
+                                                                updateBlockContent(block.id, html);
                                                                 setEditingBlockId(null);
                                                                 setEditingContent('');
                                                             }}
@@ -2303,7 +2383,6 @@ function Dashboard() {
                                                             onKeyDown={e => {
                                                                 if (e.key === 'Backspace' && e.currentTarget.innerText.length === 0) {
                                                                     e.preventDefault();
-                                                                    // Only delete if more than one block exists
                                                                     if (blocks.length > 1) {
                                                                         const idx = blocks.findIndex(b => b.id === block.id);
                                                                         if (idx > 0) {
@@ -2392,7 +2471,7 @@ function Dashboard() {
                 <div className="folder-view-container">
                     <div className="folder-view-header">
                         <h1><span className="folder-view-icon">📁</span> {selectedFolder.name}</h1>
-                        <p>{items.length} items</p>
+                        <p>{(selectedFolder.items?.length || 0) + (selectedFolder.sub_folders?.length || 0)} items</p>
                     </div>
 
                     <div className="folder-view-actions">
@@ -2421,6 +2500,13 @@ function Dashboard() {
                                     }}>
                                         <FiUpload /> Upload Document
                                     </button>
+                                    <button onClick={() => {
+                                        setShowNewItemDropdown(false);
+                                        setSubfolderParentId(selectedFolder.id);
+                                        setShowNewSubfolderModal(true);
+                                    }}>
+                                        <FiFolder /> Create Subfolder
+                                    </button>
                                 </div>
                             )}
                             <input
@@ -2433,26 +2519,8 @@ function Dashboard() {
                         </div>
                     </div>
 
-                    <div className="folder-view-grid">
-                        {items.map(item => (
-                            <div key={`${item.type}-${item.id}`} className="item-card" onClick={() => {
-                                if (item.type === 'deck') handleDeckClick(item.id);
-                                if (item.type === 'quiz') handleQuizClick(item.id);
-                                if (item.type === 'document') handleDocumentClick(item.id);
-                            }}>
-                                <div className="item-card-icon">
-                                    {item.type === 'deck' && '📚'}
-                                    {item.type === 'quiz' && '📝'}
-                                    {item.type === 'document' && '📄'}
-                                </div>
-                                <h3 className="item-card-title">{item.name || item.topic || item.title}</h3>
-                                <p className="item-card-info">
-                                    {item.type === 'deck' && `${item.card_count || 0} cards`}
-                                    {item.type === 'quiz' && `${item.question_count || 0} questions`}
-                                    {item.type === 'document' && `Updated ${new Date(item.updated_at).toLocaleDateString()}`}
-                                </p>
-                            </div>
-                        ))}
+                    <div className="folder-items" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', padding: '0 1.5rem' }}>
+                        {renderFolderItems(selectedFolder)}
                     </div>
                 </div>
             );
@@ -2557,14 +2625,7 @@ function Dashboard() {
                     {/* Sticky Note (minimal) */}
                     <div className="nightowl-sticky">
                       <span role="img" aria-label="pin">📌</span> Study Tip: Try reviewing cards in small batches for better retention.
-                    </div>
-
-                    {/* Tools/Shortcuts */}
-                    <div className="nightowl-tools-grid">
-                      <button className="nightowl-tool-btn"><span role="img" aria-label="plus">➕</span> New Deck</button>
-                      <button className="nightowl-tool-btn"><span role="img" aria-label="zap">⚡</span> Quick Review</button>
-                      <button className="nightowl-tool-btn"><span role="img" aria-label="chart">📊</span> View Stats</button>
-                    </div>
+                    </div>                    
                     </div>
                 </div>
             );
@@ -3120,6 +3181,89 @@ function Dashboard() {
     const [editingContent, setEditingContent] = useState('');
     const [editingBlockId, setEditingBlockId] = useState(null);
 
+    // 2. On mount, migrate any blocks with placeholder content to empty string
+    useEffect(() => {
+        setBlocks(prevBlocks => prevBlocks.map(block => {
+            const placeholders = {
+                paragraph: "Text",
+                h1: 'Heading 1',
+                h2: 'Heading 2',
+                h3: 'Heading 3',
+                checklist: 'Checklist item...',
+                quote: 'Quote...',
+                code: 'Code...'
+            };
+            if (block.content && block.content.trim() === placeholders[block.type]) {
+                return { ...block, content: '' };
+            }
+            return block;
+        }));
+    }, []);
+
+    // 3. When rendering, treat placeholder content as empty (defensive, but should not be needed after migration)
+    const getDisplayContent = (block) => {
+        const placeholders = {
+            paragraph: "Text",
+            h1: 'Heading 1',
+            h2: 'Heading 2',
+            h3: 'Heading 3',
+            checklist: 'Checklist item...',
+            quote: 'Quote...',
+            code: 'Code...'
+        };
+        return (block.content && block.content.trim() === placeholders[block.type]) ? '' : block.content;
+    };
+
+    const [sidebarContextMenu, setSidebarContextMenu] = useState({ show: false, x: 0, y: 0, folderId: null });
+
+    // Add this to the folder item div in the sidebar:
+    // onContextMenu={(e) => {
+    //   e.preventDefault();
+    //   setSidebarContextMenu({ show: true, x: e.clientX, y: e.clientY, folderId: folder.id });
+    // }}
+
+    // Add this at the end of the main return:
+    {sidebarContextMenu.show && (
+      <div
+        className="sidebar-context-menu"
+        style={{ position: 'fixed', top: sidebarContextMenu.y, left: sidebarContextMenu.x, zIndex: 9999, background: '#232323', color: '#fff', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.2)', padding: '8px 0', minWidth: 120 }}
+        onClick={() => setSidebarContextMenu({ show: false, x: 0, y: 0, folderId: null })}
+        onContextMenu={e => e.preventDefault()}
+      >
+        <div
+          className="sidebar-context-menu-item"
+          style={{ padding: '8px 16px', cursor: 'pointer', color: '#FF6B6B' }}
+          onClick={() => {
+            handleDeleteFolder(sidebarContextMenu.folderId);
+            setSidebarContextMenu({ show: false, x: 0, y: 0, folderId: null });
+          }}
+        >
+          Delete Folder
+        </div>
+      </div>
+    )}
+
+    // Add a useEffect to close the context menu on click elsewhere
+    useEffect(() => {
+      const handleClick = () => setSidebarContextMenu({ show: false, x: 0, y: 0, folderId: null });
+      if (sidebarContextMenu.show) {
+        window.addEventListener('click', handleClick);
+        return () => window.removeEventListener('click', handleClick);
+      }
+    }, [sidebarContextMenu.show]);
+
+    const [showNewSubfolderModal, setShowNewSubfolderModal] = useState(false);
+    const [newSubfolderName, setNewSubfolderName] = useState('');
+    const [subfolderParentId, setSubfolderParentId] = useState(null);
+
+    const handleCreateSubfolder = async () => {
+      if (!newSubfolderName.trim() || !subfolderParentId) return;
+      await handleCreateFolder(newSubfolderName, subfolderParentId);
+      setShowNewSubfolderModal(false);
+      setNewSubfolderName('');
+      setSubfolderParentId(null);
+    };
+
     return (
         <div className="dashboard-container" style={{ 
             ...(activeView === 'flashcards' && {
@@ -3171,15 +3315,15 @@ function Dashboard() {
 
                 <div className="sidebar-content">
                     <div 
-                        className={`nav-item ${activeView === 'dashboard' ? 'active' : ''}`}
-                        onClick={() => handleSidebarNav('dashboard')}
+                        className={`nav-item ${location.pathname === '/dashboard' ? 'active' : ''}`}
+                        onClick={() => navigate('/dashboard')}
                     >
                         <FiHome className="nav-icon" />
                         <span>Home</span>
                     </div>
                     <div 
-                        className={`nav-item ${activeView === 'flashcards' ? 'active' : ''}`}
-                        onClick={() => handleSidebarNav('flashcards')}
+                        className={`nav-item ${location.pathname === '/night-owl-flashcards' ? 'active' : ''}`}
+                        onClick={() => navigate('/night-owl-flashcards')}
                     >
                         <FiBook className="nav-icon" />
                         <span>Flashcards</span>
@@ -3197,7 +3341,10 @@ function Dashboard() {
                                     <div 
                                         className={`folder-item ${selectedFolder?.id === folder.id && activeView === 'folder' ? 'active' : ''}`}
                                         onClick={(e) => handleFolderClick(folder.id, e)}
-                                        onContextMenu={(e) => handleContextMenu(e, 'folder', folder.id)}
+                                        onContextMenu={(e) => {
+                                          e.preventDefault();
+                                          setSidebarContextMenu({ show: true, x: e.clientX, y: e.clientY, folderId: folder.id });
+                                        }}
                                     >
                                         <button 
                                             className={`folder-expand-btn ${expandedFolders[folder.id] ? 'expanded' : ''}`}
@@ -3211,11 +3358,67 @@ function Dashboard() {
                                             className="folder-icon"
                                         />
                                         <span className="folder-name" title={folder.name}>{folder.name}</span>
-                                        <span className="folder-count">{folder.content_num || 0}</span>
                                     </div>
                                     {expandedFolders[folder.id] && (
                                         <div className={`folder-contents ${expandedFolders[folder.id] ? 'expanded' : ''}`}>
-                                            {renderFolderItems(folder)}
+                                            {/* Render subfolders first, directly under folder-contents */}
+                                            {folder.sub_folders && folder.sub_folders.map(subfolder => (
+                                                <div key={subfolder.id} className="subfolder-item">
+                                                    <div 
+                                                        className={`folder-item subfolder ${selectedFolder?.id === subfolder.id && activeView === 'folder' ? 'active' : ''}`}
+                                                        onClick={(e) => { console.log('Subfolder click:', subfolder.id); handleFolderClick(subfolder.id, e); }}
+                                                        onContextMenu={(e) => {
+                                                          e.preventDefault();
+                                                          setSidebarContextMenu({ show: true, x: e.clientX, y: e.clientY, folderId: subfolder.id });
+                                                        }}
+                                                        style={{ fontSize: '12px' }}
+                                                    >
+                                                        <button
+                                                            className={`folder-expand-btn${expandedFolders[subfolder.id] ? ' expanded' : ''}`}
+                                                            onClick={(e) => { e.stopPropagation(); toggleFolder(subfolder.id, e); }}
+                                                        >
+                                                            {expandedFolders[subfolder.id] ? 'v' : '>'}
+                                                        </button>
+                                                        <img 
+                                                            src={expandedFolders[subfolder.id] ? openFolderIcon : closedFolderIcon} 
+                                                            alt="subfolder" 
+                                                            className="folder-icon"
+                                                            style={{ width: '14px', height: '14px' }}
+                                                        />
+                                                        <span className="folder-name" title={subfolder.name}>{subfolder.name.length > 10 ? subfolder.name.slice(0, 7) + '...' : subfolder.name}</span>
+                                                    </div>
+                                                    {expandedFolders[subfolder.id] && (
+                                                        <div className={`folder-contents expanded`}>
+                                                            {/* Recursively render subfolders and items for this subfolder */}
+                                                            {subfolder.sub_folders && subfolder.sub_folders.map(childSubfolder => (
+                                                                <div key={childSubfolder.id} className="subfolder-item">
+                                                                    <div 
+                                                                        className={`folder-item subfolder ${selectedFolder?.id === childSubfolder.id && activeView === 'folder' ? 'active' : ''}`}
+                                                                        onClick={(e) => { console.log('Subfolder click:', childSubfolder.id); handleFolderClick(childSubfolder.id, e); }}
+                                                                        onContextMenu={(e) => {
+                                                                            e.preventDefault();
+                                                                            setSidebarContextMenu({ show: true, x: e.clientX, y: e.clientY, folderId: childSubfolder.id });
+                                                                        }}
+                                                                        style={{ fontSize: '12px' }}
+                                                                    >
+                                                                        <img 
+                                                                            src={closedFolderIcon} 
+                                                                            alt="subfolder" 
+                                                                            className="folder-icon"
+                                                                            style={{ width: '14px', height: '14px' }}
+                                                                        />
+                                                                        <span className="folder-name" title={childSubfolder.name}>{childSubfolder.name.length > 10 ? childSubfolder.name.slice(0, 7) + '...' : childSubfolder.name}</span>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                            {/* Render items for this subfolder if any */}
+                                                            {subfolder.items && subfolder.items.length > 0 && renderFolderItems(subfolder)}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
+                                            {/* Render folder items (documents, decks, etc.) but do NOT show empty state in sidebar */}
+                                            {folder.items && folder.items.length > 0 && renderFolderItems(folder)}
                                         </div>
                                     )}
                                 </div>
@@ -3316,6 +3519,43 @@ function Dashboard() {
                     <button onClick={() => formatSelection('italic')} style={{fontStyle: 'italic', background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 18}}>I</button>
                     <button onClick={() => formatSelection('hiliteColor', 'rgba(255,250,205,0.5)')} style={{background: 'rgba(255,250,205,0.5)', border: 'none', color: '#232323', cursor: 'pointer', fontSize: 18, borderRadius: 4, padding: '0 8px'}}>H</button>
                 </div>
+            )}
+            {sidebarContextMenu.show && (
+              <div
+                className="sidebar-context-menu"
+                style={{ position: 'fixed', top: sidebarContextMenu.y, left: sidebarContextMenu.x, zIndex: 9999, background: '#232323', color: '#fff', borderRadius: 8, boxShadow: '0 2px 8px rgba(0,0,0,0.2)', padding: '8px 0', minWidth: 120 }}
+                onClick={() => setSidebarContextMenu({ show: false, x: 0, y: 0, folderId: null })}
+                onContextMenu={e => e.preventDefault()}
+              >
+                <div
+                  className="sidebar-context-menu-item"
+                  style={{ padding: '8px 16px', cursor: 'pointer', color: '#FF6B6B' }}
+                  onClick={() => {
+                    handleDeleteFolder(sidebarContextMenu.folderId);
+                    setSidebarContextMenu({ show: false, x: 0, y: 0, folderId: null });
+                  }}
+                >
+                  Delete Folder
+                </div>
+              </div>
+            )}
+            {showNewSubfolderModal && (
+              <div className="dashboard-modal-overlay">
+                <div className="dashboard-modal">
+                  <h2>Create Subfolder</h2>
+                  <input
+                    type="text"
+                    value={newSubfolderName}
+                    onChange={e => setNewSubfolderName(e.target.value)}
+                    placeholder="Enter subfolder name..."
+                    className="dashboard-modal-input"
+                  />
+                  <div className="dashboard-modal-actions">
+                    <button onClick={() => setShowNewSubfolderModal(false)} className="dashboard-modal-btn cancel">Cancel</button>
+                    <button onClick={handleCreateSubfolder} className="dashboard-modal-btn create">Create</button>
+                  </div>
+                </div>
+              </div>
             )}
         </div>
     );
