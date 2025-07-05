@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiAlertCircle, FiClock, FiCalendar, FiStar, FiBook, FiAlertTriangle } from 'react-icons/fi';
+import { FiAlertCircle, FiClock, FiCalendar, FiStar, FiBook, FiAlertTriangle, FiChevronDown, FiX } from 'react-icons/fi';
 import './ReviewWidget.css';
 import brainPng from '../assets/brain.png';
+import api from '../api/axios';
+import { formatDateForDisplay, formatDateTimeForDisplay, convertBackendDateToLocal, isBackendDateToday, isBackendDatePast, isBackendDateFuture, isBackendDateTimeDueToday, isBackendDateTimeOverdue, isBackendDateTimeUpcoming, isBackendDateTimeDueNow, isBackendDateTimeLaterToday, getTimeDifference } from '../utils/dateUtils';
 
 const LoadingSpinner = () => (
   <div style={{
@@ -38,9 +40,14 @@ const ReviewWidget = () => {
   const [tooltip, setTooltip] = useState(null);
   const [cards, setCards] = useState({
     overdue: [],
-    dueToday: [],
+    dueNow: [],
+    laterToday: [],
     upcoming: []
   });
+  const [allCards, setAllCards] = useState([]);
+  const [decks, setDecks] = useState([]);
+  const [selectedDeckId, setSelectedDeckId] = useState(null);
+  const [showDeckDropdown, setShowDeckDropdown] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [newCardQuestion, setNewCardQuestion] = useState('');
@@ -79,72 +86,28 @@ const ReviewWidget = () => {
   const fetchCards = async () => {
     try {
       setLoading(true);
-      const token = sessionStorage.getItem('jwt_token');
-      if (!token) {
-        setError('Please log in to view your decks');
-        setLoading(false);
-        return;
-      }
-
       // Fetch decks first
-      const decksResponse = await fetch('http://localhost:8000/api/flashcards/deck/', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        credentials: 'include'
-      });
-
-      if (!decksResponse.ok) {
-        if (decksResponse.status === 401) {
-          setError('Session expired. Please log in again.');
-          navigate('/signin');
-          setLoading(false);
-          return;
-        }
-        throw new Error('Failed to fetch decks');
-      }
-
-      const data = await decksResponse.json();
+      const decksResponse = await api.get('/flashcards/deck/');
+      const data = decksResponse.data;
       const decks = data.decks || [];
+      setDecks(decks);
       console.log('Fetched decks:', decks);
 
       // Fetch cards for each deck
       const allCards = [];
       for (const deck of decks) {
-        const cardsResponse = await fetch(`http://localhost:8000/api/flashcards/cards/${deck.id}/`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-          },
-          credentials: 'include'
-        });
-
-        if (!cardsResponse.ok) {
-          console.error(`Failed to fetch cards for deck ${deck.id}`);
-          continue;
-        }
-
-        const deckCards = await cardsResponse.json();
+        const cardsResponse = await api.get(`/flashcards/cards/${deck.id}/`);
+        const deckCards = cardsResponse.data;
         console.log(`Cards for deck ${deck.id}:`, deckCards);
-        allCards.push(...deckCards.map(card => ({ ...card, deckTitle: deck.title })));
+        allCards.push(...deckCards.map(card => ({ ...card, deckTitle: deck.title, deckId: deck.id })));
       }
+      setAllCards(allCards);
 
       // Sort cards into categories based on due date
-      const now = new Date();
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-
-      console.log('Today\'s date:', today.toISOString());
-
       const sortedCards = {
         overdue: [],
-        dueToday: [],
+        dueNow: [],
+        laterToday: [],
         upcoming: []
       };
 
@@ -154,15 +117,13 @@ const ReviewWidget = () => {
           return;
         }
 
-        const dueDate = new Date(card.scheduled_date);
-        const dueDateOnly = new Date(dueDate.getFullYear(), dueDate.getMonth(), dueDate.getDate());
-        console.log('Card scheduled date:', card.scheduled_date, 'Parsed date:', dueDateOnly.toISOString());
-
-        if (dueDateOnly < today) {
+        if (isBackendDateTimeOverdue(card.scheduled_date)) {
           sortedCards.overdue.push(card);
-        } else if (dueDateOnly.getTime() === today.getTime()) {
-          sortedCards.dueToday.push(card);
-        } else {
+        } else if (isBackendDateTimeDueNow(card.scheduled_date)) {
+          sortedCards.dueNow.push(card);
+        } else if (isBackendDateTimeLaterToday(card.scheduled_date)) {
+          sortedCards.laterToday.push(card);
+        } else if (isBackendDateTimeUpcoming(card.scheduled_date)) {
           sortedCards.upcoming.push(card);
         }
       });
@@ -177,55 +138,95 @@ const ReviewWidget = () => {
     }
   };
 
+  // Filter cards by selected deck
+  useEffect(() => {
+    if (!selectedDeckId) {
+      // Show all cards
+      const sortedCards = { overdue: [], dueNow: [], laterToday: [], upcoming: [] };
+      allCards.forEach(card => {
+        if (!card.scheduled_date) {
+          sortedCards.overdue.push(card);
+          return;
+        }
+        if (isBackendDateTimeOverdue(card.scheduled_date)) {
+          sortedCards.overdue.push(card);
+        } else if (isBackendDateTimeDueNow(card.scheduled_date)) {
+          sortedCards.dueNow.push(card);
+        } else if (isBackendDateTimeLaterToday(card.scheduled_date)) {
+          sortedCards.laterToday.push(card);
+        } else if (isBackendDateTimeUpcoming(card.scheduled_date)) {
+          sortedCards.upcoming.push(card);
+        }
+      });
+      setCards(sortedCards);
+    } else {
+      // Filter by deck
+      const sortedCards = { overdue: [], dueNow: [], laterToday: [], upcoming: [] };
+      
+      allCards.filter(card => {
+        const cardDeckId = card.card_deck || card.deckId;
+        return Number(cardDeckId) === Number(selectedDeckId);
+      }).forEach(card => {
+        if (!card.scheduled_date) {
+          sortedCards.overdue.push(card);
+          return;
+        }
+        if (isBackendDateTimeOverdue(card.scheduled_date)) {
+          sortedCards.overdue.push(card);
+        } else if (isBackendDateTimeDueNow(card.scheduled_date)) {
+          sortedCards.dueNow.push(card);
+        } else if (isBackendDateTimeLaterToday(card.scheduled_date)) {
+          sortedCards.laterToday.push(card);
+        } else if (isBackendDateTimeUpcoming(card.scheduled_date)) {
+          sortedCards.upcoming.push(card);
+        }
+      });
+      setCards(sortedCards);
+    }
+  }, [selectedDeckId, allCards]);
+
   const handleStartReview = () => {
-    const dueCards = [...cards.overdue, ...cards.dueToday];
+    console.log('handleStartReview called');
+    console.log('cards state:', cards);
+    console.log('selectedDeckId:', selectedDeckId);
+    console.log('decks:', decks);
+    
+    const dueCards = [...(cards.overdue || []), ...(cards.dueNow || [])];
+    console.log('dueCards:', dueCards);
     
     if (dueCards.length === 0) {
+      console.log('No due cards found, setting error');
       setError('No cards for review today');
       return;
     }
 
-    // Navigate to the dedicated review session page
-    navigate('/review-session');
+    // Navigate to the dedicated review session page with selected deck info
+    if (selectedDeckId) {
+      const selectedDeck = decks.find(d => d.id === selectedDeckId);
+      console.log(`Starting review session for deck: ${selectedDeck.title} (ID: ${selectedDeck.id})`);
+      console.log('Navigating to /review-session with state:', { selectedDeck });
+      navigate('/review-session', { state: { selectedDeck } });
+    } else {
+      console.log('Starting review session for all decks');
+      console.log('Navigating to /review-session without state');
+      navigate('/review-session');
+    }
   };
 
   const handleCreateCard = async (e) => {
     e.preventDefault();
     try {
-      const token = sessionStorage.getItem('jwt_token');
-      if (!token) {
-        setError('Please log in to create cards');
-        return;
-      }
-
       if (!selectedDeck) {
         setError('Please select a deck first');
         return;
       }
 
-      const response = await fetch('http://localhost:8000/api/flashcards/cards/', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify({
+      const response = await api.post('/flashcards/cards/', {
           question: newCardQuestion,
           answer: newCardAnswer,
           deck_id: selectedDeck.id,
           scheduled_date: newCardScheduledDate
-        })
       });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          setError('Session expired. Please log in again.');
-          return;
-        }
-        throw new Error('Failed to create card');
-      }
 
       setNewCardQuestion('');
       setNewCardAnswer('');
@@ -299,33 +300,10 @@ const ReviewWidget = () => {
   const handleEditDeck = async (e) => {
     e.preventDefault();
     try {
-      const token = sessionStorage.getItem('jwt_token');
-      if (!token) {
-        setError('Please log in to edit deck');
-        return;
-      }
-
-      const response = await fetch(`http://localhost:8000/api/flashcards/deck/update/${editingDeck.id}/`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify({
+      const response = await api.put(`/flashcards/deck/update/${editingDeck.id}/`, {
           title: editDeckTitle,
           subject: editDeckSubject
-        })
       });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          setError('Session expired. Please log in again.');
-          return;
-        }
-        throw new Error('Failed to update deck');
-      }
 
       setShowEditDeck(false);
       setEditingDeck(null);
@@ -339,34 +317,11 @@ const ReviewWidget = () => {
   const handleEditCard = async (e) => {
     e.preventDefault();
     try {
-      const token = sessionStorage.getItem('jwt_token');
-      if (!token) {
-        setError('Please log in to edit card');
-        return;
-      }
-
-      const response = await fetch(`http://localhost:8000/api/flashcards/cards/update/${editingCard.card_deck}/${editingCard.id}/`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify({
+      const response = await api.put(`/flashcards/cards/update/${editingCard.card_deck}/${editingCard.id}/`, {
           question: editCardQuestion,
           answer: editCardAnswer,
           scheduled_date: editCardScheduledDate
-        })
       });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          setError('Session expired. Please log in again.');
-          return;
-        }
-        throw new Error('Failed to update card');
-      }
 
       setShowEditCard(false);
       setEditingCard(null);
@@ -496,6 +451,7 @@ const ReviewWidget = () => {
   }
 
   const renderSummaryBadges = () => (
+    <div className="badge-row-with-filter">
     <div className="badge-row">
       <div 
         className="badge overdue"
@@ -503,7 +459,7 @@ const ReviewWidget = () => {
         onMouseLeave={() => setTooltip(null)}
       >
         <FiAlertCircle />
-        <span>Overdue: {cards.overdue.length}</span>
+        <span>Overdue: {cards.overdue?.length || 0}</span>
         {tooltip === 'overdue' && (
           <div className="tooltip">
             Cards that were due for review but haven't been studied yet
@@ -511,15 +467,28 @@ const ReviewWidget = () => {
         )}
       </div>
       <div 
-        className="badge due-today"
-        onMouseEnter={() => setTooltip('dueToday')}
+        className="badge due-now"
+        onMouseEnter={() => setTooltip('dueNow')}
         onMouseLeave={() => setTooltip(null)}
       >
         <FiClock />
-        <span>Due Today: {cards.dueToday.length}</span>
-        {tooltip === 'dueToday' && (
+        <span>Due Now: {cards.dueNow?.length || 0}</span>
+        {tooltip === 'dueNow' && (
           <div className="tooltip">
-            Cards scheduled for review today
+            Cards due for review in the next hour
+          </div>
+        )}
+      </div>
+      <div 
+        className="badge later-today"
+        onMouseEnter={() => setTooltip('laterToday')}
+        onMouseLeave={() => setTooltip(null)}
+      >
+        <FiCalendar />
+        <span>Later Today: {cards.laterToday?.length || 0}</span>
+        {tooltip === 'laterToday' && (
+          <div className="tooltip">
+            Cards scheduled for later today
           </div>
         )}
       </div>
@@ -529,44 +498,99 @@ const ReviewWidget = () => {
         onMouseLeave={() => setTooltip(null)}
       >
         <FiCalendar />
-        <span>Upcoming: {cards.upcoming.length}</span>
+        <span>Upcoming: {cards.upcoming?.length || 0}</span>
         {tooltip === 'upcoming' && (
           <div className="tooltip">
             Cards coming up for review in the next few days
           </div>
         )}
+        </div>
       </div>
+      <div className="badge-row-filter">
+        {renderDeckDropdown()}
+      </div>
+    </div>
+  );
+
+  // Dropdown UI for deck filter
+  const renderDeckDropdown = () => (
+    <div className="deck-dropdown-container">
+      <button
+        className="deck-dropdown-toggle"
+        onClick={() => setShowDeckDropdown((prev) => !prev)}
+      >
+        <span role="img" aria-label="deck">📁</span>
+        {selectedDeckId
+          ? (decks.find(d => d.id === selectedDeckId)?.title || 'Unknown Deck')
+          : 'All Decks'}
+        <FiChevronDown style={{ marginLeft: 6 }} />
+      </button>
+      {showDeckDropdown && (
+        <div className="deck-dropdown-menu">
+          <div
+            className={`deck-dropdown-item${selectedDeckId === null ? ' selected' : ''}`}
+            onClick={() => { setSelectedDeckId(null); setShowDeckDropdown(false); }}
+          >
+            📁 All Decks
+          </div>
+          {decks.map(deck => (
+            <div
+              key={deck.id}
+              className={`deck-dropdown-item${selectedDeckId === deck.id ? ' selected' : ''}`}
+              onClick={() => { setSelectedDeckId(deck.id); setShowDeckDropdown(false); }}
+            >
+              📦 {deck.title}
+            </div>
+          ))}
+        </div>
+      )}
+      {selectedDeckId && (
+        <button
+          className="clear-deck-filter"
+          onClick={() => setSelectedDeckId(null)}
+          title="Clear Filter"
+        >
+          <FiX />
+        </button>
+      )}
     </div>
   );
 
   const renderCardList = () => (
     <div className="card-preview-section">
+      <div className="tab-bar-with-filter">
       <div className="tab-bar">
         <button 
           className={`tab ${activeTab === 'overdue' ? 'active' : ''}`}
           onClick={() => setActiveTab('overdue')}
         >
-          Overdue ({cards.overdue.length})
+          Overdue ({cards.overdue?.length || 0})
         </button>
         <button 
-          className={`tab ${activeTab === 'dueToday' ? 'active' : ''}`}
-          onClick={() => setActiveTab('dueToday')}
+          className={`tab ${activeTab === 'dueNow' ? 'active' : ''}`}
+          onClick={() => setActiveTab('dueNow')}
         >
-          Due Today ({cards.dueToday.length})
+          Due Now ({cards.dueNow?.length || 0})
+        </button>
+        <button 
+          className={`tab ${activeTab === 'laterToday' ? 'active' : ''}`}
+          onClick={() => setActiveTab('laterToday')}
+        >
+          Later Today ({cards.laterToday?.length || 0})
         </button>
         <button 
           className={`tab ${activeTab === 'upcoming' ? 'active' : ''}`}
           onClick={() => setActiveTab('upcoming')}
         >
-          Upcoming ({cards.upcoming.length})
+          Upcoming ({cards.upcoming?.length || 0})
         </button>
       </div>
-
+      </div>
       <div className="card-list">
         {loading ? (
           <LoadingSpinner />
         ) : (
-          cards[activeTab].map((card, index) => (
+          (cards[activeTab] || []).map((card, index) => (
             <div key={card.id} className="card-item">
               <div className="card-info">
                 <h4>{card.question}</h4>
@@ -574,7 +598,10 @@ const ReviewWidget = () => {
                   <span className="deck-title">{card.deckTitle}</span>
                   {card.scheduled_date && (
                     <span className="review-date">
-                      Next Review: {new Date(card.scheduled_date).toLocaleDateString()}
+                      {activeTab === 'overdue' && `Due at ${formatDateTimeForDisplay(card.scheduled_date)}`}
+                      {activeTab === 'dueNow' && `Due ${getTimeDifference(card.scheduled_date)}`}
+                      {activeTab === 'laterToday' && `Scheduled at ${formatDateTimeForDisplay(card.scheduled_date)}`}
+                      {activeTab === 'upcoming' && `Scheduled for ${formatDateTimeForDisplay(card.scheduled_date)}`}
                     </span>
                   )}
                 </div>
@@ -587,7 +614,7 @@ const ReviewWidget = () => {
   );
 
   const renderActionPanel = () => {
-    const totalDue = cards.overdue.length + cards.dueToday.length;
+    const totalDue = (cards.overdue?.length || 0) + (cards.dueNow?.length || 0);
     return (
       <div className="action-panel">
         <div className="action-buttons">

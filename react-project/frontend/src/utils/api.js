@@ -1,5 +1,7 @@
 // API utility functions for authenticated requests
 
+import api from '../api/axios';
+
 const isTokenExpired = (token) => {
     if (!token) return true;
     try {
@@ -40,37 +42,19 @@ const refreshAccessToken = async () => {
 };
 
 export const makeAuthenticatedRequest = async (url, options = {}) => {
-    let token = sessionStorage.getItem('jwt_token');
-    
-    if (isTokenExpired(token)) {
-        token = await refreshAccessToken();
-        if (!token) return null; // If refresh failed, return null
+  // options: { method, data, ... }
+  try {
+    let response;
+    if (options.method === 'POST') {
+      response = await api.post(url, options.data);
+    } else if (options.method === 'PUT') {
+      response = await api.put(url, options.data);
+    } else {
+      response = await api.get(url);
     }
-
-    const response = await fetch(url, {
-        ...options,
-        headers: {
-            ...options.headers,
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-        },
-    });
-
-    if (response.status === 401) {
-        // Try refreshing token once more
-        token = await refreshAccessToken();
-        if (!token) return null;
-
-        // Retry the request with new token
-        return fetch(url, {
-            ...options,
-            headers: {
-                ...options.headers,
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            },
-        });
-    }
-
     return response;
+  } catch (error) {
+    // api instance will handle token refresh and errors
+    throw error;
+  }
 }; 

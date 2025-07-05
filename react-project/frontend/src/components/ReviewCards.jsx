@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { useNavigate } from 'react-router-dom';
-import { FiBell, FiSettings, FiCheck, FiClock, FiAlertCircle, FiGrid, FiList, FiTrendingUp, FiPlus, FiTrash2, FiEdit2, FiBook, FiHelpCircle, FiX, FiArrowRight, FiShuffle, FiPause, FiLayers, FiType, FiRotateCcw, FiArrowLeft, FiPlay } from 'react-icons/fi';
+import { FiBell, FiSettings, FiCheck, FiClock, FiAlertCircle, FiGrid, FiList, FiTrendingUp, FiPlus, FiTrash2, FiEdit2, FiBook, FiHelpCircle, FiX, FiArrowRight, FiShuffle, FiPause, FiLayers, FiType, FiRotateCcw, FiArrowLeft, FiPlay, FiCalendar, FiSkipForward, FiStar, FiUser, FiLogOut, FiHome, FiAward, FiShare2, FiMoreVertical, FiUsers, FiFileText, FiFolder, FiSearch, FiFilter, FiSave, FiGlobe, FiTag } from 'react-icons/fi';
 import { Line, Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -13,10 +13,12 @@ import {
   Title,
   Tooltip,
   Legend,
+  Filler,
 } from 'chart.js';
 import api from '../api/axios';
 import './ReviewCards.css';
 import Confetti from 'react-confetti';
+import { formatDateForDisplay, formatDateTimeForDisplay, convertBackendDateToLocal, isBackendDateToday, isBackendDatePast, isBackendDateFuture, isBackendDateTimeDueToday, isBackendDateTimeOverdue, isBackendDateTimeUpcoming, isBackendDateTimeDueNow, isBackendDateTimeLaterToday, getTimeDifference } from '../utils/dateUtils';
 
 // Register ChartJS components
 ChartJS.register(
@@ -148,48 +150,17 @@ const ReviewCards = ({ onViewModeChange }) => {
 
   const fetchCards = async () => {
     try {
-      const token = sessionStorage.getItem('jwt_token');
-      if (!token) {
-        setError('Please log in to view your cards');
-        return;
-      }
-
-      // First fetch all decks
-      const decksResponse = await fetch('http://localhost:8000/api/flashcards/deck/', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include'
-      });
-
-      if (!decksResponse.ok) {
-        throw new Error('Failed to fetch decks');
-      }
-
-      const decksData = await decksResponse.json();
+      // Fetch all decks
+      const decksResponse = await api.get('/flashcards/deck/');
+      const decksData = decksResponse.data;
       setDecks(decksData);
-
       // Then fetch cards for each deck
       const allCards = [];
       for (const deck of decksData) {
-        const cardsResponse = await fetch(`http://localhost:8000/api/flashcards/cards/${deck.id}/`, {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          },
-          credentials: 'include'
-        });
-
-        if (!cardsResponse.ok) {
-          console.error(`Failed to fetch cards for deck ${deck.id}`);
-          continue;
-        }
-
-        const cardsData = await cardsResponse.json();
+        const cardsResponse = await api.get(`/flashcards/cards/${deck.id}/`);
+        const cardsData = cardsResponse.data;
         allCards.push(...cardsData);
       }
-
       setCards(allCards);
       setLoading(false);
     } catch (err) {
@@ -317,30 +288,29 @@ const ReviewCards = ({ onViewModeChange }) => {
   };
 
   const getCardsByStatus = () => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const overdue = [];
+    const dueNow = [];
+    const laterToday = [];
+    const upcoming = [];
 
-    const filteredCards = selectedDeck 
-      ? cards.filter(card => card.deck === selectedDeck.id)
-      : cards;
+    cards.forEach(card => {
+      if (!card.scheduled_date) {
+        overdue.push(card);
+        return;
+      }
 
-    return {
-      overdue: filteredCards.filter(card => {
-        const cardDate = new Date(card.scheduled_date);
-        cardDate.setHours(0, 0, 0, 0);
-        return cardDate < today;
-      }),
-      dueToday: filteredCards.filter(card => {
-        const cardDate = new Date(card.scheduled_date);
-        cardDate.setHours(0, 0, 0, 0);
-        return cardDate.getTime() === today.getTime();
-      }),
-      upcoming: filteredCards.filter(card => {
-        const cardDate = new Date(card.scheduled_date);
-        cardDate.setHours(0, 0, 0, 0);
-        return cardDate > today;
-      })
-    };
+      if (isBackendDateTimeOverdue(card.scheduled_date)) {
+        overdue.push(card);
+      } else if (isBackendDateTimeDueNow(card.scheduled_date)) {
+        dueNow.push(card);
+      } else if (isBackendDateTimeLaterToday(card.scheduled_date)) {
+        laterToday.push(card);
+      } else if (isBackendDateTimeUpcoming(card.scheduled_date)) {
+        upcoming.push(card);
+      }
+    });
+
+    return { overdue, dueNow, laterToday, upcoming };
   };
 
   const chartOptions = {
@@ -422,10 +392,10 @@ const ReviewCards = ({ onViewModeChange }) => {
                 <h3>{card.question}</h3>
                 <p>{card.answer}</p>
                 <span className="due-date">
-                  Due: {new Date(card.scheduled_date).toLocaleDateString()}
+                  Due: {card.scheduled_date ? formatDateTimeForDisplay(card.scheduled_date) : 'Not scheduled'}
                 </span>
                 <span className="last-review-date">
-                  Last reviewed: {card.last_review_date ? new Date(card.last_review_date).toLocaleDateString() : 'Never'}
+                  Last reviewed: {card.last_review_date ? formatDateTimeForDisplay(card.last_review_date) : 'Never'}
                 </span>
               </div>
               <div className="card-actions">
@@ -771,24 +741,24 @@ const ReviewCards = ({ onViewModeChange }) => {
   };
 
   const startReviewSession = (deck) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    // Get all cards scheduled for today
+    // Get all cards that are overdue or due now
     const dueCards = cards.filter(card => {
-      const cardDate = new Date(card.scheduled_date);
-      cardDate.setHours(0, 0, 0, 0);
-      return cardDate.getTime() === today.getTime();
+      if (!card.scheduled_date) return true;
+      return isBackendDateTimeOverdue(card.scheduled_date) || isBackendDateTimeDueNow(card.scheduled_date);
     });
 
-    // If there are no cards due today, show a notification
+    // If there are no cards due, show a notification
     if (dueCards.length === 0) {
-      showNotificationMessage('No cards due for review today!');
+      showNotificationMessage('No cards due for review now!');
       return;
     }
 
-    // Navigate to the dedicated review session page
-    navigate('/review-session');
+    // Navigate to the dedicated review session page with deck info
+    if (deck) {
+      navigate('/review-session', { state: { selectedDeck: deck } });
+    } else {
+      navigate('/review-session');
+    }
   };
 
   const renderMyFlashcardsContent = () => {
@@ -895,16 +865,15 @@ const ReviewCards = ({ onViewModeChange }) => {
   };
 
   const renderReviewCardsContent = () => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
     const upcomingCards = cards.filter(card => {
-      const cardDate = new Date(card.scheduled_date);
-      cardDate.setHours(0, 0, 0, 0);
-      return cardDate >= today;
-    }).sort((a, b) => new Date(a.scheduled_date) - new Date(b.scheduled_date));
+      return isBackendDateTimeUpcoming(card.scheduled_date);
+    }).sort((a, b) => {
+      const localA = convertBackendDateToLocal(a.scheduled_date);
+      const localB = convertBackendDateToLocal(b.scheduled_date);
+      return new Date(localA) - new Date(localB);
+    });
 
-    const { overdue, dueToday, upcoming } = getCardsByStatus();
+    const { overdue, dueNow, laterToday, upcoming } = getCardsByStatus();
 
     return (
       <div className="review-cards-content">
@@ -926,7 +895,7 @@ const ReviewCards = ({ onViewModeChange }) => {
                     <div className="card-content">
                       <p className="card-question">{card.question}</p>
                       <span className="review-date">
-                      Due: {new Date(card.scheduled_date).toLocaleDateString()}
+                      Due: {formatDateTimeForDisplay(card.scheduled_date)}
                       </span>
                     </div>
                   </div>
@@ -953,45 +922,67 @@ const ReviewCards = ({ onViewModeChange }) => {
                   <div className="card-content">
                     <h3>{card.question}</h3>
                     <p>{card.answer}</p>
-                  </div>
-                  <div className="card-actions">
-                    <button className="action-button" onClick={() => startReviewSession(null)}>
-                      <FiCheck /> Start Review
-                    </button>
+                    <span className="due-date">
+                      Due at {formatDateTimeForDisplay(card.scheduled_date)}
+                    </span>
                   </div>
                 </div>
               ))}
               {overdue.length > 3 && (
                 <div className="view-more">
-                  <button onClick={() => startReviewSession(null)}>Review {overdue.length} overdue cards</button>
+                  <button>View {overdue.length - 3} more cards</button>
                 </div>
               )}
             </div>
           </div>
 
-          <div className="cards-section due-today">
+          <div className="cards-section due-now">
             <div className="section-header">
               <FiClock className="section-icon" />
-              <h2>Due Today</h2>
-              <span className="card-count">{dueToday.length}</span>
+              <h2>Due Now (next hour)</h2>
+              <span className="card-count">{dueNow.length}</span>
             </div>
             <div className="cards-container">
-              {dueToday.slice(0, 3).map(card => (
-                <div key={card.id} className="study-card due-today">
+              {dueNow.slice(0, 3).map(card => (
+                <div key={card.id} className="study-card due-now">
                   <div className="card-content">
                     <h3>{card.question}</h3>
                     <p>{card.answer}</p>
-                  </div>
-                  <div className="card-actions">
-                    <button className="action-button" onClick={() => startReviewSession(null)}>
-                      <FiCheck /> Start Review
-                    </button>
+                    <span className="due-date">
+                      Due {getTimeDifference(card.scheduled_date)}
+                    </span>
                   </div>
                 </div>
               ))}
-              {dueToday.length > 3 && (
+              {dueNow.length > 3 && (
                 <div className="view-more">
-                  <button onClick={() => startReviewSession(null)}>Review {dueToday.length} cards due today</button>
+                  <button>View {dueNow.length - 3} more cards</button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="cards-section later-today">
+            <div className="section-header">
+              <FiCalendar className="section-icon" />
+              <h2>Later Today</h2>
+              <span className="card-count">{laterToday.length}</span>
+            </div>
+            <div className="cards-container">
+              {laterToday.slice(0, 3).map(card => (
+                <div key={card.id} className="study-card later-today">
+                  <div className="card-content">
+                    <h3>{card.question}</h3>
+                    <p>{card.answer}</p>
+                    <span className="due-date">
+                      Scheduled at {formatDateTimeForDisplay(card.scheduled_date)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              {laterToday.length > 3 && (
+                <div className="view-more">
+                  <button>View {laterToday.length - 3} more cards</button>
                 </div>
               )}
             </div>
@@ -1002,7 +993,7 @@ const ReviewCards = ({ onViewModeChange }) => {
               <FiBell className="section-icon" />
               <h2>Upcoming</h2>
               <span className="card-count">{upcoming.length}</span>
-                  </div>
+            </div>
             <div className="cards-container">
               {upcoming.slice(0, 3).map(card => (
                 <div key={card.id} className="study-card upcoming">
@@ -1010,7 +1001,7 @@ const ReviewCards = ({ onViewModeChange }) => {
                     <h3>{card.question}</h3>
                     <p>{card.answer}</p>
                     <span className="due-date">
-                      Due: {new Date(card.scheduled_date).toLocaleDateString()}
+                      Scheduled for {formatDateTimeForDisplay(card.scheduled_date)}
                     </span>
                   </div>
                 </div>
@@ -1020,7 +1011,7 @@ const ReviewCards = ({ onViewModeChange }) => {
                   <button>View {upcoming.length - 3} more cards</button>
                 </div>
               )}
-              </div>
+            </div>
           </div>
         </div>
       </div>

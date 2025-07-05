@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
-import axios from 'axios';
+import api from '../api/axios';
+import { formatDateForDisplay, formatDateTimeForDisplay, convertBackendDateToLocal, isBackendDateToday, isBackendDatePast, isBackendDateFuture } from '../utils/dateUtils';
 import './Calendar.css';
+
 
 function Calendar() {
     const [currentDate, setCurrentDate] = useState(new Date());
@@ -21,7 +23,7 @@ function Calendar() {
                     }
                 };
 
-                const response = await axios.get(`${api}flashcards/cards/`, config);
+                const response = await api.get(`${api}flashcards/cards/`, config);
                 
                 // Group cards by scheduled date
                 const cardsByDate = {};
@@ -30,25 +32,29 @@ function Calendar() {
 
                 response.data.forEach(card => {
                     if (card.scheduled_date) {
-                        const date = card.scheduled_date;
-                        if (!cardsByDate[date]) {
-                            cardsByDate[date] = [];
+                        // Convert backend date to local date for proper grouping
+                        const localDate = convertBackendDateToLocal(card.scheduled_date);
+                        if (!cardsByDate[localDate]) {
+                            cardsByDate[localDate] = [];
                         }
-                        cardsByDate[date].push(card);
+                        cardsByDate[localDate].push(card);
 
                         // Add to upcoming if the date is in the future
-                        const cardDate = new Date(date);
-                        if (cardDate >= today) {
+                        if (isBackendDateFuture(card.scheduled_date)) {
                             upcoming.push({
                                 ...card,
-                                scheduled_date: date
+                                scheduled_date: card.scheduled_date
                             });
                         }
                     }
                 });
 
                 // Sort upcoming cards by date
-                upcoming.sort((a, b) => new Date(a.scheduled_date) - new Date(b.scheduled_date));
+                upcoming.sort((a, b) => {
+                    const localA = convertBackendDateToLocal(a.scheduled_date);
+                    const localB = convertBackendDateToLocal(b.scheduled_date);
+                    return new Date(localA) - new Date(localB);
+                });
                 setUpcomingCards(upcoming);
                 setScheduledCards(cardsByDate);
             } catch (error) {
@@ -84,15 +90,6 @@ function Calendar() {
         const paddedMonth = String(month + 1).padStart(2, '0');
         const paddedDay = String(day).padStart(2, '0');
         return `${year}-${paddedMonth}-${paddedDay}`;
-    };
-
-    const formatDisplayDate = (dateString) => {
-        const date = new Date(dateString);
-        return date.toLocaleDateString('en-US', { 
-            weekday: 'long',
-            month: 'long',
-            day: 'numeric'
-        });
     };
 
     const renderCalendarDays = () => {
@@ -157,7 +154,7 @@ function Calendar() {
                 <div className="upcoming-cards">
                     {upcomingCards.slice(0, 5).map((card, index) => (
                         <div key={index} className="upcoming-card">
-                            <div className="card-date">{formatDisplayDate(card.scheduled_date)}</div>
+                            <div className="card-date">{formatDateTimeForDisplay(card.scheduled_date)}</div>
                             <div className="card-content">
                                 <div className="card-question">{card.question}</div>
                                 <div className="card-answer">{card.answer}</div>

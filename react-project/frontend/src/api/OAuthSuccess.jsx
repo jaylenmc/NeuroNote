@@ -26,15 +26,36 @@ function Authentication() {
 
     if (code) {
       axios.post(`${ api }auth/google/`, { code })
-        .then(res => {
+        .then(async res => {
           console.log('Login successful', res.data)
 
-          const { jwt_token, email } = res.data;
+          const { user, jwt_refresh } = res.data;
 
-          sessionStorage.setItem('jwt_token', jwt_token)
-          login({ email })
+          // Store the refresh token first
+          sessionStorage.setItem('refresh_token', jwt_refresh);
+          sessionStorage.setItem('user', JSON.stringify(user));
 
-          navigate('/dashboard');
+          // Make an initial token refresh to get an access token
+          try {
+            const refreshResponse = await axios.post(`${api}auth/token/refresh/`, {
+              refresh_token: jwt_refresh
+            }, {
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            });
+
+            const { access } = refreshResponse.data;
+            sessionStorage.setItem('jwt_token', access);
+
+            // Update the auth context
+            login(user, { access, jwt_refresh });
+            navigate('/dashboard');
+          } catch (refreshError) {
+            console.error('Failed to get initial access token:', refreshError);
+            sessionStorage.setItem('auth_error', 'Authentication failed. Please try again.');
+            navigate('/signin');
+          }
         })
         .catch(err => {
           if (err.response) {
@@ -46,7 +67,7 @@ function Authentication() {
           navigate('/signin');
         })
     }
-  }, [searchParams, navigate]);
+  }, [searchParams, navigate, login]);
 
   return (
     <div className="auth-loading-container">

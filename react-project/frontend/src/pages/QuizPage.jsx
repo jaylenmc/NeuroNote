@@ -2,8 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import './QuizPage.css';
+import { formatDateForDisplay } from '../utils/dateUtils';
 
 const formatDate = (dateString) => {
+    if (!dateString) return '—';
+    
     const date = new Date(dateString);
     const now = new Date();
     const diffTime = Math.abs(now - date);
@@ -13,7 +16,7 @@ const formatDate = (dateString) => {
     if (diffDays === 1) return 'Yesterday';
     if (diffDays < 7) return `${diffDays} days ago`;
     
-    return date.toLocaleDateString();
+    return formatDateForDisplay(dateString);
 };
 
 const QuizPage = () => {

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import { FiPlus, FiTrash2 } from 'react-icons/fi';
 import './DeckManager.css';
-import { getAuthHeader, handleApiError } from '../utils/auth';
+import { formatDateForDisplay } from '../utils/dateUtils';
+import api from '../api/axios';
 
 const DeckManager = () => {
     const [decks, setDecks] = useState([]);
@@ -21,7 +21,6 @@ const DeckManager = () => {
         back: '',
         scheduled_date: new Date().toISOString().split('T')[0]
     });
-    const api = import.meta.env.VITE_API_URL;
 
     useEffect(() => {
         fetchDecks();
@@ -42,19 +41,10 @@ const DeckManager = () => {
     const fetchDecks = async () => {
         setIsLoadingDecks(true);
         try {
-            const headers = await getAuthHeader();
-            const response = await axios.get(`${api}flashcards/deck/`, { headers });
+            const response = await api.get('/flashcards/deck/');
             setDecks(response.data);
         } catch (error) {
-            try {
-                await handleApiError(error);
-                // Retry the request with new token
-                const newHeaders = await getAuthHeader();
-                const response = await axios.get(`${api}flashcards/deck/`, { headers: newHeaders });
-                setDecks(response.data);
-            } catch (retryError) {
-                console.error('Error fetching decks:', retryError);
-            }
+            console.error('Error fetching decks:', error);
         } finally {
             setIsLoadingDecks(false);
         }
@@ -63,25 +53,15 @@ const DeckManager = () => {
     const fetchCards = async (deckId) => {
         setIsLoadingCards(true);
         try {
-            const headers = await getAuthHeader();
-            const response = await axios.get(`${api}flashcards/cards/`, { headers });
+            const response = await api.get('/flashcards/cards/');
             
             const deckCards = response.data.filter(card => card.card_deck === deckId);
             console.log('Fetched cards:', deckCards);
             setCards(deckCards);
             
         } catch (error) {
-            try {
-                await handleApiError(error);
-                // Retry the request with new token
-                const newHeaders = await getAuthHeader();
-                const response = await axios.get(`${api}flashcards/cards/`, { headers: newHeaders });
-                const deckCards = response.data.filter(card => card.card_deck === deckId);
-                setCards(deckCards);
-            } catch (retryError) {
-                console.error('Error fetching cards:', retryError);
-                setCards([]);
-            }
+            console.error('Error fetching cards:', error);
+            setCards([]);
         } finally {
             setIsLoadingCards(false);
         }
@@ -91,55 +71,25 @@ const DeckManager = () => {
         if (!newDeck.title.trim() || !newDeck.subject.trim()) return;
         
         try {
-            const headers = await getAuthHeader();
-            await axios.post(`${api}flashcards/deck/`, 
-                newDeck,
-                { headers }
-            );
+            await api.post('/flashcards/deck/', newDeck);
             setNewDeck({ title: '', subject: '' });
             setIsCreatingDeck(false);
             fetchDecks();
         } catch (error) {
-            try {
-                await handleApiError(error);
-                // Retry the request with new token
-                const newHeaders = await getAuthHeader();
-                await axios.post(`${api}flashcards/deck/`, 
-                    newDeck,
-                    { headers: newHeaders }
-                );
-                setNewDeck({ title: '', subject: '' });
-                setIsCreatingDeck(false);
-                fetchDecks();
-            } catch (retryError) {
-                console.error('Error creating deck:', retryError);
-            }
+            console.error('Error creating deck:', error);
         }
     };
 
     const deleteDeck = async (deckId) => {
         try {
-            const headers = await getAuthHeader();
-            await axios.delete(`${api}flashcards/deck/delete/${deckId}`, { headers });
+            await api.delete(`/flashcards/deck/delete/${deckId}`);
             if (selectedDeck?.id === deckId) {
                 setSelectedDeck(null);
                 setCards([]);
             }
             fetchDecks();
         } catch (error) {
-            try {
-                await handleApiError(error);
-                // Retry the request with new token
-                const newHeaders = await getAuthHeader();
-                await axios.delete(`${api}flashcards/deck/delete/${deckId}`, { headers: newHeaders });
-                if (selectedDeck?.id === deckId) {
-                    setSelectedDeck(null);
-                    setCards([]);
-                }
-                fetchDecks();
-            } catch (retryError) {
-                console.error('Error deleting deck:', retryError);
-            }
+            console.error('Error deleting deck:', error);
         }
     };
 
@@ -147,7 +97,6 @@ const DeckManager = () => {
         if (!newCard.front.trim() || !newCard.back.trim()) return;
         
         try {
-            const headers = await getAuthHeader();
             const scheduledDate = newCard.scheduled_date ? 
                 new Date(newCard.scheduled_date + 'T00:00:00').toISOString().split('T')[0] : 
                 null;
@@ -161,10 +110,7 @@ const DeckManager = () => {
             
             console.log('Creating card with data:', cardData);
             
-            const response = await axios.post(`${api}flashcards/cards/`,
-                cardData,
-                { headers }
-            );
+            const response = await api.post('/flashcards/cards/', cardData);
             
             console.log('Card creation response:', response.data);
             
@@ -176,64 +122,23 @@ const DeckManager = () => {
             setIsCreatingCard(false);
             fetchCards(selectedDeck.id);
         } catch (error) {
-            try {
-                await handleApiError(error);
-                // Retry the request with new token
-                const newHeaders = await getAuthHeader();
-                const scheduledDate = newCard.scheduled_date ? 
-                    new Date(newCard.scheduled_date + 'T00:00:00').toISOString().split('T')[0] : 
-                    null;
-
-                const cardData = {
-                    "answer": newCard.back,
-                    "question": newCard.front,
-                    "deck_id": selectedDeck.id,
-                    "scheduled_date": scheduledDate
-                };
-                
-                const response = await axios.post(`${api}flashcards/cards/`,
-                    cardData,
-                    { headers: newHeaders }
-                );
-                
-                setNewCard({ 
-                    front: '', 
-                    back: '',
-                    scheduled_date: new Date().toISOString().split('T')[0]
-                });
-                setIsCreatingCard(false);
-                fetchCards(selectedDeck.id);
-            } catch (retryError) {
-                console.error('Error creating card:', retryError);
-            }
+            console.error('Error creating card:', error);
         }
     };
 
     const deleteCard = async (deckId, cardId) => {
         try {
-            const headers = await getAuthHeader();
-            await axios.delete(`${api}flashcards/cards/delete/${deckId}/${cardId}`, { headers });
+            await api.delete(`/flashcards/cards/delete/${deckId}/${cardId}`);
             fetchCards(selectedDeck.id);
         } catch (error) {
-            try {
-                await handleApiError(error);
-                // Retry the request with new token
-                const newHeaders = await getAuthHeader();
-                await axios.delete(`${api}flashcards/cards/delete/${deckId}/${cardId}`, { headers: newHeaders });
-                fetchCards(selectedDeck.id);
-            } catch (retryError) {
-                console.error('Error deleting card:', retryError);
-            }
+            console.error('Error deleting card:', error);
         }
     };
 
     const formatDate = (dateString) => {
         if (!dateString || dateString === '1969-12-31') return null;
         try {
-            // Create date in local timezone
-            const date = new Date(dateString + 'T00:00:00');
-            if (isNaN(date.getTime())) return null;
-            return date.toLocaleDateString();
+            return formatDateForDisplay(dateString);
         } catch (error) {
             console.error('Error formatting date:', error);
             return null;

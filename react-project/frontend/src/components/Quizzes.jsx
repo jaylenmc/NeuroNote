@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
 import './Quizzes.css';
+import api from '../api/axios';
 
 const Quizzes = () => {
     const [quizzes, setQuizzes] = useState([]);
@@ -8,7 +8,6 @@ const Quizzes = () => {
     const [topic, setTopic] = useState('');
     const [question, setQuestion] = useState('');
     const [answer, setAnswer] = useState('');
-    const api = import.meta.env.VITE_API_URL;
 
     useEffect(() => {
         fetchQuizzes();
@@ -16,18 +15,7 @@ const Quizzes = () => {
 
     const fetchQuizzes = async () => {
         try {
-            const jwt_token = sessionStorage.getItem('jwt_token');
-            if (!jwt_token) {
-                console.error('No JWT token found');
-                return;
-            }
-            const config = {
-                headers: {
-                    'Authorization': `Bearer ${jwt_token}`,
-                    'Content-Type': 'application/json'
-                }
-            };
-            const response = await axios.get(`${api}test/quiz/`, config);
+            const response = await api.get('/test/quiz/');
             setQuizzes(response.data);
         } catch (error) {
             console.error('Error fetching quizzes:', error);
@@ -37,23 +25,12 @@ const Quizzes = () => {
     const handleCreateQuiz = async (e) => {
         e.preventDefault();
         try {
-            const jwt_token = sessionStorage.getItem('jwt_token');
-            if (!jwt_token) {
-                console.error('No JWT token found');
-                return;
-            }
-            const config = {
-                headers: {
-                    'Authorization': `Bearer ${jwt_token}`,
-                    'Content-Type': 'application/json'
-                }
-            };
             const quizData = {
                 topic: topic,
                 question: question,
                 answer: answer
             };
-            await axios.post(`${api}test/quiz/`, quizData, config);
+            await api.post('/test/quiz/', quizData);
             // Clear form
             setTopic('');
             setQuestion('');
@@ -67,18 +44,7 @@ const Quizzes = () => {
 
     const handleDeleteQuiz = async (id) => {
         try {
-            const jwt_token = sessionStorage.getItem('jwt_token');
-            if (!jwt_token) {
-                console.error('No JWT token found');
-                return;
-            }
-            const config = {
-                headers: {
-                    'Authorization': `Bearer ${jwt_token}`,
-                    'Content-Type': 'application/json'
-                }
-            };
-            await axios.delete(`${api}test/quiz/${id}`, config);
+            await api.delete(`/test/quiz/${id}`);
             fetchQuizzes();
         } catch (error) {
             console.error('Error deleting quiz:', error);

@@ -1098,8 +1098,12 @@
     color: #ff6b6b;
 }
 
-.due-today .section-icon {
-    color: #4CAF50;
+.due-now .section-icon {
+    color: #ff9800;
+}
+
+.later-today .section-icon {
+    color: #ffc107;
 }
 
 .upcoming .section-icon {
@@ -1139,8 +1143,12 @@
     border-left: 4px solid #ff6b6b;
 }
 
-.study-card.due-today {
-    border-left: 4px solid #4CAF50;
+.study-card.due-now {
+    border-left: 4px solid #ff9800;
+}
+
+.study-card.later-today {
+    border-left: 4px solid #ffc107;
 }
 
 .study-card.upcoming {

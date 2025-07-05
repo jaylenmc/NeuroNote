@@ -17,6 +17,8 @@ import bookshelfImg from '../assets/bookshelf.jpg';
 import { useNavigate, useLocation } from 'react-router-dom';
 import DashboardHome from './DashboardHome';
 import './DashboardHome.css';
+import api from '../api/axios';
+import { formatDateForDisplay, formatDateTimeForDisplay, convertBackendDateToLocal, isBackendDateToday, isBackendDatePast, isBackendDateFuture, isBackendDateTimeDueNow, isBackendDateTimeUpcoming } from '../utils/dateUtils';
 
 function Dashboard({ initialView }) {
     const navigate = useNavigate(); // <-- Move here, top level
@@ -150,92 +152,15 @@ function Dashboard({ initialView }) {
     const nextLevelXp = xpForLevel(level);
     const progress = Math.max(0, Math.min((xp / nextLevelXp) * 100, 100));
 
-    // Function to check if token is expired
-    const isTokenExpired = (token) => {
-        if (!token) return true;
-        try {
-            const payload = JSON.parse(atob(token.split('.')[1]));
-            return payload.exp * 1000 < Date.now();
-        } catch (error) {
-            return true;
-        }
-    };
-
-    // Function to refresh the access token
-    const refreshAccessToken = async () => {
-        try {
-            const response = await fetch(`${import.meta.env.VITE_API_URL}auth/token/refresh/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                credentials: 'include', // Important for cookies
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                sessionStorage.setItem('jwt_token', data.access);
-                return data.access;
-            } else {
-                console.error('Failed to refresh token:', await response.text());
-                logout(); // Only logout if refresh fails
-                return null;
-            }
-        } catch (error) {
-            console.error('Error refreshing token:', error);
-            logout(); // Only logout if refresh fails
-            return null;
-        }
-    };
-
-    // Function to make authenticated requests with automatic token refresh
-    const makeAuthenticatedRequest = async (url, options = {}) => {
-        let token = sessionStorage.getItem('jwt_token');
-        
-        if (isTokenExpired(token)) {
-            token = await refreshAccessToken();
-            if (!token) return null; // If refresh failed, return null
-        }
-
-        const response = await fetch(url, {
-            ...options,
-            headers: {
-                ...options.headers,
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            },
-        });
-
-        if (response.status === 401) {
-            // Try refreshing token once more
-            token = await refreshAccessToken();
-            if (!token) return null;
-
-            // Retry the request with new token
-            return fetch(url, {
-                ...options,
-                headers: {
-                    ...options.headers,
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-            });
-        }
-
-        return response;
-    };
-
     // Split fetchFolders into smaller functions
     const fetchAllDecks = async () => {
-        const response = await makeAuthenticatedRequest(`${import.meta.env.VITE_API_URL}flashcards/deck/`);
-        if (!response || !response.ok) return [];
-        return await response.json();
+        const response = await api.get('/flashcards/deck/');
+        return response.data;
     };
 
     const fetchAllQuizzes = async () => {
-        const response = await makeAuthenticatedRequest(`${import.meta.env.VITE_API_URL}test/quiz/`);
-        if (!response || !response.ok) return [];
-        return await response.json();
+        const response = await api.get('/test/quiz/');
+        return response.data;
     };
 
     const processFolderItems = (folder, allDecks, allQuizzes) => {
@@ -271,36 +196,32 @@ function Dashboard({ initialView }) {
             setIsLoading(prev => ({ ...prev, folders: true }));
         }
         try {
-            const response = await makeAuthenticatedRequest(`${import.meta.env.VITE_API_URL}folders/user/`);
-            if (!response || !isMounted) return;
+            const response = await api.get('/folders/user/');
+            if (!response) return;
+            const foldersData = response.data;
 
-            if (response.ok) {
-                const foldersData = await response.json();
-                // If foldersData contains xp and level, update user
-                if (foldersData.xp !== undefined && foldersData.level !== undefined) {
-                    login({ ...user, xp: foldersData.xp, level: foldersData.level });
+            // If foldersData contains xp and level, update user
+            if (foldersData.xp !== undefined && foldersData.level !== undefined) {
+                login({ ...user, xp: foldersData.xp, level: foldersData.level });
+            }
+            // foldersData.folders is the actual folders array
+            const foldersWithCounts = (foldersData.folders || foldersData).map(folder => {
+                return {
+                    ...folder,
+                    documentCount: folder.content_num || 0,
+                    deckCount: 0,
+                    quizCount: 0,
+                    // Ensure sub_folders is properly handled
+                    sub_folders: folder.sub_folders || []
+                };
+            });
+            setFolders(foldersWithCounts);
+            // Update selected folder if needed
+            if (selectedFolder && isMounted) {
+                const updatedSelectedFolder = foldersWithCounts.find(f => f.id === selectedFolder.id);
+                if (updatedSelectedFolder) {
+                    setSelectedFolder(updatedSelectedFolder);
                 }
-                // foldersData.folders is the actual folders array
-                const foldersWithCounts = (foldersData.folders || foldersData).map(folder => {
-                    return {
-                        ...folder,
-                        documentCount: folder.content_num || 0,
-                        deckCount: 0,
-                        quizCount: 0,
-                        // Ensure sub_folders is properly handled
-                        sub_folders: folder.sub_folders || []
-                    };
-                });
-                setFolders(foldersWithCounts);
-                // Update selected folder if needed
-                if (selectedFolder && isMounted) {
-                    const updatedSelectedFolder = foldersWithCounts.find(f => f.id === selectedFolder.id);
-                    if (updatedSelectedFolder) {
-                        setSelectedFolder(updatedSelectedFolder);
-                    }
-                }
-            } else {
-                console.error('Failed to fetch folders:', await response.text());
             }
         } catch (error) {
             console.error('Error fetching folders:', error);
@@ -339,27 +260,19 @@ function Dashboard({ initialView }) {
     const handleCreateFolder = async (name = newFolderName, parentId = null) => {
         if (name.trim()) {
             try {
-                const token = sessionStorage.getItem('jwt_token');
                 const body = parentId
-                    ? JSON.stringify({ name: name.trim(), folder_id: parentId })
-                    : JSON.stringify({ name: name.trim() });
-                const response = await fetch(`${import.meta.env.VITE_API_URL}folders/user/`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body
-                });
+                    ? { name: name.trim(), folder_id: parentId }
+                    : { name: name.trim() };
+                const response = await api.post('/folders/user/', body);
                 
                 if (response.ok) {
-                    const newFolderData = await response.json();
+                    const newFolderData = response.data;
                     // Handle both regular folders and subfolders
                     if (newFolderData.folder) {
                         // Regular folder created
                         setFolders(prev => [...prev, newFolderData.folder]);
-                        setNewFolderName('');
-                        setShowNewFolderModal(false);
+                    setNewFolderName('');
+                    setShowNewFolderModal(false);
                     } else if (newFolderData.sub_folder) {
                         // Subfolder created, refresh folders to get updated structure
                         fetchFolders();
@@ -379,9 +292,7 @@ function Dashboard({ initialView }) {
     const handleDeleteFolder = async (folderId) => {
         try {
             const folder = folders.find(f => f.id === folderId);
-            const response = await makeAuthenticatedRequest(`${import.meta.env.VITE_API_URL}folders/user/${folderId}/`, {
-                method: 'DELETE'
-            });
+            const response = await api.delete(`folders/user/${folderId}/`);
             
             if (!response) return;
 
@@ -492,7 +403,7 @@ function Dashboard({ initialView }) {
             try {
                 // Fetch all necessary data in parallel
                 const [documentsResponse, allDecks, allQuizzes] = await Promise.all([
-                    makeAuthenticatedRequest(`${import.meta.env.VITE_API_URL}documents/notes/`),
+                    api.get('documents/notes/'),
                     fetchAllDecks(),
                     fetchAllQuizzes()
                 ]);
@@ -557,7 +468,7 @@ function Dashboard({ initialView }) {
             // Wait for transition
             await new Promise(resolve => setTimeout(resolve, 300));
             
-            const response = await makeAuthenticatedRequest(`${import.meta.env.VITE_API_URL}test/quiz/${quizId}/`);
+            const response = await api.get(`test/quiz/${quizId}/`);
             if (!response) return;
 
             if (response.ok) {
@@ -593,17 +504,11 @@ function Dashboard({ initialView }) {
     const handleSaveQuestion = async (updatedQuestion) => {
         try {
             // Update the question
-            const questionResponse = await makeAuthenticatedRequest(
-                `${import.meta.env.VITE_API_URL}test/quiz/question/${selectedQuiz.id}/${updatedQuestion.id}/`,
-                {
-                    method: 'PUT',
-                    body: JSON.stringify({
-                        question_input: updatedQuestion.question,
-                        question_type: "MC", // Changed to match model choices
-                        quiz_id: selectedQuiz.id
-                    })
-                }
-            );
+            const questionResponse = await api.put(`test/quiz/question/${selectedQuiz.id}/${updatedQuestion.id}/`, {
+                question_input: updatedQuestion.question,
+                question_type: "MC", // Changed to match model choices
+                quiz_id: selectedQuiz.id
+            });
 
             if (!questionResponse || !questionResponse.ok) {
                 const errorText = await questionResponse.text();
@@ -614,18 +519,12 @@ function Dashboard({ initialView }) {
 
             // Update each answer
             for (const option of updatedQuestion.options) {
-                const answerResponse = await makeAuthenticatedRequest(
-                    `${import.meta.env.VITE_API_URL}test/quiz/answer/${selectedQuiz.id}/${updatedQuestion.id}/`,
-                    {
-                        method: 'PUT',
-                        body: JSON.stringify({
-                            answer_input: option,
-                            answer_is_correct: option === updatedQuestion.correctAnswer,
-                            question_id: updatedQuestion.id,
-                            quiz_id: selectedQuiz.id
-                        })
-                    }
-                );
+                const answerResponse = await api.put(`test/quiz/answer/${selectedQuiz.id}/${updatedQuestion.id}/`, {
+                    answer_input: option,
+                    answer_is_correct: option === updatedQuestion.correctAnswer,
+                    question_id: updatedQuestion.id,
+                    quiz_id: selectedQuiz.id
+                });
 
                 if (!answerResponse || !answerResponse.ok) {
                     const errorText = await answerResponse.text();
@@ -635,9 +534,7 @@ function Dashboard({ initialView }) {
             }
 
             // Refresh the quiz data
-            const quizResponse = await makeAuthenticatedRequest(
-                `${import.meta.env.VITE_API_URL}test/quiz/${selectedQuiz.id}/`
-            );
+            const quizResponse = await api.get(`test/quiz/${selectedQuiz.id}/`);
 
             if (quizResponse && quizResponse.ok) {
                 const updatedQuiz = await quizResponse.json();
@@ -710,17 +607,11 @@ function Dashboard({ initialView }) {
             }
 
             // Create the question
-            const questionResponse = await makeAuthenticatedRequest(
-                `${import.meta.env.VITE_API_URL}test/quiz/question/`,
-                {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        question_input: newQuestion.question_input,
-                        question_type: newQuestion.question_type,
-                        quiz_id: selectedQuiz.id
-                    })
-                }
-            );
+            const questionResponse = await api.post('test/quiz/question/', {
+                question_input: newQuestion.question_input,
+                question_type: newQuestion.question_type,
+                quiz_id: selectedQuiz.id
+            });
 
             if (!questionResponse || !questionResponse.ok) {
                 const errorText = await questionResponse.text();
@@ -733,18 +624,12 @@ function Dashboard({ initialView }) {
             
             // Create answers
             for (const answer of newQuestion.answers) {
-                const answerResponse = await makeAuthenticatedRequest(
-                    `${import.meta.env.VITE_API_URL}test/quiz/answer/`,
-                    {
-                        method: 'POST',
-                        body: JSON.stringify({
-                            answer_input: answer.answer_input,
-                            answer_is_correct: answer.is_correct,
-                            question_id: questionData.id,
-                            quiz_id: selectedQuiz.id
-                        })
-                    }
-                );
+                const answerResponse = await api.post('test/quiz/answer/', {
+                    answer_input: answer.answer_input,
+                    answer_is_correct: answer.is_correct,
+                    question_id: questionData.id,
+                    quiz_id: selectedQuiz.id
+                });
 
                 if (!answerResponse || !answerResponse.ok) {
                     const errorText = await answerResponse.text();
@@ -754,9 +639,7 @@ function Dashboard({ initialView }) {
             }
 
             // Refresh the quiz data
-            const quizResponse = await makeAuthenticatedRequest(
-                `${import.meta.env.VITE_API_URL}test/quiz/${selectedQuiz.id}/`
-            );
+            const quizResponse = await api.get(`test/quiz/${selectedQuiz.id}/`);
 
             if (quizResponse && quizResponse.ok) {
                 const updatedQuiz = await quizResponse.json();
@@ -800,7 +683,7 @@ function Dashboard({ initialView }) {
             const existingItems = folder.items || [];
             console.log('Existing items before fetch:', existingItems);
 
-            const response = await makeAuthenticatedRequest(`${import.meta.env.VITE_API_URL}flashcards/deck/`);
+            const response = await api.get('/flashcards/deck/');
             
             if (!response) return;
 
@@ -811,7 +694,7 @@ function Dashboard({ initialView }) {
                 const folderDecks = allDecks.filter(deck => deck.folder === folderId);
                 
                 // Fetch all cards to get accurate counts
-                const cardsResponse = await makeAuthenticatedRequest(`${import.meta.env.VITE_API_URL}flashcards/cards/`);
+                const cardsResponse = await api.get('/flashcards/cards/');
                 if (!cardsResponse) return;
 
                 if (cardsResponse.ok) {
@@ -885,8 +768,8 @@ function Dashboard({ initialView }) {
         try {
             // Fetch both documents and quizzes in parallel
             const [documentsResponse, quizzesResponse] = await Promise.all([
-                makeAuthenticatedRequest(`${import.meta.env.VITE_API_URL}documents/notes/${folderId}/`),
-                makeAuthenticatedRequest(`${import.meta.env.VITE_API_URL}test/quiz/`)
+                api.get(`documents/notes/${folderId}/`),
+                api.get('test/quiz/')
             ]);
             
             let folderDocuments = [];
@@ -975,13 +858,10 @@ function Dashboard({ initialView }) {
     const handleCreateDeck = async () => {
         if (newDeckName.trim() && newDeckSubject.trim()) {
             try {
-                const response = await makeAuthenticatedRequest(`${import.meta.env.VITE_API_URL}flashcards/deck/`, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        title: newDeckName.trim(),
-                        subject: newDeckSubject.trim(),
-                        folder_id: selectedFolder.id
-                    })
+                const response = await api.post('/flashcards/deck/', {
+                    title: newDeckName.trim(),
+                    subject: newDeckSubject.trim(),
+                    folder_id: selectedFolder.id
                 });
                 
                 if (!response) return;
@@ -1042,9 +922,7 @@ function Dashboard({ initialView }) {
     const handleDeleteDeck = async (deckId) => {
         try {
             const deck = selectedFolder.items.find(item => item.id === deckId);
-            const response = await makeAuthenticatedRequest(`${import.meta.env.VITE_API_URL}flashcards/deck/delete/${deckId}`, {
-                method: 'DELETE'
-            });
+            const response = await api.delete(`flashcards/deck/delete/${deckId}`);
             
             if (!response) return;
 
@@ -1074,7 +952,7 @@ function Dashboard({ initialView }) {
     const fetchDeckCards = async (deckId) => {
         setIsLoading(prev => ({ ...prev, cards: true }));
         try {
-            const response = await makeAuthenticatedRequest(`${import.meta.env.VITE_API_URL}flashcards/cards/`);
+            const response = await api.get('/flashcards/cards/');
             if (!response) return;
 
             if (response.ok) {
@@ -1146,14 +1024,11 @@ function Dashboard({ initialView }) {
     const handleCreateCard = async () => {
         if (newCard.question.trim() && newCard.answer.trim()) {
             try {
-                const response = await makeAuthenticatedRequest(`${import.meta.env.VITE_API_URL}flashcards/cards/`, {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        question: newCard.question.trim(),
-                        answer: newCard.answer.trim(),
-                        deck_id: selectedDeck.id,
-                        scheduled_date: newCard.scheduled_date
-                    })
+                const response = await api.post('/flashcards/cards/', {
+                    question: newCard.question.trim(),
+                    answer: newCard.answer.trim(),
+                    deck_id: selectedDeck.id,
+                    scheduled_date: newCard.scheduled_date
                 });
                 
                 if (!response) return;
@@ -1175,10 +1050,7 @@ function Dashboard({ initialView }) {
     const handleDeleteCard = async (cardId) => {
         try {
             const card = cards.find(c => c.id === cardId);
-            const response = await makeAuthenticatedRequest(
-                `${import.meta.env.VITE_API_URL}flashcards/cards/delete/${selectedDeck.id}/${cardId}/`,
-                { method: 'DELETE' }
-            );
+            const response = await api.delete(`flashcards/cards/delete/${selectedDeck.id}/${cardId}/`);
             
             if (!response) return;
 
@@ -1199,10 +1071,10 @@ function Dashboard({ initialView }) {
             try {
                 // Fetch all necessary data in parallel
                 const [documentsResponse, allDecks, allQuizzes, foldersResponse] = await Promise.all([
-                    makeAuthenticatedRequest(`${import.meta.env.VITE_API_URL}documents/notes/`),
+                    api.get('documents/notes/'),
                     fetchAllDecks(),
                     fetchAllQuizzes(),
-                    makeAuthenticatedRequest(`${import.meta.env.VITE_API_URL}folders/user/`)
+                    api.get('folders/user/')
                 ]);
 
                 if (!isMounted) return;
@@ -1380,16 +1252,10 @@ function Dashboard({ initialView }) {
 
     const handleCreateDocument = async () => {
         try {
-            const response = await makeAuthenticatedRequest(
-                `${import.meta.env.VITE_API_URL}documents/notes/${selectedFolder.id}/`,
-                {
-                    method: 'POST',
-                    body: JSON.stringify({
-                        title: 'Untitled Document',
-                        content: ''
-                    })
-                }
-            );
+            const response = await api.post(`documents/notes/${selectedFolder.id}/`, {
+                title: 'Untitled Document',
+                content: ''
+            });
             
             if (!response) return;
 
@@ -1443,17 +1309,13 @@ function Dashboard({ initialView }) {
             formData.append('file', file);
             formData.append('title', file.name);
 
-            const response = await makeAuthenticatedRequest(
-                `${import.meta.env.VITE_API_URL}documents/upload/${selectedFolder.id}/`,
-                {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        // Don't set Content-Type for FormData, let the browser set it
-                        'Authorization': `Bearer ${sessionStorage.getItem('jwt_token')}`,
-                    }
+            const response = await api.post(`documents/upload/${selectedFolder.id}/`, {
+                body: formData,
+                headers: {
+                    // Don't set Content-Type for FormData, let the browser set it
+                    'Authorization': `Bearer ${sessionStorage.getItem('jwt_token')}`,
                 }
-            );
+            });
             
             if (!response) return;
 
@@ -1505,20 +1367,11 @@ function Dashboard({ initialView }) {
         if (!selectedFolder) return;
 
         try {
-            const response = await makeAuthenticatedRequest(
-                `${import.meta.env.VITE_API_URL}test/quiz/`,
-                {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        topic: newQuiz.topic.trim(),
-                        subject: newQuiz.subject.trim(),
-                        folder_id: selectedFolder.id
-                    })
-                }
-            );
+            const response = await api.post('/test/quiz/', {
+                topic: newQuiz.topic.trim(),
+                subject: newQuiz.subject.trim(),
+                folder_id: selectedFolder.id
+            });
 
             if (!response) return;
 
@@ -1530,9 +1383,7 @@ function Dashboard({ initialView }) {
                     setShowNewQuizModal(false);
 
                 // Fetch updated folder data
-                const folderResponse = await makeAuthenticatedRequest(
-                    `${import.meta.env.VITE_API_URL}folders/user/`
-                );
+                const folderResponse = await api.get('folders/user/');
 
                 if (folderResponse && folderResponse.ok) {
                     const foldersData = await folderResponse.json();
@@ -1567,9 +1418,7 @@ function Dashboard({ initialView }) {
 
         try {
             console.log('Attempting to delete quiz with ID:', quizId);
-            const response = await makeAuthenticatedRequest(`${import.meta.env.VITE_API_URL}test/quiz/${quizId}/`, {
-                method: 'DELETE'
-            });
+            const response = await api.delete(`test/quiz/${quizId}/`);
             
             if (!response) return;
 
@@ -1622,9 +1471,7 @@ function Dashboard({ initialView }) {
     // Add this function to fetch questions for a quiz
     const fetchQuizQuestions = async (quizId) => {
         try {
-            const response = await makeAuthenticatedRequest(
-                `${import.meta.env.VITE_API_URL}test/quiz/question/${quizId}/`
-            );
+            const response = await api.get(`test/quiz/question/${quizId}/`);
 
             if (response && response.ok) {
                 const questionsData = await response.json();
@@ -1657,7 +1504,7 @@ function Dashboard({ initialView }) {
         // Render subfolders at the top of the content area
         const subfolders = folder.sub_folders || [];
         const items = folder.items || [];
-        return (
+            return (
             <>
                 {subfolders.length > 0 && subfolders.map(subfolder => (
                     <div
@@ -1676,68 +1523,68 @@ function Dashboard({ initialView }) {
                     </div>
                 ))}
                 {items.length === 0 && subfolders.length === 0 && (
-                    <div className="empty-folder-content">
-                        <p>No items in this folder</p>
-                    </div>
+                                                <div className="empty-folder-content">
+                                                    <p>No items in this folder</p>
+                                                    </div>
                 )}
                 {items.map(item => {
-                    if (item.type === 'document') {
-                        return (
-                            <div
-                                key={item.id}
-                                className={`folder-content-item ${selectedDocument?.id === item.id && activeView === 'document' ? 'active' : ''}`}
-                                onClick={() => handleDocumentClick(item)}
-                                onContextMenu={(e) => handleContextMenu(e, 'document', item.id)}
+            if (item.type === 'document') {
+                return (
+                    <div 
+                        key={item.id} 
+                        className={`folder-content-item ${selectedDocument?.id === item.id && activeView === 'document' ? 'active' : ''}`}
+                        onClick={() => handleDocumentClick(item)}
+                        onContextMenu={(e) => handleContextMenu(e, 'document', item.id)}
+                    >
+                        <FiFileText className="content-icon" />
+                        <span className="content-name">{item.title}</span>
+                        <div className="item-meta">
+                            <span className="item-tag">Document</span>
+                            <span>{formatDateForDisplay(item.created_at)}</span>
+                        </div>
+                        <div className="item-actions">
+                        <button 
+                                className="delete-btn"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteDocument(item.id);
+                                }}
                             >
-                                <FiFileText className="content-icon" />
-                                <span className="content-name">{item.title}</span>
-                                <div className="item-meta">
-                                    <span className="item-tag">Document</span>
-                                    <span>{new Date(item.created_at).toLocaleDateString()}</span>
-                                </div>
-                                <div className="item-actions">
-                                    <button
-                                        className="delete-btn"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleDeleteDocument(item.id);
-                                        }}
-                                    >
-                                        ×
-                                    </button>
-                                </div>
-                            </div>
-                        );
+                                ×
+                        </button>
+                    </div>
+                    </div>
+                );
                     }
                     if (item.type === 'quiz') {
-                        return (
-                            <div
-                                key={item.id}
-                                className={`folder-content-item ${selectedQuiz?.id === item.id && activeView === 'quiz' ? 'active' : ''}`}
-                                onClick={(e) => handleQuizClick(item.id, e)}
-                                onContextMenu={(e) => handleContextMenu(e, 'quiz', item.id)}
+                return (
+                    <div 
+                        key={item.id} 
+                        className={`folder-content-item ${selectedQuiz?.id === item.id && activeView === 'quiz' ? 'active' : ''}`}
+                        onClick={(e) => handleQuizClick(item.id, e)}
+                        onContextMenu={(e) => handleContextMenu(e, 'quiz', item.id)}
+                    >
+                        <FiFileText className="content-icon" />
+                        <span className="content-name">{item.topic}</span>
+                        <div className="item-meta">
+                            <span className="item-tag">Quiz</span>
+                            <span>{item.subject}</span>
+                        </div>
+                        <div className="item-actions">
+                            <button 
+                                className="delete-btn"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteQuiz(item.id);
+                                }}
                             >
-                                <FiFileText className="content-icon" />
-                                <span className="content-name">{item.topic}</span>
-                                <div className="item-meta">
-                                    <span className="item-tag">Quiz</span>
-                                    <span>{item.subject}</span>
-                                </div>
-                                <div className="item-actions">
-                                    <button
-                                        className="delete-btn"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            handleDeleteQuiz(item.id);
-                                        }}
-                                    >
-                                        ×
-                                    </button>
-                                </div>
-                            </div>
-                        );
-                    }
-                    return null;
+                                ×
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+            return null;
                 })}
             </>
         );
@@ -2616,7 +2463,7 @@ function Dashboard({ initialView }) {
                           <div key={card.id} className="upcoming-review-item">
                             <span className="upcoming-review-item-question">{card.question}</span>
                             <span className="upcoming-review-item-deck">{card.deckTitle}</span>
-                            <span className="upcoming-review-item-date">Review Date: {new Date(card.scheduled_date).toLocaleDateString()}</span>
+                            <span className="upcoming-review-item-date">Review Date: {formatDateTimeForDisplay(card.scheduled_date)}</span>
                           </div>
                         ))}
                       </div>
@@ -2625,7 +2472,7 @@ function Dashboard({ initialView }) {
                     {/* Sticky Note (minimal) */}
                     <div className="nightowl-sticky">
                       <span role="img" aria-label="pin">📌</span> Study Tip: Try reviewing cards in small batches for better retention.
-                    </div>                    
+                    </div>
                     </div>
                 </div>
             );
@@ -2643,10 +2490,7 @@ function Dashboard({ initialView }) {
     // Add handleDeleteDocument function
     const handleDeleteDocument = async (documentId) => {
         try {
-            const response = await makeAuthenticatedRequest(
-                `${import.meta.env.VITE_API_URL}documents/notes/${selectedFolder.id}/${documentId}/`,
-                { method: 'DELETE' }
-            );
+            const response = await api.delete(`documents/notes/${selectedFolder.id}/${documentId}/`);
             
             if (!response) return;
 
@@ -2682,18 +2526,10 @@ function Dashboard({ initialView }) {
     useEffect(() => {
         // Fetch decks and update AuthContext user with latest XP/level
         const fetchDecks = async () => {
-            const token = sessionStorage.getItem('jwt_token');
-            if (!token) return;
-
             try {
-                const response = await fetch('http://localhost:8000/api/flashcards/deck/', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
+                const response = await api.get('/flashcards/deck/');
                 if (response.ok) {
-                    const data = await response.json();
+                    const data = response.data;
                     if (data.xp !== undefined && data.level !== undefined) {
                         login({ ...user, xp: data.xp, level: data.level });
                     }
@@ -2737,48 +2573,25 @@ function Dashboard({ initialView }) {
     // Add this function to fetch due today count
     const fetchDueTodayCount = async () => {
         try {
-            const token = sessionStorage.getItem('jwt_token');
-            if (!token) return;
-
             // Fetch all decks
-            const decksResponse = await fetch('http://localhost:8000/api/flashcards/deck/', {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                credentials: 'include'
-            });
+            const decksResponse = await api.get('/flashcards/deck/');
 
             if (!decksResponse.ok) return;
-            const decksData = await decksResponse.json();
+            const decksData = decksResponse.data;
             const decks = Array.isArray(decksData.decks) ? decksData.decks : [];
 
             // Fetch cards for each deck and count due today
             let dueToday = 0;
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
 
             for (const deck of decks) {
-                const cardsResponse = await fetch(`http://localhost:8000/api/flashcards/cards/${deck.id}/`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    credentials: 'include'
-                });
+                const cardsResponse = await api.get(`/flashcards/cards/${deck.id}/`);
 
                 if (!cardsResponse.ok) continue;
-                const cards = await cardsResponse.json();
+                const cards = cardsResponse.data;
 
                 cards.forEach(card => {
-                    if (card.scheduled_date) {
-                        const dueDate = new Date(card.scheduled_date);
-                        dueDate.setHours(0, 0, 0, 0);
-                        if (dueDate.getTime() === today.getTime()) {
-                            dueToday++;
-                        }
+                    if (card.scheduled_date && isBackendDateTimeDueNow(card.scheduled_date)) {
+                        dueToday++;
                     }
                 });
             }
@@ -2799,59 +2612,38 @@ function Dashboard({ initialView }) {
     // Add this function to fetch upcoming cards
     const fetchUpcomingCards = async () => {
         try {
-            const token = sessionStorage.getItem('jwt_token');
-            if (!token) return;
-
             // Fetch all decks
-            const decksResponse = await fetch('http://localhost:8000/api/flashcards/deck/', {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json'
-                },
-                credentials: 'include'
-            });
+            const decksResponse = await api.get('/flashcards/deck/');
 
             if (!decksResponse.ok) return;
-            const decksData = await decksResponse.json();
+            const decksData = decksResponse.data;
             const decks = Array.isArray(decksData.decks) ? decksData.decks : [];
 
             // Fetch cards for each deck and filter for next 7 days
             let upcoming = [];
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const nextWeek = new Date(today);
-            nextWeek.setDate(today.getDate() + 7);
 
             for (const deck of decks) {
-                const cardsResponse = await fetch(`http://localhost:8000/api/flashcards/cards/${deck.id}/`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                    credentials: 'include'
-                });
+                const cardsResponse = await api.get(`/flashcards/cards/${deck.id}/`);
 
                 if (!cardsResponse.ok) continue;
-                const cards = await cardsResponse.json();
+                const cards = cardsResponse.data;
 
                 cards.forEach(card => {
-                    if (card.scheduled_date) {
-                        const dueDate = new Date(card.scheduled_date);
-                        dueDate.setHours(0, 0, 0, 0);
-                        if (dueDate > today && dueDate <= nextWeek) {
-                            upcoming.push({
-                                ...card,
-                                deckTitle: deck.title
-                            });
-                        }
+                    if (card.scheduled_date && isBackendDateTimeUpcoming(card.scheduled_date)) {
+                        upcoming.push({
+                            ...card,
+                            deckTitle: deck.title
+                        });
                     }
                 });
             }
 
             // Sort by scheduled date
-            upcoming.sort((a, b) => new Date(a.scheduled_date) - new Date(b.scheduled_date));
+            upcoming.sort((a, b) => {
+                const localA = convertBackendDateToLocal(a.scheduled_date);
+                const localB = convertBackendDateToLocal(b.scheduled_date);
+                return new Date(localA) - new Date(localB);
+            });
             setUpcomingCards(upcoming);
         } catch (error) {
             console.error('Error fetching upcoming cards:', error);
@@ -3413,13 +3205,13 @@ function Dashboard({ initialView }) {
                                                             ))}
                                                             {/* Render items for this subfolder if any */}
                                                             {subfolder.items && subfolder.items.length > 0 && renderFolderItems(subfolder)}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
                                             {/* Render folder items (documents, decks, etc.) but do NOT show empty state in sidebar */}
                                             {folder.items && folder.items.length > 0 && renderFolderItems(folder)}
-                                        </div>
+                        </div>
                                     )}
                                 </div>
                             ))}
@@ -3555,7 +3347,7 @@ function Dashboard({ initialView }) {
                     <button onClick={handleCreateSubfolder} className="dashboard-modal-btn create">Create</button>
                   </div>
                 </div>
-              </div>
+                </div>
             )}
         </div>
     );

@@ -2,6 +2,8 @@ import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom';
 import { FiEdit2, FiTrash2, FiPlus, FiSearch, FiStar, FiClock, FiTag, FiArrowLeft, FiX, FiFilter, FiCheck } from 'react-icons/fi';
 import './DeckContent.css';
+import { formatDateForDisplay, formatDateTimeForDisplay, convertLocalDateToBackend } from '../utils/dateUtils';
+import api from '../api/axios';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
@@ -64,12 +66,8 @@ export default function DeckContent() {
 
   async function fetchDeck() {
     try {
-      const token = sessionStorage.getItem('jwt_token');
-      if (!token) return;
-      const response = await fetch(`${API_URL}flashcards/deck/`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const data = await response.json();
+      const response = await api.get('/flashcards/deck/');
+      const data = response.data;
       setDeck(data.decks.find(d => d.id === parseInt(deckId)));
     } catch (err) {
       console.error('Error fetching deck:', err);
@@ -79,83 +77,66 @@ export default function DeckContent() {
   async function fetchCards() {
     if (!deckId) return; // Guard against undefined deckId
     setLoading(true);
-    const res = await fetch(`${API_URL}flashcards/cards/${deckId}/`, {
-      headers: { Authorization: `Bearer ${jwt}` }
-    });
-    const data = await res.json();
-    setCards(data);
-    setLoading(false);
+    try {
+      const response = await api.get(`/flashcards/cards/${deckId}/`);
+      setCards(response.data);
+    } catch (err) {
+      console.error('Error fetching cards:', err);
+    } finally {
+      setLoading(false);
+    }
   }
 
   async function handleDeleteCard(cardId) {
     setDeleting(cardId);
-    await fetch(`${API_URL}flashcards/cards/delete/${deckId}/${cardId}/`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${jwt}` }
-    });
-    setCards(cards => cards.filter(c => c.id !== cardId));
-    setDeleting(null);
+    try {
+      await api.delete(`/flashcards/cards/delete/${deckId}/${cardId}/`);
+      setCards(cards => cards.filter(c => c.id !== cardId));
+    } catch (err) {
+      console.error('Error deleting card:', err);
+    } finally {
+      setDeleting(null);
+    }
   }
 
   const handleAddCard = async (e) => {
     e.preventDefault();
-    if (!deck) {
-      setError('Deck is not loaded yet. Please wait and try again.');
-      return;
-    }
-    console.log('handleAddCard called');
-    console.log('newCard:', newCard);
-    console.log('deck:', deck);
+    if (!newCard.question.trim() || !newCard.answer.trim()) return;
+
     try {
-      const token = sessionStorage.getItem('jwt_token');
-      if (!token) {
-        setError('Please log in to create cards');
-        return;
-      }
+      // Convert local date to backend format
+      const backendDate = convertLocalDateToBackend(newCard.scheduled_date);
 
-      const response = await fetch(`${API_URL}flashcards/cards/`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          question: newCard.question,
-          answer: newCard.answer,
-          deck_id: deck.id,
-          scheduled_date: newCard.scheduled_date
-        })
-      });
+      const cardData = {
+        question: newCard.question,
+        answer: newCard.answer,
+        deck_id: deck.id,
+        scheduled_date: backendDate
+      };
 
-      console.log('POST /cards/ response:', response);
-
-      if (!response.ok) {
-        throw new Error('Failed to create card');
-      }
-
+      await api.post('/flashcards/cards/', cardData);
+      
       setNewCard({
         question: '',
         answer: '',
         tags: [],
-        scheduled_date: ''
+        scheduled_date: new Date().toISOString().split('T')[0]
       });
       setShowAdd(false);
       fetchCards();
-    } catch (err) {
-      console.error('Error creating card:', err);
-      setError(err.message);
+    } catch (error) {
+      console.error('Error adding card:', error);
     }
   };
 
   async function handleDeleteDeck() {
     if (!window.confirm('Are you sure you want to delete this deck?')) return;
-    await fetch(`${API_URL}flashcards/deck/delete/${deckId}`, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${jwt}` }
-    });
-    navigate('/study-room');
+    try {
+      await api.delete(`/flashcards/deck/delete/${deckId}`);
+      navigate('/study-room');
+    } catch (err) {
+      console.error('Error deleting deck:', err);
+    }
   }
 
   const getRibbonColor = (card) => {
@@ -314,7 +295,7 @@ export default function DeckContent() {
               </div>
               {newCard.scheduled_date && (
                 <div className="card-preview-date">
-                  Review: {new Date(newCard.scheduled_date).toLocaleDateString()}
+                  Review: {newCard.scheduled_date ? formatDateTimeForDisplay(newCard.scheduled_date) : 'Not scheduled'}
                 </div>
               )}
             </div>
@@ -327,33 +308,10 @@ export default function DeckContent() {
   const handleEditDeck = async (e) => {
     e.preventDefault();
     try {
-      const token = sessionStorage.getItem('jwt_token');
-      if (!token) {
-        setError('Please log in to edit deck');
-        return;
-      }
-
-      const response = await fetch(`http://localhost:8000/api/flashcards/deck/update/${deckId}/`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          title: editDeckTitle,
-          subject: editDeckSubject
-        })
+      const response = await api.put(`/flashcards/deck/update/${deckId}/`, {
+        title: editDeckTitle,
+        subject: editDeckSubject
       });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          setError('Session expired. Please log in again.');
-          return;
-        }
-        throw new Error('Failed to update deck');
-      }
 
       setShowEditDeck(false);
       setEditingDeck(null);
@@ -366,12 +324,6 @@ export default function DeckContent() {
 
   const handleEditCard = async (cardId) => {
     try {
-      const token = sessionStorage.getItem('jwt_token');
-      if (!token) {
-        setError('Please log in to edit card');
-        return;
-      }
-
       // Create request body with only the fields that have values
       const requestBody = {
         question: editCardQuestion,
@@ -385,24 +337,7 @@ export default function DeckContent() {
         requestBody.scheduled_date = null; // Explicitly set to null if empty
       }
 
-      const response = await fetch(`http://localhost:8000/api/flashcards/cards/update/${deck.id}/${cardId}/`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify(requestBody)
-      });
-
-      if (!response.ok) {
-        if (response.status === 401) {
-          setError('Session expired. Please log in again.');
-          return;
-        }
-        throw new Error('Failed to update card');
-      }
+      await api.put(`/flashcards/cards/update/${deck.id}/${cardId}/`, requestBody);
 
       setEditingCardId(null);
       setEditingSide('front');
@@ -423,28 +358,9 @@ export default function DeckContent() {
 
   const handleSaveNotes = async (cardId) => {
     try {
-      const token = sessionStorage.getItem('jwt_token');
-      if (!token) {
-        setError('Please log in to save notes');
-        return;
-      }
-
-      const response = await fetch(`${API_URL}flashcards/cards/update/${deckId}/${cardId}/`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          notes: cardNotes[cardId]
-        })
+      await api.put(`/flashcards/cards/update/${deckId}/${cardId}/`, {
+        notes: cardNotes[cardId]
       });
-
-      if (!response.ok) {
-        throw new Error('Failed to save notes');
-      }
 
       setShowNotesModal(false);
       setSelectedCard(null);
@@ -528,7 +444,7 @@ export default function DeckContent() {
         )}
         <div className="card-preview-date">
           <FiClock size={14} />
-          {card.last_review_date ? `Last reviewed: ${new Date(card.last_review_date).toLocaleDateString()}` : 'Not reviewed yet'}
+          {card.last_review_date ? `Last reviewed: ${formatDateTimeForDisplay(card.last_review_date)}` : 'Not reviewed yet'}
         </div>
       </div>
     );
@@ -559,33 +475,16 @@ export default function DeckContent() {
     setGeneratedCards([]);
     setError(null);
     try {
-      const token = sessionStorage.getItem('jwt_token');
-      if (!token) {
-        setError('Please log in to generate flashcards');
-        setGenerating(false);
-        return;
-      }
-      const response = await fetch(`${API_URL}tutor/cardsgen/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ prompt: generatedPrompt, deck_id: deckId })
+      const response = await api.post('/tutor/cardsgen/', {
+        prompt: generatedPrompt,
+        deck_id: deckId
       });
-      if (!response.ok) {
-        const errorText = await response.text();
-        setError(errorText);
-        setGenerating(false);
-        return;
-      }
+      
       // After generating, fetch the latest cards for this deck to get scheduled_date and id
-      const cardsRes = await fetch(`${API_URL}flashcards/cards/${deckId}/`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      const allCards = await cardsRes.json();
+      const cardsRes = await api.get(`/flashcards/cards/${deckId}/`);
+      const allCards = cardsRes.data;
       // Try to match generated cards by front/back to get their DB info
-      const generated = (await response.json()).Cards;
+      const generated = response.data.Cards;
       const matched = generated.map(gen => {
         const found = allCards.find(c => c.question === gen.front && c.answer === gen.back);
         return found ? found : gen;
@@ -682,11 +581,7 @@ export default function DeckContent() {
           // Add delete handler for generated cards
           const handleDeleteGeneratedCard = async () => {
             try {
-              const token = sessionStorage.getItem('jwt_token');
-              await fetch(`${API_URL}flashcards/cards/delete/${deckId}/${card.id}/`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
-              });
+              await api.delete(`/flashcards/cards/delete/${deckId}/${card.id}/`);
               setGeneratedCards(generatedCards => generatedCards.filter((_, i) => i !== idx));
             } catch (err) {
               alert('Failed to delete card');
@@ -723,7 +618,7 @@ export default function DeckContent() {
                     <div className="card-preview-content" style={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{card.back}</div>
                     {card.scheduled_date && (
                       <div className="card-preview-date">
-                        Scheduled: {new Date(card.scheduled_date).toLocaleDateString()}
+                        Scheduled: {formatDateTimeForDisplay(card.scheduled_date)}
                       </div>
                     )}
                     <button className="card-action-btn delete" style={{ marginTop: 16 }} onClick={e => { e.stopPropagation(); handleDeleteGeneratedCard(); }}>
@@ -921,7 +816,7 @@ export default function DeckContent() {
                     </div>
                   )}
                   <span className="card-preview-date">
-                    {card.last_review_date ? `Last reviewed: ${new Date(card.last_review_date).toLocaleDateString()}` : 'Not reviewed yet'}
+                    {card.last_review_date ? `Last reviewed: ${formatDateTimeForDisplay(card.last_review_date)}` : 'Not reviewed yet'}
                   </span>
                   {openCardId === card.id && (
                     <div className="card-preview-back" style={{
@@ -957,7 +852,7 @@ export default function DeckContent() {
                           <span className="card-preview-tag">Stability: {card.stability?.toFixed(1) || '0.0'}</span>
                         </div>
                         <div className="card-preview-date">
-                          Next review: {card.scheduled_date ? new Date(card.scheduled_date).toLocaleDateString() : 'Not scheduled'}
+                          Next review: {card.scheduled_date ? formatDateTimeForDisplay(card.scheduled_date) : 'Not scheduled'}
                         </div>
                       </div>
                     </div>

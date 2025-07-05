@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { MessageSquare, Send } from 'lucide-react';
 import './AskNeuroNote.css';
+import api from '../api/axios';
 
 const AskNeuroNote = () => {
     const [question, setQuestion] = useState('');
@@ -13,16 +14,8 @@ const AskNeuroNote = () => {
 
         setIsLoading(true);
         try {
-            const response = await fetch('/api/notetaker/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ prompt: question }),
-            });
-
-            const data = await response.json();
-            setResponse(data.content);
+            const response = await api.post('/notetaker/', { prompt: question });
+            setResponse(response.data.content);
         } catch (error) {
             console.error('Error:', error);
             setResponse('Sorry, I encountered an error. Please try again.');
