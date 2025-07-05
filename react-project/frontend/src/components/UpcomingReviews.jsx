@@ -1,30 +1,24 @@
 import React, { useEffect, useState, useRef } from 'react';
-import axios from 'axios';
+import { FiChevronLeft, FiChevronRight, FiCalendar } from 'react-icons/fi';
+import './UpcomingReviews.css';
+import { formatDateForDisplay, convertBackendDateToLocal } from '../utils/dateUtils';
+import api from '../api/axios';
 
-const UpcomingReviews = () => {
+const UpcomingReviews = ({ calendarHeight = '300px', deck = null }) => {
     const [upcoming, setUpcoming] = useState([]);
     const [dayIndex, setDayIndex] = useState(0);
     const [cardIndexes, setCardIndexes] = useState({});
-    const [calendarHeight, setCalendarHeight] = useState(420);
     const [decks, setDecks] = useState({});
     const calendarRef = useRef(null);
-    const api = import.meta.env.VITE_API_URL;
+
+    const current = upcoming[dayIndex] || { date: null, cards: [] };
+    const cardIndex = cardIndexes[current.date] || 0;
+    const card = current.cards[cardIndex];
 
     useEffect(() => {
         const fetchDecks = async () => {
             try {
-                const jwt_token = sessionStorage.getItem('jwt_token');
-                if (!jwt_token) {
-                    console.error('No JWT token found');
-                    return;
-                }
-                const config = {
-                    headers: {
-                        'Authorization': `Bearer ${jwt_token}`,
-                        'Content-Type': 'application/json'
-                    }
-                };
-                const response = await axios.get(`${api}flashcards/decks/`, config);
+                const response = await api.get('/flashcards/decks/');
                 console.log('Decks response:', response.data);
                 const decksMap = {};
                 response.data.forEach(deck => {
@@ -38,18 +32,7 @@ const UpcomingReviews = () => {
 
         const fetchCards = async () => {
             try {
-                const jwt_token = sessionStorage.getItem('jwt_token');
-                if (!jwt_token) {
-                    console.error('No JWT token found');
-                    return;
-                }
-                const config = {
-                    headers: {
-                        'Authorization': `Bearer ${jwt_token}`,
-                        'Content-Type': 'application/json'
-                    }
-                };
-                const response = await axios.get(`${api}flashcards/cards/`, config);
+                const response = await api.get('/flashcards/cards/');
                 console.log('Cards response:', response.data);
                 
                 const today = new Date();
@@ -62,9 +45,13 @@ const UpcomingReviews = () => {
 
                 const grouped = {};
                 response.data.forEach(card => {
-                    if (card.scheduled_date && next7.includes(card.scheduled_date)) {
-                        if (!grouped[card.scheduled_date]) grouped[card.scheduled_date] = [];
-                        grouped[card.scheduled_date].push(card);
+                    if (card.scheduled_date) {
+                        // Convert backend date to local date for proper grouping
+                        const localDate = convertBackendDateToLocal(card.scheduled_date);
+                        if (next7.includes(localDate)) {
+                            if (!grouped[localDate]) grouped[localDate] = [];
+                            grouped[localDate].push(card);
+                        }
                     }
                 });
                 console.log('Grouped cards:', grouped);
@@ -97,31 +84,26 @@ const UpcomingReviews = () => {
     }, [upcoming]);
 
     const handlePrevDay = () => {
-        setDayIndex(idx => (idx > 0 ? idx - 1 : upcoming.length - 1));
+        setDayIndex(prev => prev > 0 ? prev - 1 : upcoming.length - 1);
     };
 
     const handleNextDay = () => {
-        setDayIndex(idx => (idx < upcoming.length - 1 ? idx + 1 : 0));
+        setDayIndex(prev => prev < upcoming.length - 1 ? prev + 1 : 0);
     };
 
-    const handlePrevCard = (cardsLength) => {
+    const handlePrevCard = (totalCards) => {
         setCardIndexes(prev => ({
             ...prev,
-            [dayIndex]: prev[dayIndex] > 0 ? prev[dayIndex] - 1 : cardsLength - 1
+            [current.date]: prev[current.date] > 0 ? prev[current.date] - 1 : totalCards - 1
         }));
     };
 
-    const handleNextCard = (cardsLength) => {
+    const handleNextCard = (totalCards) => {
         setCardIndexes(prev => ({
             ...prev,
-            [dayIndex]: prev[dayIndex] < cardsLength - 1 ? prev[dayIndex] + 1 : 0
+            [current.date]: prev[current.date] < totalCards - 1 ? prev[current.date] + 1 : 0
         }));
     };
-
-    const current = upcoming[dayIndex] || { date: '', cards: [] };
-    const cardIdx = cardIndexes[dayIndex] || 0;
-    const card = current.cards[cardIdx];
-    const deck = card ? decks[card.deck] : null;
 
     return (
         <div
@@ -134,7 +116,7 @@ const UpcomingReviews = () => {
                 <>
                     <div className="upcoming-day-swipe-row">
                         <button className="swipe-btn" onClick={handlePrevDay} aria-label="Previous day">&lt;</button>
-                        <div className="upcoming-date">{current.date ? new Date(current.date).toLocaleDateString() : ''}</div>
+                        <div className="upcoming-date">{current.date ? formatDateForDisplay(current.date) : ''}</div>
                         <button className="swipe-btn" onClick={handleNextDay} aria-label="Next day">&gt;</button>
                     </div>
                     {card ? (

@@ -11,10 +11,30 @@
   margin-bottom: 1.5rem;
 }
 
+.badge-row-with-filter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-bottom: 1.5rem;
+  width: 100%;
+  position: relative;
+  min-height: 56px;
+}
+
 .badge-row {
   display: flex;
   gap: 1rem;
-  margin-bottom: 1.5rem;
+  align-items: center;
+  height: 56px;
+}
+
+.badge-row-filter {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  height: 56px;
+  position: relative;
 }
 
 .badge {
@@ -37,9 +57,14 @@
   color: #ef4444;
 }
 
-.badge.due-today {
+.badge.due-now {
   background: rgba(245, 158, 11, 0.15);
   color: #f59e0b;
+}
+
+.badge.later-today {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fbbf24;
 }
 
 .badge.upcoming {
@@ -87,6 +112,7 @@
   background: #2a2a2a !important;
   padding: 0.5rem;
   gap: 0.5rem;
+  width: 100%;
 }
 
 .tab {
@@ -486,4 +512,86 @@
   .subtext {
     color: #9ca3af;
   }
+}
+
+.tab-bar-with-filter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.deck-dropdown-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.deck-dropdown-toggle {
+  background: rgba(88, 86, 214, 0.08);
+  border: 1.5px solid #5856d6;
+  color: #a390f0;
+  border-radius: 9999px;
+  padding: 0.5rem 1.25rem;
+  font-size: 1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  transition: background 0.2s, border 0.2s, color 0.2s;
+  outline: none;
+}
+
+.deck-dropdown-toggle:hover, .deck-dropdown-toggle:focus {
+  background: rgba(88, 86, 214, 0.18);
+  border-color: #a390f0;
+  color: #a390f0;
+}
+
+.deck-dropdown-menu {
+  position: absolute;
+  top: 110%;
+  right: 0;
+  min-width: 180px;
+  background: #232323;
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+  z-index: 10;
+  padding: 0.5rem 0;
+  border: 1.5px solid #5856d6;
+}
+
+.deck-dropdown-item {
+  padding: 0.75rem 1.25rem;
+  color: #fff;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: background 0.15s, color 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.deck-dropdown-item.selected, .deck-dropdown-item:hover {
+  background: rgba(88, 86, 214, 0.12);
+  color: #a390f0;
+}
+
+.clear-deck-filter {
+  background: none;
+  border: none;
+  color: #ff6b6b;
+  font-size: 1.2rem;
+  margin-left: 0.5rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 50%;
+  transition: background 0.15s;
+}
+
+.clear-deck-filter:hover {
+  background: rgba(255,107,107,0.12);
 } 

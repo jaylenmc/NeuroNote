@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FiPlus, FiTrash2, FiEdit2 } from 'react-icons/fi';
 import './QuizView.css';
+import api from '../api/axios';
 
 const QuizView = ({ quiz, onClose }) => {
     const [questions, setQuestions] = useState({});
@@ -26,22 +27,13 @@ const QuizView = ({ quiz, onClose }) => {
     const fetchQuizQuestions = async () => {
         try {
             console.log('Fetching questions for quiz:', quiz.id);
-            const token = sessionStorage.getItem('jwt_token');
-            
             // First get all questions for this quiz
-            const questionsResponse = await fetch(`${import.meta.env.VITE_API_URL}test/quiz/question/${quiz.id}/`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            if (!questionsResponse.ok) {
+            const questionsResponse = await api.get(`/test/quiz/question/${quiz.id}/`);
+            if (questionsResponse.status !== 200) {
                 console.error('Failed to fetch questions');
                 return;
             }
-
-            const questionsData = await questionsResponse.json();
+            const questionsData = questionsResponse.data;
             console.log('Questions data:', questionsData);
 
             // Transform the data and fetch answers for each question
@@ -50,19 +42,14 @@ const QuizView = ({ quiz, onClose }) => {
             // For each question in the quiz
             for (const [questionId, answers] of Object.entries(questionsData)) {
                 // Get the question object to get its details
-                const questionResponse = await fetch(`${import.meta.env.VITE_API_URL}test/quiz/question/`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
+                const questionResponse = await api.get('/test/quiz/question/');
 
-                if (!questionResponse.ok) {
+                if (questionResponse.status !== 200) {
                     console.error('Failed to fetch question details');
                     continue;
                 }
 
-                const allQuestions = await questionResponse.json();
+                const allQuestions = questionResponse.data;
                 const question = allQuestions.find(q => q.id === parseInt(questionId));
 
                 if (!question) {
@@ -145,46 +132,31 @@ const QuizView = ({ quiz, onClose }) => {
             }
 
             // Create the question
-            const token = sessionStorage.getItem('jwt_token');
-            const questionResponse = await fetch(`${import.meta.env.VITE_API_URL}test/quiz/question/`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    question_input: newQuestion.question_input,
-                    question_type: newQuestion.question_type,
-                    quiz_id: quiz.id
-                })
+            const response = await api.post('/test/quiz/question/', {
+                question_input: newQuestion.question_input,
+                question_type: newQuestion.question_type,
+                quiz_id: quiz.id
             });
 
-            if (!questionResponse.ok) {
-                const errorText = await questionResponse.text();
+            if (response.status !== 201) {
+                const errorText = await response.text();
                 showNotification('Failed to create question: ' + errorText);
                 return;
             }
 
-            const questionData = await questionResponse.json();
+            const questionData = await response.json();
             
             // Create answers
             const createdAnswers = [];
             for (const answer of newQuestion.answers) {
-                const answerResponse = await fetch(`${import.meta.env.VITE_API_URL}test/quiz/answer/`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        answer_input: answer.answer_input,
-                        answer_is_correct: answer.is_correct,
-                        question_id: questionData.id,
-                        quiz_id: quiz.id
-                    })
+                const answerResponse = await api.post('/test/quiz/answer/', {
+                    answer_input: answer.answer_input,
+                    answer_is_correct: answer.is_correct,
+                    question_id: questionData.id,
+                    quiz_id: quiz.id
                 });
 
-                if (!answerResponse.ok) {
+                if (answerResponse.status !== 201) {
                     const errorText = await answerResponse.text();
                     showNotification('Failed to create answer: ' + errorText);
                 } else {
@@ -215,38 +187,9 @@ const QuizView = ({ quiz, onClose }) => {
 
     const handleDeleteQuestion = async (questionInput) => {
         try {
-            const token = sessionStorage.getItem('jwt_token');
-            
-            // First get all questions to find the correct question ID
-            const questionsResponse = await fetch(`${import.meta.env.VITE_API_URL}test/quiz/question/`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
+            const response = await api.delete(`/test/quiz/question/${quiz.id}/${Object.keys(questions).indexOf(questionInput) + 1}/`);
 
-            if (!questionsResponse.ok) {
-                showNotification('Failed to fetch questions');
-                return;
-            }
-
-            const allQuestions = await questionsResponse.json();
-            const question = allQuestions.find(q => q.question_input === questionInput);
-
-            if (!question) {
-                showNotification('Question not found');
-                return;
-            }
-
-            const response = await fetch(`${import.meta.env.VITE_API_URL}test/quiz/question/${quiz.id}/${question.id}/`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-
-            if (response.ok) {
+            if (response.status === 204) {
                 const newQuestions = { ...questions };
                 delete newQuestions[questionInput];
                 setQuestions(newQuestions);
@@ -263,17 +206,9 @@ const QuizView = ({ quiz, onClose }) => {
 
     const handleDeleteAnswer = async (questionInput, answerId) => {
         try {
-            const token = sessionStorage.getItem('jwt_token');
-            const questionId = Object.keys(questions).indexOf(questionInput) + 1;
-            const response = await fetch(`${import.meta.env.VITE_API_URL}test/quiz/answer/${quiz.id}/${questionId}/${answerId}/`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                }
-            });
+            const response = await api.delete(`/test/quiz/answer/${quiz.id}/${Object.keys(questions).indexOf(questionInput) + 1}/${answerId}/`);
 
-            if (response.ok) {
+            if (response.status === 204) {
                 setQuestions(prev => ({
                     ...prev,
                     [questionInput]: prev[questionInput].filter(answer => answer.id !== answerId)

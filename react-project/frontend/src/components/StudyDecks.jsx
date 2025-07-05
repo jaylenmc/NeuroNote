@@ -13,8 +13,11 @@ import {
     Clock,
     Calendar
 } from 'lucide-react';
+import { FiPlus, FiTrash2 } from 'react-icons/fi';
 import './StudyDecks.css';
 import brainPng from '../assets/brain.png';
+import api from '../api/axios';
+import { formatDateForDisplay, formatDateTimeForDisplay } from '../utils/dateUtils';
 
 const LoadingSpinner = () => (
   <div style={{
@@ -128,31 +131,7 @@ const StudyDecks = () => {
     const handleCreateDeck = useCallback(async (e) => {
         e.preventDefault();
         try {
-            const token = sessionStorage.getItem('jwt_token');
-            if (!token) {
-                setError('Please log in to create a deck');
-                return;
-            }
-
-            const response = await fetch('http://localhost:8000/api/flashcards/deck/', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                credentials: 'include',
-                body: JSON.stringify(newDeck)
-            });
-
-            if (response.status === 401) {
-                setError('Session expired. Please log in again.');
-                return;
-            }
-
-            if (!response.ok) {
-                throw new Error('Failed to create deck');
-            }
-
+            const response = await api.post('/flashcards/deck/', newDeck);
             handleCloseModal();
             await fetchDecks();
         } catch (err) {
@@ -163,33 +142,34 @@ const StudyDecks = () => {
     const fetchDecks = async () => {
         try {
             setLoading(true);
-            const token = sessionStorage.getItem('jwt_token');
-            if (!token) {
-                setError('Please log in to view your decks');
-                setLoading(false);
-                return;
-            }
-
-            const response = await fetch('http://localhost:8000/api/flashcards/deck/', {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                credentials: 'include'
-            });
-
-            if (response.status === 401) {
-                setError('Session expired. Please log in again.');
-                setLoading(false);
-                return;
-            }
-
-            if (!response.ok) {
-                throw new Error('Failed to fetch decks');
-            }
-
-            const data = await response.json();
-            setDecks(data.decks || []);
+            const response = await api.get('/flashcards/deck/');
+            const data = response.data;
+            console.log('Raw deck data from API:', data);
+            const decksData = data.decks || [];
+            console.log('Decks data:', decksData);
+            
+            // Fetch cards for each deck
+            const decksWithCards = await Promise.all(
+                decksData.map(async (deck) => {
+                    try {
+                        const cardsResponse = await api.get(`/flashcards/cards/${deck.id}/`);
+                        console.log(`Cards for deck ${deck.title}:`, cardsResponse.data);
+                        return {
+                            ...deck,
+                            cards: cardsResponse.data || []
+                        };
+                    } catch (err) {
+                        console.error(`Error fetching cards for deck ${deck.id}:`, err);
+                        return {
+                            ...deck,
+                            cards: []
+                        };
+                    }
+                })
+            );
+            
+            console.log('Final decks with cards:', decksWithCards);
+            setDecks(decksWithCards);
             setLoading(false);
         } catch (err) {
             setError(err.message);
@@ -210,30 +190,7 @@ const StudyDecks = () => {
         if (!window.confirm('Are you sure you want to delete this deck?')) return;
 
         try {
-            const token = sessionStorage.getItem('jwt_token');
-            if (!token) {
-                setError('Please log in to delete a deck');
-                return;
-            }
-
-            const response = await fetch(`http://localhost:8000/api/flashcards/deck/delete/${deckId}`, {
-                method: 'DELETE',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                credentials: 'include'
-            });
-
-            if (response.status === 401) {
-                setError('Session expired. Please log in again.');
-                return;
-            }
-
-            if (!response.ok) {
-                throw new Error('Failed to delete deck');
-            }
-
+            await api.delete(`/flashcards/deck/delete/${deckId}`);
             await fetchDecks();
         } catch (err) {
             setError(err.message);
@@ -260,9 +217,13 @@ const StudyDecks = () => {
 
     const formatDate = (dateString) => {
         if (!dateString) return 'Never';
-        const date = new Date(dateString);
-        return date.toLocaleDateString();
+        return formatDateForDisplay(dateString);
     };
+
+    // Test the formatDateTimeForDisplay function
+    const testDate = "2025-07-01T22:50:51Z";
+    console.log('Test formatDateTimeForDisplay:', formatDateTimeForDisplay(testDate));
+    console.log('Test formatDateForDisplay:', formatDateForDisplay(testDate));
 
     return (
         <div className="study-decks-container">
@@ -365,7 +326,26 @@ const StudyDecks = () => {
                                                 Last Review
                                             </span>
                                             <span>
-                                                {formatDate(deck.cards?.[0]?.last_review_date)}
+                                                {(() => {
+                                                    const cardsWithReviews = deck.cards?.filter(card => card.last_review_date) || [];
+                                                    console.log(`Deck ${deck.title} - cards with reviews:`, cardsWithReviews);
+                                                    if (cardsWithReviews.length === 0) {
+                                                        console.log(`Deck ${deck.title} - no cards with reviews, returning 'Never'`);
+                                                        return 'Never';
+                                                    }
+                                                    
+                                                    const mostRecentReview = cardsWithReviews.reduce((latest, card) => {
+                                                        const cardDate = new Date(card.last_review_date);
+                                                        const latestDate = new Date(latest);
+                                                        return cardDate > latestDate ? card.last_review_date : latest;
+                                                    }, cardsWithReviews[0].last_review_date);
+                                                    
+                                                    console.log(`Deck ${deck.title} - most recent review date:`, mostRecentReview);
+                                                    const formattedDate = formatDateTimeForDisplay(mostRecentReview);
+                                                    console.log(`Deck ${deck.title} - formatted date:`, formattedDate);
+                                                    console.log(`Deck ${deck.title} - returning formatted date:`, formattedDate);
+                                                    return formattedDate;
+                                                })()}
                                             </span>
                                         </div>
 
@@ -375,7 +355,26 @@ const StudyDecks = () => {
                                                 Next Review
                                             </span>
                                             <span>
-                                                {formatDate(deck.cards?.[0]?.scheduled_date)}
+                                                {(() => {
+                                                    const cardsWithScheduledDates = deck.cards?.filter(card => card.scheduled_date) || [];
+                                                    console.log(`Deck ${deck.title} - cards with scheduled dates:`, cardsWithScheduledDates);
+                                                    if (cardsWithScheduledDates.length === 0) {
+                                                        console.log(`Deck ${deck.title} - no cards with scheduled dates, returning 'Not scheduled'`);
+                                                        return 'Not scheduled';
+                                                    }
+                                                    
+                                                    const nextScheduledReview = cardsWithScheduledDates.reduce((next, card) => {
+                                                        const cardDate = new Date(card.scheduled_date);
+                                                        const nextDate = new Date(next);
+                                                        return cardDate < nextDate ? card.scheduled_date : next;
+                                                    }, cardsWithScheduledDates[0].scheduled_date);
+                                                    
+                                                    console.log(`Deck ${deck.title} - next scheduled review date:`, nextScheduledReview);
+                                                    const formattedDate = formatDateTimeForDisplay(nextScheduledReview);
+                                                    console.log(`Deck ${deck.title} - formatted scheduled date:`, formattedDate);
+                                                    console.log(`Deck ${deck.title} - returning formatted scheduled date:`, formattedDate);
+                                                    return formattedDate;
+                                                })()}
                                             </span>
                                         </div>
                                     </div>
