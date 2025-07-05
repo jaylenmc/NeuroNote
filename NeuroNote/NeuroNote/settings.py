@@ -27,6 +27,7 @@ SECRET_KEY = 'REDACTED'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
+ADMINS = [('jaylen','jaylenmc05@gmail.com')]
 
 ALLOWED_HOSTS = []
 
@@ -120,15 +121,8 @@ WSGI_APPLICATION = 'NeuroNote.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'NeuroNote_mySQL',
-        'USER': 'admin',
-        'PASSWORD': 'Flabbergasted1!',
-        'HOST': 'database-1.cez2oquaua0b.us-east-1.rds.amazonaws.com',
-        'PORT': '3306',
-        "TEST": {
-            "NAME": "test_neuronote_db",
-        },
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
 }
 

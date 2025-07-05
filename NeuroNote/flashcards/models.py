@@ -1,8 +1,13 @@
 from django.db import models
 from authentication.models import AuthUser
-from datetime import date, timedelta
+from django.utils import timezone 
+from datetime import timedelta
 import math
 from .utils import reward_xp
+
+MINUTE   = 60                     
+HOUR     = 60 * MINUTE
+DAY      = 24 * HOUR
 
 class Deck(models.Model):
     title = models.TextField()
@@ -22,49 +27,62 @@ class Card(models.Model):
     stability = models.FloatField(default=1.0)
     learning_status = models.CharField(max_length=255, default="Unseen")
 
-    last_review_date = models.DateField(null=True, blank=True)
-    scheduled_date = models.DateField(null=True, blank=True)
+    last_review_date = models.DateTimeField(null=True, blank=True)
+    scheduled_date = models.DateTimeField(null=True, blank=True)
     
     def update_sm21(self, rating):
-        today = date.today()
-       
-        elapsed_days = (today - self.last_review_date).days if self.last_review_date else 0
-        self.last_review_date = today
+        now_utc = timezone.now()
+
+        # ────────────────────────────
+        # 1.  Time elapsed (in minutes)
+        # ────────────────────────────
+        if self.last_review_date:
+            elapsed_minutes = (now_utc - self.last_review_date).total_seconds() // MINUTE
+        else:
+            elapsed_minutes = 0
+
+        self.last_review_date = now_utc
         self.repetitions += 1
 
-        diff_change = 0.1 * (2 - rating) 
-        self.difficulty += diff_change
-        self.difficulty = max(1.0, min(10.0, self.difficulty)) 
-       
+        # ────────────────────────────
+        # 2.  Difficulty & Stability
+        # ────────────────────────────
+        diff_change = 0.1 * (2 - rating)
+        self.difficulty = max(1.0, min(10.0, self.difficulty + diff_change))
+
         if rating == 0:
-            self.stability *= 0.7 
+            self.stability *= 0.7
         else:
-            retrievability = math.exp(-elapsed_days / self.stability) if self.stability != 0 else 0.01
+            # NOTE: stability is now in *minutes*
+            retrievability = math.exp(-elapsed_minutes / self.stability) if self.stability else 0.01
             gain = (0.1 + 0.1 * rating) * math.exp(1 - retrievability)
-            self.stability *= 1 + gain
-       
+            self.stability *= (1 + gain)
+
+        # ────────────────────────────
+        # 3.  Next-interval (minutes)
+        # ────────────────────────────
         if rating == 0:
-            interval = 1 
+            interval_min = 30                    # 30-minute immediate retry
         else:
-            interval = int(10 * math.log(self.stability + 1)) 
-            interval = max(1, min(interval, 365))
+            # base 10-minute logarithmic schedule, cap at 365 days
+            interval_min = int(10 * math.log(self.stability + 1))
+            interval_min = max(30, min(interval_min, 365 * DAY // MINUTE))
 
-        self.scheduled_date = today + timedelta(days=interval) 
+        self.scheduled_date = now_utc + timedelta(minutes=interval_min)
 
-        if interval < 10 and self.difficulty > 5.5:
+        # ────────────────────────────
+        # 4.  Status labels (now minute-aware)
+        # ────────────────────────────
+        if interval_min < 10 * MINUTE and self.difficulty > 5.5:
             self.learning_status = "Struggling"
-        elif interval > 45 and self.difficulty <= 4.0:
+        elif interval_min > 45 * DAY // MINUTE and self.difficulty <= 4.0:
             self.learning_status = "Mastered"
         else:
             self.learning_status = "In Progress"
 
         reward_xp(self.card_deck.user, rating)
-    
         ReviewLog.objects.create(card=self)
-
         self.save()
-
-# Add function to notify user of overdue review days !!
 
 class ReviewLog(models.Model):
     card = models.ForeignKey(Card, on_delete=models.CASCADE)
