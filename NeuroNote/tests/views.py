@@ -6,9 +6,11 @@ from rest_framework.response import Response
 from .serializers import QuizSerilizer, AnswerSerializer, QuestionSerializer, QuestionReviewSerializer, AnswerReviewSerializer
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
-from django.core.exceptions import ValidationError
 from django.utils.timezone import now
 from django.db import transaction
+from claude_client.client import cards_to_quiz
+import re
+import json
 
 class QuizView(APIView):
     permission_classes = [IsAuthenticated]
@@ -56,7 +58,6 @@ class QuizView(APIView):
                 topic=quiz_topic,
                 subject=quiz_subject
             )
-            print(f"Quiz created: {quiz}")
 
             for question in question_data:
                 question_obj = Question.objects.create(
@@ -103,27 +104,6 @@ class QuizQuestions(APIView):
             questions = Question.objects.filter(quiz__user=request.user)
             return Response(QuestionSerializer(questions, many=True).data, status=status.HTTP_200_OK)
     
-    # def post(self, request):
-    #     question_input = request.data.get('question_input')
-    #     question_type = request.data.get('question_type')
-    #     quiz_id = request.data.get('quiz_id')
-
-    #     quiz = Quiz.objects.filter(user=request.user, id=quiz_id).first()
-
-    #     if Question.objects.filter(question_input=question_input, question_type=question_type).exists():
-    #         return Response({'Message': 'Already have that question with that question type'}, status=status.HTTP_400_BAD_REQUEST)
-        
-    #     question = Question(
-    #         quiz=quiz,
-    #         question_input=question_input,
-    #         question_type=question_type
-    #         )
-    #     question.save()
-        
-    #     serialized = QuestionSerializer(question).data
-
-    #     return Response(serialized, status=status.HTTP_200_OK)
-    
     def delete(self, request, quiz_id, question_id):
         question = Question.objects.filter(
             quiz__user=request.user,
@@ -148,46 +128,12 @@ class QuizAnswers(APIView):
         
 
         return Response(AnswerSerializer(answers, many=True).data, status=status.HTTP_200_OK)
-    
-    # def post(self, request):
-    #     answer_input = request.data.get('answer_input')
-    #     answer_is_correct = request.data.get('answer_is_correct')
-    #     question_id = request.data.get('question_id')
-    #     quiz_id = request.data.get('quiz_id')
-
-    #     if Answer.objects.filter(question__quiz__user=request.user, question__id=question_id, answer_input__iexact=answer_input).exists():
-    #         return Response({'Message': 'Answer already exists'}, status=status.HTTP_400_BAD_REQUEST)
-
-    #     question = Question.objects.filter(
-    #         quiz__user=request.user,
-    #         quiz__id=quiz_id,
-    #         id=question_id,
-    #     ).first()
-
-    #     answer = Answer.objects.create(
-    #         question=question,
-    #         answer_input=answer_input,
-    #         is_correct=answer_is_correct
-    #     )
-
-    #     return Response(AnswerSerializer(answer).data, status=status.HTTP_200_OK)
-    
-    # def delete(self, request, quiz_id, question_id, answer_id):
-    #     answer = Answer.objects.filter(
-    #         question__quiz__user=request.user,
-    #         question__quiz__id=quiz_id,
-    #         question__id=question_id,
-    #         id=answer_id
-    #         ).first()
-        
-    #     answer.delete()
-    #     return Response({"Message": "Successfully deleted"}, status=status.HTTP_200_OK)
 
 class UserAnswersView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, quiz_id):
-        questions = Question.objects.filter(quiz__user=request.user, quiz__id=quiz_id).prefetch_related('answer_set')
+        questions = Question.objects.filter(quiz__user=request.user, quiz__id=quiz_id).prefetch_related('answers')
         user_answers = UserAnswer.objects.filter(user=request.user, question__in=questions).select_related('selected_answer')
 
         user_answers_dict = {ua.question_id: ua.selected_answer_id for ua in user_answers}
@@ -198,7 +144,7 @@ class UserAnswersView(APIView):
             answers_data = []
             selected_answer_id = user_answers_dict.get(question.id)
 
-            for answer in question.answer_set.all():
+            for answer in question.answers.all():
                 answer_status = None
                 if answer.is_correct:
                     answer_status = 'Correct'
@@ -260,3 +206,60 @@ class UserAnswersView(APIView):
         )
 
         return Response({'Score': score}, status=status.HTTP_200_OK)
+    
+class CardsToQuizView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        quiz = Quiz.objects.get(user=request.user, topic='Cards To Quiz')
+        questions = Question.objects.filter(quiz=quiz)
+
+        serialized_qestions = QuestionSerializer(questions, many=True).data
+        serialized_quiz = QuizSerilizer(quiz).data
+        data = {
+            'quiz': serialized_quiz,
+            'questions': serialized_qestions
+        }
+
+        return Response(data, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        if not request.data.get('reviewed'):
+            qa = request.data.get('qa')
+            if not qa:
+                return Response({'Message': 'No data provided'}, status=status.HTTP_400_BAD_REQUEST)
+            
+            if Quiz.objects.filter(user=request.user, topic='Cards To Quiz').exists():
+                Quiz.objects.filter(user=request.user, topic='Cards To Quiz').delete()
+                        
+            with transaction.atomic():
+                quiz = Quiz.objects.create(user=request.user, topic='Cards To Quiz', subject='Flashcards Test', is_cards_to_quiz=True)
+
+                for qa_item in qa:
+                    question = Question.objects.create(
+                        quiz=quiz,
+                        question_input=qa_item['question_input'],
+                        question_type='WR'
+                    )
+
+                    Answer.objects.create(
+                        question=question,
+                        answer_input=qa_item['correct_answer'],
+                        is_correct=True
+                    )
+
+            return Response({'Message': 'Quiz created successfully'}, status=status.HTTP_200_OK)
+        
+        quiz = Quiz.objects.get(user=request.user, topic='Cards To Quiz')
+        user_answers = request.data.get('user_answers')
+        question_answers = Question.objects.filter(quiz=quiz).prefetch_related('answers')
+        data = [{'question_input': question.question_input, 'answers': {'correct': question.answers.get(is_correct=True).answer_input, 'user_answer': None}} for question in question_answers]
+
+        for answer in user_answers:
+            for question in data:
+                if answer['question_input'] == question['question_input']:
+                    question['answers']['user_answer'] = answer['user_answer']
+
+        result = cards_to_quiz(data)
+
+        return Response(result, status=status.HTTP_200_OK)

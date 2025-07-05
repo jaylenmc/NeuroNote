@@ -8,6 +8,7 @@ class Quiz(models.Model):
     subject = models.CharField(max_length=255, null=True, blank=True)
     user = models.ForeignKey(AuthUser, on_delete=models.CASCADE, null=True)
     folder = models.ForeignKey(Folder, on_delete=models.CASCADE, null=True, related_name='quiz')
+    is_cards_to_quiz = models.BooleanField(default=False)
 
 class Question(models.Model):
     QUESTION_TYPE_CHOICES = [
@@ -19,9 +20,8 @@ class Question(models.Model):
     question_input = models.TextField(null=True)
     question_type = models.CharField(max_length=2, choices=QUESTION_TYPE_CHOICES, default='MC')
 
-
 class Answer(models.Model):
-    question = models.ForeignKey(Question, on_delete=models.CASCADE, null=True)
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, null=True, related_name='answers')
     answer_input = models.TextField(null=True, blank=True)
     is_correct = models.BooleanField(null=True, blank=True)
 

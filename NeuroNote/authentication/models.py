@@ -32,10 +32,9 @@ class AuthUser(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     access_token_expires_at = models.DateTimeField(blank=True, null=True)
-    access_token = models.CharField(max_length=255, null=True)
-    refresh_token = models.CharField(max_length=255, null=True)
+    google_access_token = models.CharField(max_length=255, null=True)
+    google_refresh_token = models.CharField(max_length=255, null=True)
     jwt_token = models.CharField(max_length=255, null=True)
-    timezone = models.CharField(max_length=50, default='UTC')
     plan = models.CharField(max_length=255, default='Note Taker')
     token_amount = models.IntegerField(default=1000)
 

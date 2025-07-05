@@ -8,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from authentication.models import AuthUser
 from achievements.models import UserAchievements
 from achievements.services import knowledge_engineer, memory_architect, deck_destroyer
-from datetime import datetime
+from django.utils import timezone
 from folders.models import Folder
 from .services import check_past_week_cards, num_of_cards
 
@@ -97,23 +97,14 @@ class CardCollection(APIView):
         if Card.objects.filter(card_deck=user_deck, question=question).exists():
             return Response({"Message": "Card already exists"}, status=status.HTTP_406_NOT_ACCEPTABLE)
         
-        # Parse the date string to ensure it's in the correct format
-        parsed_date = None
-        if scheduled_date:
-            try:
-                parsed_date = datetime.strptime(scheduled_date, '%Y-%m-%d').date()
-            except ValueError:
-                return Response({"Message": "Invalid date format"}, status=status.HTTP_400_BAD_REQUEST)
-        
         user_card = Card.objects.create(
             question=question,
             answer=answer,
             card_deck=user_deck,
-            scheduled_date=parsed_date
+            scheduled_date=scheduled_date
             )
                 
         serialized = CardSerializer(user_card)
-
         return Response(serialized.data, status=status.HTTP_200_OK)
     
     def put(self, request, deck_id, card_id):
@@ -133,14 +124,9 @@ class CardCollection(APIView):
             card.answer = answer
 
         if scheduled_date is not None:
-            if scheduled_date:
-                try:
-                    parsed_date = datetime.strptime(scheduled_date, '%Y-%m-%d').date()
-                    card.scheduled_date = parsed_date
-                except (ValueError, TypeError):
-                    return Response({"Message": "Invalid date format"}, status=status.HTTP_400_BAD_REQUEST)
-            else:
-                card.scheduled_date = None
+            card.scheduled_date = scheduled_date
+        else:
+            card.scheduled_date = None
 
         card.save()
 
@@ -193,3 +179,28 @@ def review_card(request):
         'reviewed_dates': reviewed_cards,
     }
     return Response(finalized_data, status=status.HTTP_200_OK)
+
+class DueCardsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, deck_id):
+        """Get only due cards for a specific deck"""
+        if not Deck.objects.filter(user=request.user, id=deck_id).exists():
+            return Response({"Message": "Deck not found"}, status=status.HTTP_404_NOT_FOUND)
+        
+        today = timezone.now()
+  
+        due_cards = Card.objects.filter(
+            card_deck__user=request.user,
+            card_deck__id=deck_id
+        ).filter(
+            scheduled_date__lte=today
+        ) | Card.objects.filter(
+            card_deck__user=request.user,
+            card_deck__id=deck_id,
+            scheduled_date__isnull=True
+        )
+        print(f"Due cards in deck {deck_id}: {due_cards.count()}")
+        
+        serialized = CardSerializer(due_cards, many=True)
+        return Response(serialized.data, status=status.HTTP_200_OK)

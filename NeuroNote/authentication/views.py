@@ -21,7 +21,6 @@ def googleApi(request):
     error = request.data.get('error')
 
     if not code or error:
-        print(f"Missing code or error: code={code}, error={error}")
         return Response(f"Missing code or received error: {error}", status=status.HTTP_400_BAD_REQUEST)
 
     # if request.session['state'] != request.GET.get('state'):
@@ -37,15 +36,13 @@ def googleApi(request):
             'client_id': settings.GOOGLE_CLIENT_ID,
             'client_secret': settings.GOOGLE_CLIENT_SECRET,
         }
-        print(f'The data: {data}')
         
         access_token_url = 'https://oauth2.googleapis.com/token'
         response = requests.post(access_token_url, data=data)
         user_data = response.json()
         
         if 'error' in user_data:
-            print("Google OAuth error:", user_data)
-            return Response({"error": user_data.get('error_description', 'Unknown error')}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": user_data.get('error_description', user_data['error'])}, status=status.HTTP_400_BAD_REQUEST)
         
         user_access_token = user_data.get('access_token')
         user_expires_in = datetime.now(dt_timezone.utc) + timedelta(seconds=user_data.get('expires_in'))
@@ -71,17 +68,17 @@ def googleApi(request):
         user = AuthUser.objects.create_user(
             email=email,
             last_login=timezone.now(),
-            access_token=user_access_token,
+            google_access_token=user_access_token,
             access_token_expires_at=user_expires_in,
-            refresh_token=user_refresh_token,
+            google_refresh_token=user_refresh_token,
             )
     else:
         user.email = email
-        user.access_token = user_access_token
+        user.google_access_token = user_access_token
         user.last_login=timezone.now()
         user.access_token_expires_at = user_expires_in
         if user_refresh_token:
-            user.refresh_token = user_refresh_token
+            user.google_refresh_token = user_refresh_token
         user.save()
 
     refresh = RefreshToken.for_user(user)
@@ -105,18 +102,20 @@ def googleApi(request):
     except Exception as e:
         return Response({'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
     
-
-    response = Response(data_serialized.data, status=status.HTTP_200_OK)
-    print(f'Refresh jwt token: {refresh}')
-    print(f'Access jwt token: {user.jwt_token}')
-
-    response.set_cookie(
-        key='jwt_token',
-        value=str(refresh),
-        httponly=True,
-        secure=True,
-        samesite='Lax'
-    )
+    response_data = {
+        'user': data_serialized.data,
+        'jwt_refresh': str(refresh),
+    }
+    
+    response = Response(response_data, status=status.HTTP_200_OK)
+    
+    # response.set_cookie(
+    #     key='refresh_token',
+    #     value=str(refresh),
+    #     httponly=True,
+    #     secure=not settings.DEBUG,
+    #     samesite='Lax'
+    # )
     
     return response
 
@@ -154,7 +153,7 @@ def refreshAccessToken(user):
     
 class CookieTokenRefreshView(TokenRefreshView):
     def post(self, request, *args, **kwargs):
-        refresh_token = request.COOKIES.get('refresh_token')
+        refresh_token = request.data.get('refresh_token')
         if not refresh_token:
             return Response({'detail': 'No refresh token found in cookies'}, status=status.HTTP_401_UNAUTHORIZED)
         

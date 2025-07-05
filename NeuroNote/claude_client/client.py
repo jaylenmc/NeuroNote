@@ -7,13 +7,13 @@ from rest_framework.response import Response
 from rest_framework import status
 from flashcards.models import Card, Deck
 from datetime import date
+from .services import clean_claude_response
 
 client = anthropic.Anthropic(
     api_key='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'
 ) 
 
 def thinker_ai(prompt: str, user: object):
-    print(f'Token amount before call: {user.token_amount}')
     if user.token_amount <= 0:
         return f"Not enough tokens"
 
@@ -32,9 +32,6 @@ def thinker_ai(prompt: str, user: object):
     
     user.token_amount -= (message.usage.output_tokens + message.usage.input_tokens)
     user.save()
-    print(f'Used Tokens: {message.usage}')
-    print(f'Amount left: {user.token_amount}')
-    print(f'Type: {message.type}')
    
     return message.content
 
@@ -43,7 +40,7 @@ class NoteTakerAi(APIView):
     
     def post(self, request):
         prompt = request.data.get('prompt')
-        print(f'This is the prompt: {prompt}')
+
         try:
             message = client.messages.create(
                 model="claude-3-haiku-20240307",  # Using the free model
@@ -63,7 +60,7 @@ class NoteTakerAi(APIView):
             text_only = " ".join(
                 block.text for block in raw_output if block.type == "text"
             )
-            print(f'This is the message: {text_only}')
+    
             return Response({'Message': text_only}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'Error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
@@ -109,11 +106,8 @@ class CardsGen(APIView):
                     'front': front.strip(),
                     'back': back.strip()
                 })
-            print(f'AI Flashcards: {cards}')
             
             for card in cards:
-                print(f"This is the card: {card['front']}")
-                print(f"This is the card: {card['back']}")
                 Card.objects.create(
                     question=card['front'],
                     answer=card['back'],
@@ -124,3 +118,42 @@ class CardsGen(APIView):
             return Response({'Cards': cards}, status=status.HTTP_200_OK)
         except Exception as e:
             return Response({'Error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
+def cards_to_quiz(user_answers):
+    if not user_answers:
+        return {'Error': 'No data provided'}
+    
+    prompt_text = "\n\n".join(
+        f"Question: {user['question_input']}\n"
+        f"User answer: {user['answers']['user_answer']}\n"
+        f"Correct answer: {user['answers']['correct']}"
+        for user in user_answers
+    )
+    
+    try:
+        message = client.messages.create(
+            model = "claude-3-7-sonnet-20250219",
+            max_tokens=1000,
+            temperature=0.7,
+            system=("Grade the user's answers to the flashcards based on the correct written answers. "
+                "Return the response in JSON format in the following format with score being either Correct or Incorrect: "
+                "{'question_input': '...', 'score': 'Correct' or 'Incorrect', 'explanation': '...', 'user_answer': '...', 'correct_answer': '...'} — do not reference the user. "
+                "Make sure each explanation clearly matches its question."
+            ),
+            messages=[
+                {
+                    "role": "user",
+                    "content": [{
+                        "type": "text", 
+                        "text": prompt_text
+                        }]
+                }
+            ]
+        )
+
+        print(type(message.content))
+        print(message.content)
+        cleaned_response = clean_claude_response(message.content)
+        return cleaned_response
+    except Exception as e:
+        return {'Error': str(e)}
