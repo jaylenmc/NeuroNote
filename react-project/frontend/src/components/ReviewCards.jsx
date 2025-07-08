@@ -714,7 +714,7 @@ const ReviewCards = ({ onViewModeChange }) => {
     try {
       let allReviewedDates = [];
       for (const rating of pendingRatings) {
-        const res = await api.post('flashcards/review/', rating);
+        const res = await api.put('flashcards/review/', rating);
         if (res.data && res.data.reviewed_dates) {
           allReviewedDates = allReviewedDates.concat(res.data.reviewed_dates);
         }

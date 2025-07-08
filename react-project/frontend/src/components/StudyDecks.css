@@ -50,157 +50,248 @@
     transform: translateY(-2px);
 }
 
-.decks-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-    gap: 1.5rem;
+/* --- Isolated StudyDecks styles --- */
+.studydeck-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2rem;
+  width: 100%;
+  justify-content: flex-start;
+  cursor: pointer;
 }
 
-.deck-card {
-    cursor: pointer;
-    border-radius: 1.5rem;
-    transition: all 0.2s ease-in-out;
-    min-height: 320px;
-    max-width: 340px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    overflow: visible;
-    background: var(--bg-secondary);
-    padding: 2rem 1.5rem 1.5rem 1.5rem;
-    margin: 0;
-    box-shadow: 0 4px 16px 0 rgba(0,0,0,0.10);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(255,255,255,0.08);
+.studydeck-card {
+  position: relative;
+  width: 340px;
+  min-height: 340px;
+  padding: 2.2rem 1.7rem 2.5rem 1.7rem;
+  background: #181a20;
+  border-radius: 1.5rem;
+  border: 1.5px solid #23242b;
+  color: #f3f4f8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: background 0.18s, border 0.18s;
+  box-sizing: border-box;
 }
 
-.deck-card:hover {
-    transform: scale(1.05);
-    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.15), 0 10px 10px -5px rgba(0,0,0,0.08);
-    background: var(--bg-primary);
+
+.studydeck-status-chip {
+  position: absolute;
+  top: 1.2rem;
+  left: 1.2rem;
+  padding: 0.38rem 1.1rem;
+  border-radius: 999px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  background: #23242b;
+  color: #7c83fd;
+  border: 1.5px solid #23242b;
+  z-index: 2;
+}
+.studydeck-status-chip.mastered {
+  background: #1e2b22;
+  color: #22c55e;
+  border-color: #1e2b22;
+}
+.studydeck-status-chip.struggling {
+  background: #2a1e1e;
+  color: #ef4444;
+  border-color: #2a1e1e;
 }
 
-.deck-card::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 6px;
-    background: var(--accent-primary);
-    border-radius: 1.5rem 1.5rem 0 0;
+/* Remove the icon circle, just center the emoji */
+.studydeck-icon-circle {
+  width: auto;
+  height: auto;
+  background: none;
+  border-radius: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.1rem;
+  box-shadow: none;
+}
+.studydeck-icon {
+  font-size: 2.2rem;
+  color: #fff;
+  filter: none;
 }
 
-.deck-icon {
-    font-size: 2.5rem;
-    margin-bottom: 1rem;
-    color: var(--accent-primary);
-    transition: transform 0.3s ease;
-    align-self: center;
+.studydeck-title {
+  font-size: 1.45rem;
+  font-weight: 700;
+  text-align: center;
+  margin-bottom: 0.5rem;
+  color: #fff;
+  letter-spacing: 0.01em;
 }
 
-.deck-card:hover .deck-icon {
-    transform: scale(1.1);
+.studydeck-subject {
+  background: #23242b;
+  color: #7c83fd;
+  font-size: 0.92rem;
+  font-weight: 500;
+  border-radius: 999px;
+  padding: 0.28rem 1.1rem;
+  margin-bottom: 1.2rem;
+  border: 1px solid #23242b;
+  text-align: center;
 }
 
-.deck-content {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    flex: 1;
+.studydeck-metrics {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  margin-bottom: 1.2rem;
+}
+.studydeck-metric-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 1.01rem;
+  color: #e0e7ef;
+  gap: 0.7rem;
+}
+.studydeck-metric-row .studydeck-metric-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: #b3b8d1;
+  font-weight: 500;
+}
+.studydeck-metric-row .studydeck-metric-value {
+  font-weight: 700;
+  color: white;
+  font-size: 1.08rem;
 }
 
-.deck-header {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin-bottom: 0.5rem;
+.studydeck-progress-rail {
+  width: 100%;
+  height: 8px;
+  background: #23242b;
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 0.7rem 0 0.2rem 0;
+}
+.studydeck-progress-fill {
+  height: 100%;
+  background: #7c83fd;
+  border-radius: 8px;
+  transition: width 0.3s cubic-bezier(.4,2,.6,1);
 }
 
-.deck-header h3 {
-    font-size: 1.25rem;
-    font-weight: 700;
-    margin: 0;
-    color: var(--text-primary);
-    text-align: center;
+.studydeck-review-btn {
+  width: 100%;
+  margin-top: 1.2rem;
+  padding: 0.95rem 0;
+  background: #23242b;
+  border: none;
+  border-radius: 1.2rem;
+  font-weight: 700;
+  font-size: 1.08rem;
+  color: #fff;
+  box-shadow: none;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s;
+  letter-spacing: 0.01em;
+}
+.studydeck-review-btn:hover {
+  background: #282a32;
+  color: #7c83fd;
 }
 
-.deck-info {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.deck-subject {
-    background: #23272f;
-    padding: 0.25rem 0.75rem;
-    border-radius: 999px;
-    font-size: 0.8rem;
-    color: #b3b3b3;
-    margin-bottom: 0.5rem;
-    margin-top: 0.25rem;
-    text-align: center;
-}
-
-.deck-stats {
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    margin-top: 0.5rem;
-}
-
-.deck-stat-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-size: 0.95rem;
-    color: var(--text-secondary);
-    width: 100%;
-}
-
-.deck-stat-label {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-}
-
-.progress-bar {
-    width: 100%;
-    height: 6px;
-    background: #23272f;
-    border-radius: 3px;
-    overflow: hidden;
-    margin-top: 0.5rem;
-}
-
-.progress-fill {
-    height: 100%;
-    background: var(--accent-primary);
-    transition: width 0.3s ease;
-}
-
+/* ---------- Action icons ---------- */
 .deck-actions {
     position: absolute;
-    top: 1.2rem;
-    right: 1.2rem;
+    top: 14px;
+    right: 14px;
     display: flex;
-    gap: 0.5rem;
+    gap: 6px;
+  }
+  .action-button {
+    background: transparent!important;
+    border: none!important;
+    color: #8a8a8a!important;
+    padding: 4px!important;
+    border-radius: 6px!important;
+    transition: background 0.15s ease, color 0.15s ease;
+  }
+  .action-button:hover {
+    background: rgba(255, 255, 255, 0.05)!important;
+    color: #ffffff!important;
+  }
+  
+  /* ---------- Icon / title ---------- */
+  .deck-icon {
+    font-size: 28px;
+    margin-bottom: 6px;
+  }
+  .deck-title {
+    font-size: 1.35rem;
+    font-weight: 600;
+    margin-bottom: 14px;
+    line-height: 1.25;
+  }
+  
+  /* ---------- Status progress bar ---------- */
+  .status-wrapper { margin-bottom: 18px; }
+  
+  .status-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.68rem;
+    color: #7d7d7d!important;
+    margin-bottom: 4px;
+  }
+  .progress-rail {
+    height: 8px;
+    background: #2f2f2f!important;
+    border-radius: 8px!important;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: #7c83fd!important;          /* accent color */
+    border-radius: 8px 0 0 8px!important;
+    transition: width 0.25s ease;
+  }
+  
+  /* ---------- Metrics ---------- */
+  .deck-metrics { display: flex; flex-direction: column; gap: 8px; }
+  .metric-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.83rem;
+    color: #c5c5c5!important;
+    gap: 6px;
+  }
+  .metric-row svg { color: #7c83fd!important; }
+  
+  /* ---------- Review button ---------- */
+  .review-btn {
+    width: 100%;
+    margin-top: 20px;
+    padding: 11px 0;
+    background: #7c83fd!important;
+    border: none!important;
+    border-radius: 14px!important;
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: #ffffff!important;
     opacity: 0;
-    transition: opacity 0.2s ease-in-out;
-    z-index: 2;
-}
-
-.deck-card:hover .deck-actions {
-    opacity: 1;
-}
+    transition: opacity 0.2s ease, background 0.15s ease;
+  }
+  .deck-card:hover .review-btn { opacity: 1; }
+  .review-btn:hover { background: #6d75e0!important; }
+  
+  /* Optional: emphasise status by background glow */
+  .deck-card[data-status="mastered"] .progress-fill { background: #3ccf91!important; }
+  .deck-card[data-status="struggling"] .progress-fill { background: #ea5455!important; }
 
 .action-button {
     background: transparent;
@@ -533,4 +624,100 @@
 
 .deck-card.ribbon-muted-purple {
     border-left: 4px solid #7c3aed;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .study-decks-container {
+        padding: 1rem;
+    }
+    
+    .studydeck-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+    
+    .deck-card {
+        max-width: 100%;
+        padding: 2rem 1.5rem 1.5rem 1.5rem;
+    }
+    
+    .study-decks-header {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .study-decks-header h2 {
+        font-size: 1.5rem;
+    }
+    
+    .deck-icon {
+        font-size: 2.5rem;
+    }
+    
+    .deck-header h3 {
+        font-size: 1.25rem;
+    }
+    
+    .deck-stats {
+        padding: 0.75rem;
+        gap: 0.5rem;
+    }
+    
+    .review-now-button {
+        bottom: 1rem;
+        right: 1rem;
+        padding: 0.4rem 0.8rem;
+        font-size: 0.8rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .study-decks-container {
+        padding: 0.5rem;
+    }
+    
+    .deck-card {
+        padding: 1.5rem 1rem 1rem 1rem;
+        min-height: 280px;
+    }
+    
+    .deck-icon {
+        font-size: 2rem;
+        margin-bottom: 1rem;
+    }
+    
+    .deck-header h3 {
+        font-size: 1.1rem;
+    }
+    
+    .deck-subject {
+        font-size: 0.75rem;
+        padding: 0.3rem 0.8rem;
+    }
+    
+    .deck-stats {
+        padding: 0.25rem;
+        font-size: 0.8rem;
+    }
+    
+    .deck-stat-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.2rem;
+    }
+    
+    .deck-stat-label, .deck-stat-value {
+        font-size: 0.85rem;
+    }
+} 
+
+@media (max-width: 600px) {
+  .studydeck-card {
+    width: 98vw;
+    min-width: 0;
+    padding: 1.2rem 0.5rem 1.5rem 0.5rem;
+  }
+  .studydeck-title { font-size: 1.1rem; }
+  .studydeck-icon-circle { width: auto; height: auto; }
 } 

@@ -4,7 +4,7 @@ import { FiClock, FiShuffle, FiPause, FiPlay, FiArrowLeft, FiSkipForward, FiChec
 import CardsToQuiz from '../components/CardsToQuiz';
 import api from '../api/axios';
 import { jwtDecode } from 'jwt-decode';
-import { isBackendDateTimeDueNow, isBackendDateTimeOverdue } from '../utils/dateUtils';
+import { isBackendDateTimeOverdue, isBackendDateTimeDueNow, isBackendDateTimeDueSoon } from '../utils/dateUtils';
 import './ReviewSession.css';
 
 function isTokenExpired(token) {
@@ -42,6 +42,7 @@ const ReviewSession = () => {
   // State for quiz feature
   const [showQuiz, setShowQuiz] = useState(false);
   const [reviewedCardsForQuiz, setReviewedCardsForQuiz] = useState([]);
+  const [includeDueSoon, setIncludeDueSoon] = useState(false);
   
   // State to track card ratings
   const [cardRatings, setCardRatings] = useState({});
@@ -71,20 +72,37 @@ const ReviewSession = () => {
     return null;
   };
 
+  // Helper function to refresh token
+  const refreshToken = async () => {
+    try {
+      const refresh = sessionStorage.getItem('refresh_token');
+      if (!refresh) {
+        throw new Error('No refresh token available');
+      }
+      
+      const response = await api.post('/auth/token/refresh/', { refresh });
+      sessionStorage.setItem('jwt_token', response.data.access);
+      return true;
+    } catch (error) {
+      console.error('Error refreshing token:', error);
+      return false;
+    }
+  };
+
   // Proactive token check and refresh before anything else
   useEffect(() => {
     const checkAndRefreshToken = async () => {
       const access = sessionStorage.getItem('jwt_token');
       const refresh = sessionStorage.getItem('refresh_token');
+      
       if (!access && !refresh) {
         navigate('/signin');
         return;
       }
+      
       if (isTokenExpired(access) && refresh) {
-        try {
-          const response = await api.post('/auth/token/refresh/', { refresh });
-          sessionStorage.setItem('jwt_token', response.data.access);
-        } catch {
+        const success = await refreshToken();
+        if (!success) {
           sessionStorage.removeItem('jwt_token');
           sessionStorage.removeItem('refresh_token');
           navigate('/signin');
@@ -92,11 +110,8 @@ const ReviewSession = () => {
       } else if (isTokenExpired(access)) {
         navigate('/signin');
       }
-      // else: token is valid, continue as normal
     };
     checkAndRefreshToken();
-    // Only run on mount
-    // eslint-disable-next-line
   }, [navigate]);
 
   // Initialize review session
@@ -110,21 +125,31 @@ const ReviewSession = () => {
         // Get selected deck from location state or query params
         const deckFromState = location.state?.selectedDeck;
         const deckFromQuery = new URLSearchParams(location.search).get('deck');
+        const includeDueSoonFromState = location.state?.includeDueSoon || false;
         
         console.log('ReviewSession: deckFromState:', deckFromState);
         console.log('ReviewSession: deckFromQuery:', deckFromQuery);
         console.log('ReviewSession: location.state:', location.state);
+        console.log('ReviewSession: location.search:', location.search);
+        console.log('ReviewSession: includeDueSoonFromState:', includeDueSoonFromState);
+        
+        setIncludeDueSoon(includeDueSoonFromState);
+        
+        let deckToUse = null;
         
         if (deckFromState) {
           console.log('ReviewSession: Setting selectedDeck from state:', deckFromState);
           setSelectedDeck(deckFromState);
+          deckToUse = deckFromState;
         } else if (deckFromQuery) {
           // If deck ID is passed via query param, fetch deck details
           try {
             const token = sessionStorage.getItem('jwt_token');
             const deckData = await fetchDeckDetails(deckFromQuery, token);
             if (deckData) {
+              console.log('ReviewSession: Setting selectedDeck from query:', deckData);
               setSelectedDeck(deckData);
+              deckToUse = deckData;
             }
           } catch (err) {
             console.error('Error fetching deck details:', err);
@@ -140,16 +165,18 @@ const ReviewSession = () => {
           return;
         }
         
-        // Fetch cards immediately after setting up the deck
-        const deckToUse = deckFromState || (deckFromQuery ? await fetchDeckDetails(deckFromQuery, token) : null);
+        // Fetch cards with the deck information
+        console.log('ReviewSession: Fetching cards with deckToUse:', deckToUse);
         const cards = await fetchReviewCards(token, deckToUse);
         
         if (!cards || cards.length === 0) {
+          console.log('ReviewSession: No cards found, setting error and redirecting');
           setError('No cards for review today');
           setTimeout(() => navigate('/study-room'), 2000);
           return;
         }
         
+        console.log('ReviewSession: Cards found, setting up session');
         setReviewCards(cards);
         setCurrentReviewCardIndex(0);
         setIsFlipped(false);
@@ -211,42 +238,148 @@ const ReviewSession = () => {
   const fetchReviewCards = async (token, deckToUse = null) => {
     try {
       const deckId = deckToUse?.id || selectedDeck?.id;
+      console.log('fetchReviewCards - deckToUse:', deckToUse);
+      console.log('fetchReviewCards - selectedDeck:', selectedDeck);
+      console.log('fetchReviewCards - deckId:', deckId);
+      console.log('fetchReviewCards - includeDueSoon:', includeDueSoon);
+      
       if (!deckId) {
-        console.error('No deck ID available for fetching review cards');
+        console.log('No specific deck selected, fetching all due cards from all decks');
+        // If no specific deck is selected, we need to fetch all cards and filter them
+        // This is a fallback since the backend doesn't have an endpoint for all due cards across decks
+        try {
+          const response = await api.get('/flashcards/deck/');
+          const decks = response.data.decks || [];
+          
+          let allDueCards = [];
+          for (const deck of decks) {
+            try {
+              const deckResponse = await api.get(`/flashcards/cards/${deck.id}/due/`);
+              if (deckResponse.data && deckResponse.data.length > 0) {
+                allDueCards = allDueCards.concat(deckResponse.data);
+              }
+            } catch (deckError) {
+              console.error(`Error fetching cards for deck ${deck.id}:`, deckError);
+            }
+          }
+          
+          console.log('All due cards from all decks:', allDueCards.length);
+          
+          if (!allDueCards || allDueCards.length === 0) {
+            console.log('No due cards found in any deck');
+            return [];
+          }
+          
+          // Shuffle the cards for random review order
+          const shuffledCards = allDueCards.sort(() => Math.random() - 0.5);
+          return shuffledCards;
+        } catch (allDecksError) {
+          console.error('Error fetching all decks:', allDecksError);
+          return [];
+        }
+      }
+
+      // For specific deck, we need to fetch all cards and filter them based on includeDueSoon
+      console.log('fetchReviewCards - Fetching all cards for deck:', deckId);
+      const response = await api.get(`/flashcards/cards/${deckId}/`);
+      const allCards = response.data;
+      console.log('fetchReviewCards - All cards from API:', allCards);
+
+      if (!allCards || allCards.length === 0) {
+        console.log('No cards found for this deck');
         return [];
       }
 
-      const response = await api.get(`/flashcards/cards/${deckId}/`);
-      const allCards = response.data;
-      
-      // Filter cards that are due for review (overdue or due today with time <= now)
+      // Filter cards based on due status
       const dueCards = allCards.filter(card => {
-        // Include cards without scheduled_date (new cards)
-        if (!card.scheduled_date) return true;
+        if (!card.scheduled_date) return true; // Unscheduled cards are always due
         
-        // Include overdue cards or cards due now
-        return isBackendDateTimeOverdue(card.scheduled_date) || isBackendDateTimeDueNow(card.scheduled_date);
+        const isOverdue = isBackendDateTimeOverdue(card.scheduled_date);
+        const isDueNow = isBackendDateTimeDueNow(card.scheduled_date);
+        const isDueSoon = isBackendDateTimeDueSoon(card.scheduled_date);
+        
+        if (isOverdue || isDueNow) return true;
+        if (includeDueSoon && isDueSoon) return true;
+        
+        return false;
       });
 
-      console.log('Total cards:', allCards.length);
-      console.log('Due cards (including overdue):', dueCards.length);
-      console.log('Today:', today);
+      console.log('Filtered due cards:', dueCards.length);
+      console.log('includeDueSoon enabled:', includeDueSoon);
 
-      if (dueCards.length === 0) {
-        setReviewCards([]);
-        setCurrentReviewCardIndex(0);
-        setSessionComplete(true);
+      if (!dueCards || dueCards.length === 0) {
+        console.log('No due cards found for this deck');
         return [];
       }
 
       // Shuffle the cards for random review order
       const shuffledCards = dueCards.sort(() => Math.random() - 0.5);
-      setReviewCards(shuffledCards);
-      setCurrentReviewCardIndex(0);
-      setSessionComplete(false);
       return shuffledCards;
     } catch (error) {
       console.error('Error fetching review cards:', error);
+      
+      // If it's a 401 error, try to refresh token and retry
+      if (error.response?.status === 401) {
+        const refreshSuccess = await refreshToken();
+        if (refreshSuccess) {
+          try {
+            const deckId = deckToUse?.id || selectedDeck?.id;
+            if (!deckId) {
+              // Retry fetching all decks
+              const response = await api.get('/flashcards/deck/');
+              const decks = response.data.decks || [];
+              
+              let allDueCards = [];
+              for (const deck of decks) {
+                try {
+                  const deckResponse = await api.get(`/flashcards/cards/${deck.id}/due/`);
+                  if (deckResponse.data && deckResponse.data.length > 0) {
+                    allDueCards = allDueCards.concat(deckResponse.data);
+                  }
+                } catch (deckError) {
+                  console.error(`Error fetching cards for deck ${deck.id}:`, deckError);
+                }
+              }
+              
+              if (!allDueCards || allDueCards.length === 0) {
+                return [];
+              }
+              
+              return allDueCards.sort(() => Math.random() - 0.5);
+            }
+            
+            // Retry fetching all cards for specific deck
+            const response = await api.get(`/flashcards/cards/${deckId}/`);
+            const allCards = response.data;
+            
+            if (!allCards || allCards.length === 0) {
+              return [];
+            }
+            
+            const dueCards = allCards.filter(card => {
+              if (!card.scheduled_date) return true;
+              
+              const isOverdue = isBackendDateTimeOverdue(card.scheduled_date);
+              const isDueNow = isBackendDateTimeDueNow(card.scheduled_date);
+              const isDueSoon = isBackendDateTimeDueSoon(card.scheduled_date);
+              
+              if (isOverdue || isDueNow) return true;
+              if (includeDueSoon && isDueSoon) return true;
+              
+              return false;
+            });
+            
+            if (!dueCards || dueCards.length === 0) {
+              return [];
+            }
+            
+            return dueCards.sort(() => Math.random() - 0.5);
+          } catch (retryError) {
+            console.error('Error fetching review cards after token refresh:', retryError);
+          }
+        }
+      }
+      
       return [];
     }
   };
@@ -254,9 +387,11 @@ const ReviewSession = () => {
   const handleRatingSelect = async (rating) => {
     if (!reviewCards[currentReviewCardIndex] || sessionComplete) return;
 
+    const currentCard = reviewCards[currentReviewCardIndex];
+    
     try {
       const response = await api.put('/flashcards/review/', {
-        card_id: reviewCards[currentReviewCardIndex].id,
+        card_id: currentCard.id,
         quality: rating,
         deck_id: selectedDeck.id
       });
@@ -266,12 +401,61 @@ const ReviewSession = () => {
         const updatedCard = response.data;
         setReviewCards(prev => 
           prev.map(card => 
-            card.id === reviewCards[currentReviewCardIndex].id ? { ...card, ...updatedCard } : card
+            card.id === currentCard.id ? { ...card, ...updatedCard } : card
           )
         );
+        
+        // Update the cardRatings state to track ratings for quiz
+        setCardRatings(prev => ({
+          ...prev,
+          [currentCard.id]: rating
+        }));
+        
+        console.log('Rating submitted:', { cardId: currentCard.id, rating });
       }
     } catch (error) {
       console.error('Error submitting review:', error);
+      // If it's a 401 error, try to refresh the token
+      if (error.response?.status === 401) {
+        try {
+          const refresh = sessionStorage.getItem('refresh_token');
+          if (refresh) {
+            const refreshResponse = await api.post('/auth/token/refresh/', { refresh });
+            sessionStorage.setItem('jwt_token', refreshResponse.data.access);
+            // Retry the rating submission
+            const retryResponse = await api.put('/flashcards/review/', {
+              card_id: currentCard.id,
+              quality: rating,
+              deck_id: selectedDeck.id
+            });
+            
+            if (retryResponse.status === 200) {
+              const updatedCard = retryResponse.data;
+              setReviewCards(prev => 
+                prev.map(card => 
+                  card.id === currentCard.id ? { ...card, ...updatedCard } : card
+                )
+              );
+              
+              setCardRatings(prev => ({
+                ...prev,
+                [currentCard.id]: rating
+              }));
+              
+              console.log('Rating submitted after token refresh:', { cardId: currentCard.id, rating });
+            }
+          } else {
+            setError('Session expired. Please log in again.');
+            setTimeout(() => navigate('/signin'), 2000);
+            return;
+          }
+        } catch (refreshError) {
+          console.error('Error refreshing token:', refreshError);
+          setError('Session expired. Please log in again.');
+          setTimeout(() => navigate('/signin'), 2000);
+          return;
+        }
+      }
     }
 
     // Move to next card
@@ -283,32 +467,9 @@ const ReviewSession = () => {
       setCurrentReviewCardIndex(currentReviewCardIndex + 1);
       setIsFlipped(false);
     } else {
-      // Update last review date for all cards in the session
-      try {
-        const token = sessionStorage.getItem('jwt_token');
-        if (!token) {
-          setError('Please log in to update cards');
-          return;
-        }
-
-        const today = new Date().toISOString().split('T')[0];
-        
-        // Update each card individually using the correct endpoint
-        for (const card of reviewCards) {
-          try {
-            await api.put(`/flashcards/cards/update/${card.card_deck}/${card.id}/`, {
-              scheduled_date: today
-            });
-          } catch (err) {
-            console.error(`Error updating card ${card.id}:`, err);
-          }
-        }
-        
-        setSessionComplete(true);
-      } catch (err) {
-        console.error('Error updating cards:', err);
-        setError('Failed to update cards. Please try again.');
-      }
+      // Session is complete - the backend has already updated the scheduled_date
+      // through the update_sm21 method when each card was rated
+      setSessionComplete(true);
     }
   };
 
@@ -346,6 +507,7 @@ const ReviewSession = () => {
   const handleBackFromQuiz = () => {
     setShowQuiz(false);
     setReviewedCardsForQuiz([]);
+    navigate('/study-room');
   };
 
   const formatTime = (seconds) => {

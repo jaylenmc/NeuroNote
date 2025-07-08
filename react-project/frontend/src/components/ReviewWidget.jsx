@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiAlertCircle, FiClock, FiCalendar, FiStar, FiBook, FiAlertTriangle, FiChevronDown, FiX } from 'react-icons/fi';
+import ReactDOM from 'react-dom';
+import { FiAlertCircle, FiClock, FiCalendar, FiStar, FiBook, FiAlertTriangle, FiChevronDown, FiX, FiPlus, FiEye } from 'react-icons/fi';
 import './ReviewWidget.css';
 import brainPng from '../assets/brain.png';
 import api from '../api/axios';
-import { formatDateForDisplay, formatDateTimeForDisplay, convertBackendDateToLocal, isBackendDateToday, isBackendDatePast, isBackendDateFuture, isBackendDateTimeDueToday, isBackendDateTimeOverdue, isBackendDateTimeUpcoming, isBackendDateTimeDueNow, isBackendDateTimeLaterToday, getTimeDifference } from '../utils/dateUtils';
+import { formatDateForDisplay, formatDateTimeForDisplay, convertBackendDateToLocal, isBackendDateToday, isBackendDatePast, isBackendDateFuture, isBackendDateTimeDueToday, isBackendDateTimeOverdue, isBackendDateTimeUpcoming, isBackendDateTimeDueNow, isBackendDateTimeLaterToday, isBackendDateTimeDueSoon, getTimeDifference, getOverdueTimeDifference, formatTimeForCardDisplay } from '../utils/dateUtils';
 
 const LoadingSpinner = () => (
   <div style={{
@@ -34,20 +35,17 @@ const LoadingSpinner = () => (
   </div>
 );
 
-const ReviewWidget = () => {
+const ReviewWidget = ({ decks = [], selectedDeckId, setSelectedDeckId }) => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overdue');
   const [tooltip, setTooltip] = useState(null);
   const [cards, setCards] = useState({
     overdue: [],
     dueNow: [],
-    laterToday: [],
+    dueSoon: [],
     upcoming: []
   });
   const [allCards, setAllCards] = useState([]);
-  const [decks, setDecks] = useState([]);
-  const [selectedDeckId, setSelectedDeckId] = useState(null);
-  const [showDeckDropdown, setShowDeckDropdown] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [newCardQuestion, setNewCardQuestion] = useState('');
@@ -63,6 +61,15 @@ const ReviewWidget = () => {
   const [editCardQuestion, setEditCardQuestion] = useState('');
   const [editCardAnswer, setEditCardAnswer] = useState('');
   const [editCardScheduledDate, setEditCardScheduledDate] = useState('');
+  const [selectedDeck, setSelectedDeck] = useState(null);
+  const [includeDueSoon, setIncludeDueSoon] = useState(false);
+  const [hoveredTab, setHoveredTab] = useState(null);
+  const tabTooltips = {
+    overdue: 'Cards that were due for review but haven\'t been studied yet',
+    dueNow: 'Cards due for review right now (within grace period)',
+    dueSoon: 'Cards due for review in the next hour (optional preview)',
+    upcoming: 'Cards scheduled for future review',
+  };
 
   // Color map for underlines
   const ratingColors = [
@@ -79,27 +86,33 @@ const ReviewWidget = () => {
     setTimeout(() => setError(null), 3000);
   };
 
-  useEffect(() => {
-    fetchCards();
-  }, []);
-
   const fetchCards = async () => {
     try {
       setLoading(true);
-      // Fetch decks first
-      const decksResponse = await api.get('/flashcards/deck/');
-      const data = decksResponse.data;
-      const decks = data.decks || [];
-      setDecks(decks);
-      console.log('Fetched decks:', decks);
+      console.log('Fetching cards in ReviewWidget, decks from props:', decks);
 
       // Fetch cards for each deck
       const allCards = [];
       for (const deck of decks) {
-        const cardsResponse = await api.get(`/flashcards/cards/${deck.id}/`);
-        const deckCards = cardsResponse.data;
-        console.log(`Cards for deck ${deck.id}:`, deckCards);
-        allCards.push(...deckCards.map(card => ({ ...card, deckTitle: deck.title, deckId: deck.id })));
+        try {
+          const cardsResponse = await api.get(`/flashcards/cards/${deck.id}/`);
+          const deckCards = cardsResponse.data;
+          console.log(`Cards for deck ${deck.id}:`, deckCards);
+          
+          // Handle different possible card response structures
+          let cards = [];
+          if (Array.isArray(deckCards)) {
+            cards = deckCards;
+          } else if (deckCards && Array.isArray(deckCards.cards)) {
+            cards = deckCards.cards;
+          } else if (deckCards && deckCards.results) {
+            cards = deckCards.results;
+          }
+          
+          allCards.push(...cards.map(card => ({ ...card, deckTitle: deck.title, deckId: deck.id })));
+        } catch (cardErr) {
+          console.error(`Error fetching cards for deck ${deck.id}:`, cardErr);
+        }
       }
       setAllCards(allCards);
 
@@ -107,7 +120,7 @@ const ReviewWidget = () => {
       const sortedCards = {
         overdue: [],
         dueNow: [],
-        laterToday: [],
+        dueSoon: [],
         upcoming: []
       };
 
@@ -121,8 +134,8 @@ const ReviewWidget = () => {
           sortedCards.overdue.push(card);
         } else if (isBackendDateTimeDueNow(card.scheduled_date)) {
           sortedCards.dueNow.push(card);
-        } else if (isBackendDateTimeLaterToday(card.scheduled_date)) {
-          sortedCards.laterToday.push(card);
+        } else if (isBackendDateTimeDueSoon(card.scheduled_date)) {
+          sortedCards.dueSoon.push(card);
         } else if (isBackendDateTimeUpcoming(card.scheduled_date)) {
           sortedCards.upcoming.push(card);
         }
@@ -138,11 +151,17 @@ const ReviewWidget = () => {
     }
   };
 
+  useEffect(() => {
+    if (decks.length > 0) {
+      fetchCards();
+    }
+  }, [decks]);
+
   // Filter cards by selected deck
   useEffect(() => {
     if (!selectedDeckId) {
       // Show all cards
-      const sortedCards = { overdue: [], dueNow: [], laterToday: [], upcoming: [] };
+      const sortedCards = { overdue: [], dueNow: [], dueSoon: [], upcoming: [] };
       allCards.forEach(card => {
         if (!card.scheduled_date) {
           sortedCards.overdue.push(card);
@@ -152,8 +171,8 @@ const ReviewWidget = () => {
           sortedCards.overdue.push(card);
         } else if (isBackendDateTimeDueNow(card.scheduled_date)) {
           sortedCards.dueNow.push(card);
-        } else if (isBackendDateTimeLaterToday(card.scheduled_date)) {
-          sortedCards.laterToday.push(card);
+        } else if (isBackendDateTimeDueSoon(card.scheduled_date)) {
+          sortedCards.dueSoon.push(card);
         } else if (isBackendDateTimeUpcoming(card.scheduled_date)) {
           sortedCards.upcoming.push(card);
         }
@@ -161,7 +180,7 @@ const ReviewWidget = () => {
       setCards(sortedCards);
     } else {
       // Filter by deck
-      const sortedCards = { overdue: [], dueNow: [], laterToday: [], upcoming: [] };
+      const sortedCards = { overdue: [], dueNow: [], dueSoon: [], upcoming: [] };
       
       allCards.filter(card => {
         const cardDeckId = card.card_deck || card.deckId;
@@ -175,8 +194,8 @@ const ReviewWidget = () => {
           sortedCards.overdue.push(card);
         } else if (isBackendDateTimeDueNow(card.scheduled_date)) {
           sortedCards.dueNow.push(card);
-        } else if (isBackendDateTimeLaterToday(card.scheduled_date)) {
-          sortedCards.laterToday.push(card);
+        } else if (isBackendDateTimeDueSoon(card.scheduled_date)) {
+          sortedCards.dueSoon.push(card);
         } else if (isBackendDateTimeUpcoming(card.scheduled_date)) {
           sortedCards.upcoming.push(card);
         }
@@ -190,11 +209,15 @@ const ReviewWidget = () => {
     console.log('cards state:', cards);
     console.log('selectedDeckId:', selectedDeckId);
     console.log('decks:', decks);
+    console.log('includeDueSoon:', includeDueSoon);
     
     const dueCards = [...(cards.overdue || []), ...(cards.dueNow || [])];
-    console.log('dueCards:', dueCards);
+    const totalCards = includeDueSoon ? [...dueCards, ...(cards.dueSoon || [])] : dueCards;
     
-    if (dueCards.length === 0) {
+    console.log('dueCards:', dueCards);
+    console.log('totalCards (including due soon):', totalCards);
+    
+    if (totalCards.length === 0) {
       console.log('No due cards found, setting error');
       setError('No cards for review today');
       return;
@@ -204,12 +227,12 @@ const ReviewWidget = () => {
     if (selectedDeckId) {
       const selectedDeck = decks.find(d => d.id === selectedDeckId);
       console.log(`Starting review session for deck: ${selectedDeck.title} (ID: ${selectedDeck.id})`);
-      console.log('Navigating to /review-session with state:', { selectedDeck });
-      navigate('/review-session', { state: { selectedDeck } });
+      console.log('Navigating to /review-session with state:', { selectedDeck, includeDueSoon });
+      navigate('/review-session', { state: { selectedDeck, includeDueSoon } });
     } else {
       console.log('Starting review session for all decks');
       console.log('Navigating to /review-session without state');
-      navigate('/review-session');
+      navigate('/review-session', { state: { includeDueSoon } });
     }
   };
 
@@ -475,20 +498,20 @@ const ReviewWidget = () => {
         <span>Due Now: {cards.dueNow?.length || 0}</span>
         {tooltip === 'dueNow' && (
           <div className="tooltip">
-            Cards due for review in the next hour
+            Cards due for review right now (within grace period)
           </div>
         )}
       </div>
       <div 
-        className="badge later-today"
-        onMouseEnter={() => setTooltip('laterToday')}
+        className="badge due-soon"
+        onMouseEnter={() => setTooltip('dueSoon')}
         onMouseLeave={() => setTooltip(null)}
       >
-        <FiCalendar />
-        <span>Later Today: {cards.laterToday?.length || 0}</span>
-        {tooltip === 'laterToday' && (
+        <FiEye />
+        <span>Due Soon: {cards.dueSoon?.length || 0}</span>
+        {tooltip === 'dueSoon' && (
           <div className="tooltip">
-            Cards scheduled for later today
+            Cards due for review in the next hour (optional preview)
           </div>
         )}
       </div>
@@ -501,144 +524,177 @@ const ReviewWidget = () => {
         <span>Upcoming: {cards.upcoming?.length || 0}</span>
         {tooltip === 'upcoming' && (
           <div className="tooltip">
-            Cards coming up for review in the next few days
+            Cards scheduled for future review
           </div>
         )}
-        </div>
-      </div>
-      <div className="badge-row-filter">
-        {renderDeckDropdown()}
       </div>
     </div>
-  );
-
-  // Dropdown UI for deck filter
-  const renderDeckDropdown = () => (
-    <div className="deck-dropdown-container">
-      <button
-        className="deck-dropdown-toggle"
-        onClick={() => setShowDeckDropdown((prev) => !prev)}
-      >
-        <span role="img" aria-label="deck">📁</span>
-        {selectedDeckId
-          ? (decks.find(d => d.id === selectedDeckId)?.title || 'Unknown Deck')
-          : 'All Decks'}
-        <FiChevronDown style={{ marginLeft: 6 }} />
-      </button>
-      {showDeckDropdown && (
-        <div className="deck-dropdown-menu">
-          <div
-            className={`deck-dropdown-item${selectedDeckId === null ? ' selected' : ''}`}
-            onClick={() => { setSelectedDeckId(null); setShowDeckDropdown(false); }}
-          >
-            📁 All Decks
-          </div>
-          {decks.map(deck => (
-            <div
-              key={deck.id}
-              className={`deck-dropdown-item${selectedDeckId === deck.id ? ' selected' : ''}`}
-              onClick={() => { setSelectedDeckId(deck.id); setShowDeckDropdown(false); }}
-            >
-              📦 {deck.title}
-            </div>
-          ))}
-        </div>
-      )}
-      {selectedDeckId && (
-        <button
-          className="clear-deck-filter"
-          onClick={() => setSelectedDeckId(null)}
-          title="Clear Filter"
-        >
-          <FiX />
-        </button>
-      )}
     </div>
   );
 
   const renderCardList = () => (
     <div className="card-preview-section">
-      <div className="tab-bar-with-filter">
-      <div className="tab-bar">
-        <button 
-          className={`tab ${activeTab === 'overdue' ? 'active' : ''}`}
-          onClick={() => setActiveTab('overdue')}
-        >
-          Overdue ({cards.overdue?.length || 0})
-        </button>
-        <button 
-          className={`tab ${activeTab === 'dueNow' ? 'active' : ''}`}
-          onClick={() => setActiveTab('dueNow')}
-        >
-          Due Now ({cards.dueNow?.length || 0})
-        </button>
-        <button 
-          className={`tab ${activeTab === 'laterToday' ? 'active' : ''}`}
-          onClick={() => setActiveTab('laterToday')}
-        >
-          Later Today ({cards.laterToday?.length || 0})
-        </button>
-        <button 
-          className={`tab ${activeTab === 'upcoming' ? 'active' : ''}`}
-          onClick={() => setActiveTab('upcoming')}
-        >
-          Upcoming ({cards.upcoming?.length || 0})
-        </button>
+      {/* Sticky Tab Bar */}
+      <div className="sticky-tab-container">
+        <div className="tab-bar-with-filter">
+          <div className="tab-bar">
+            <button 
+              className={`tab ${activeTab === 'overdue' ? 'active' : ''}`}
+              data-category="overdue"
+              onClick={() => setActiveTab('overdue')}
+              onMouseEnter={() => setHoveredTab('overdue')}
+              onMouseLeave={() => setHoveredTab(null)}
+            >
+              <FiAlertCircle className="tab-icon" />
+              <span>Overdue ({cards.overdue?.length || 0})</span>
+              {hoveredTab === 'overdue' && (
+                <div className="tooltip">{tabTooltips.overdue}</div>
+              )}
+            </button>
+            <button 
+              className={`tab ${activeTab === 'dueNow' ? 'active' : ''}`}
+              data-category="dueNow"
+              onClick={() => setActiveTab('dueNow')}
+              onMouseEnter={() => setHoveredTab('dueNow')}
+              onMouseLeave={() => setHoveredTab(null)}
+            >
+              <FiClock className="tab-icon" />
+              <span>Due Now ({cards.dueNow?.length || 0})</span>
+              {hoveredTab === 'dueNow' && (
+                <div className="tooltip">{tabTooltips.dueNow}</div>
+              )}
+            </button>
+            <button 
+              className={`tab ${activeTab === 'dueSoon' ? 'active' : ''}`}
+              data-category="dueSoon"
+              onClick={() => setActiveTab('dueSoon')}
+              onMouseEnter={() => setHoveredTab('dueSoon')}
+              onMouseLeave={() => setHoveredTab(null)}
+            >
+              <FiEye className="tab-icon" />
+              <span>Due Soon ({cards.dueSoon?.length || 0})</span>
+              {hoveredTab === 'dueSoon' && (
+                <div className="tooltip">{tabTooltips.dueSoon}</div>
+              )}
+            </button>
+            <button 
+              className={`tab ${activeTab === 'upcoming' ? 'active' : ''}`}
+              data-category="upcoming"
+              onClick={() => setActiveTab('upcoming')}
+              onMouseEnter={() => setHoveredTab('upcoming')}
+              onMouseLeave={() => setHoveredTab(null)}
+            >
+              <FiCalendar className="tab-icon" />
+              <span>Upcoming ({cards.upcoming?.length || 0})</span>
+              {hoveredTab === 'upcoming' && (
+                <div className="tooltip">{tabTooltips.upcoming}</div>
+              )}
+            </button>
+          </div>
+        </div>
       </div>
-      </div>
-      <div className="card-list">
+
+      {/* Card Content */}
+      <div className="card-content-area">
         {loading ? (
-          <LoadingSpinner />
+          <div className="loading-container">
+            <LoadingSpinner />
+          </div>
         ) : (
-          (cards[activeTab] || []).map((card, index) => (
-            <div key={card.id} className="card-item">
-              <div className="card-info">
-                <h4>{card.question}</h4>
-                <div className="card-details">
-                  <span className="deck-title">{card.deckTitle}</span>
-                  {card.scheduled_date && (
-                    <span className="review-date">
-                      {activeTab === 'overdue' && `Due at ${formatDateTimeForDisplay(card.scheduled_date)}`}
-                      {activeTab === 'dueNow' && `Due ${getTimeDifference(card.scheduled_date)}`}
-                      {activeTab === 'laterToday' && `Scheduled at ${formatDateTimeForDisplay(card.scheduled_date)}`}
-                      {activeTab === 'upcoming' && `Scheduled for ${formatDateTimeForDisplay(card.scheduled_date)}`}
-                    </span>
-                  )}
+          <div className="scrollable-card-list">
+            {(cards[activeTab] || []).map((card, index) => (
+              <div key={card.id} className="card-item" style={{ animationDelay: `${index * 0.1}s` }}>
+                <div className="card-deck-top">
+                  <span role="img" aria-label="deck">🌍</span> {card.deckTitle}
+                </div>
+                <div className="card-question-center">
+                  {card.question}
+                </div>
+                <div className="card-due-bottom">
+                  <span className="card-due-icon">📅</span>
+                  <span className="card-due-date">
+                    {formatTimeForCardDisplay(card.scheduled_date, activeTab)}
+                  </span>
                 </div>
               </div>
-            </div>
-          ))
+            ))}
+            {(cards[activeTab] || []).length === 0 && (
+              <div className="empty-state">
+                <div className="empty-icon">📚</div>
+                <h3>No cards in this category</h3>
+                <p>All caught up! Check back later for new reviews.</p>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>
   );
 
   const renderActionPanel = () => {
-    const totalDue = (cards.overdue?.length || 0) + (cards.dueNow?.length || 0);
+    const dueCards = (cards.overdue?.length || 0) + (cards.dueNow?.length || 0);
+    const dueSoonCards = cards.dueSoon?.length || 0;
+    const totalCards = includeDueSoon ? dueCards + dueSoonCards : dueCards;
+    
     return (
       <div className="action-panel">
-        <div className="action-buttons">
-        <button 
-            type="button"
-          className="start-review-button"
-          onClick={handleStartReview}
-        >
-          Start Review Session ({totalDue} Due Cards)
-        </button>
+        <div className="action-panel-header">
+          <h2 className="action-panel-title">Start Review Session</h2>
+          <p className="action-panel-subtitle">Ready to study? Choose your session type below.</p>
         </div>
-        <p className="subtext">Get back on track in 5 minutes</p>
+        
+        <div className="action-buttons">
+          <button 
+            type="button"
+            className="start-review-button"
+            onClick={handleStartReview}
+          >
+            <FiBook className="button-icon" />
+            <span>Start Review Session ({totalCards} Cards)</span>
+          </button>
+        </div>
+        
+        <div className="review-options">
+          <label className="due-soon-toggle">
+            <input
+              type="checkbox"
+              checked={includeDueSoon}
+              onChange={(e) => setIncludeDueSoon(e.target.checked)}
+            />
+            <div className="toggle-content">
+              <span className="toggle-label">
+                Include "Due Soon" cards ({dueSoonCards} available)
+              </span>
+              <span className="toggle-hint">
+                Study ahead - may affect memory retention
+              </span>
+            </div>
+          </label>
+        </div>
+        
+        <div className="session-summary">
+          <p className="subtext">
+            {includeDueSoon 
+              ? `Review overdue, due now, and due soon cards (${dueCards} + ${dueSoonCards} preview)`
+              : `Review overdue and due now cards (${dueCards} cards)`
+            }
+          </p>
+        </div>
       </div>
     );
   };
 
   return (
-    <div className="review-widget">
-      {renderSummaryBadges()}
-      {renderCardList()}
-      {renderActionPanel()}
-      {showCreateCard && renderCreateCardModal()}
-      {showEditDeck && renderEditDeckModal()}
-      {showEditCard && renderEditCardModal()}
+    <div className="review-page-container">
+      <div className="review-page-content">
+        <div className="review-widget">
+          {renderCardList()}
+          {renderActionPanel()}
+          {showCreateCard && renderCreateCardModal()}
+          {showEditDeck && renderEditDeckModal()}
+          {showEditCard && renderEditCardModal()}
+        </div>
+      </div>
     </div>
   );
 };

@@ -93,7 +93,7 @@ export const formatDateTimeForDisplay = (dateString, options = {}) => {
   if (!dateString) return '';
   
   try {
-    // Create a date object from the backend datetime string
+    // Create a date object from the backend datetime string (UTC)
     const utcDate = new Date(dateString);
     
     // Check if the date is valid
@@ -101,7 +101,9 @@ export const formatDateTimeForDisplay = (dateString, options = {}) => {
       console.warn('Invalid date string for display:', dateString);
       return '';
     }
-    // Always show both date and time
+    
+    // Convert UTC to local timezone for display
+    // toLocaleString automatically converts to user's local timezone
     return utcDate.toLocaleString('en-US', {
       weekday: 'short',
       year: 'numeric',
@@ -110,6 +112,7 @@ export const formatDateTimeForDisplay = (dateString, options = {}) => {
       hour: '2-digit',
       minute: '2-digit',
       hour12: true,
+      timeZoneName: 'short', // This will show the timezone abbreviation
       ...options
     });
   } catch (error) {
@@ -277,9 +280,9 @@ export const isBackendDateTimeUpcoming = (dateString) => {
 };
 
 /**
- * Checks if a backend datetime is due now (same date AND time is within the next hour)
+ * Checks if a backend datetime is due now (same date AND time is now or in the past)
  * @param {string} dateString - Datetime string from backend (UTC)
- * @returns {boolean} - True if the datetime is due within the next hour
+ * @returns {boolean} - True if the datetime is due now (current time >= scheduled time)
  */
 export const isBackendDateTimeDueNow = (dateString) => {
   if (!dateString) return false;
@@ -287,7 +290,6 @@ export const isBackendDateTimeDueNow = (dateString) => {
   try {
     const cardDateTime = new Date(dateString);
     const now = new Date();
-    const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour from now
     
     // Check if the date is valid
     if (isNaN(cardDateTime.getTime())) {
@@ -302,10 +304,9 @@ export const isBackendDateTimeDueNow = (dateString) => {
     const cardDate = new Date(cardDateTime);
     cardDate.setHours(0, 0, 0, 0);
     
-    // Same date AND the scheduled time is within the next hour
+    // Same date AND the scheduled time is now or in the past (not before)
     return cardDate.getTime() === today.getTime() && 
-           cardDateTime > now && 
-           cardDateTime <= oneHourFromNow;
+           cardDateTime <= now;
   } catch (error) {
     console.warn('Error checking if datetime is due now:', error);
     return false;
@@ -387,5 +388,161 @@ export const getTimeDifference = (dateString) => {
   } catch (error) {
     console.warn('Error calculating time difference:', error);
     return '';
+  }
+};
+
+/**
+ * Gets the time difference for overdue cards (how long ago they were due)
+ * @param {string} dateString - Datetime string from backend (UTC)
+ * @returns {string} - Human-readable time difference (e.g., "3 hours ago", "12 minutes ago")
+ */
+export const getOverdueTimeDifference = (dateString) => {
+  if (!dateString) return '';
+  
+  try {
+    const cardDateTime = new Date(dateString);
+    const now = new Date();
+    
+    // Check if the date is valid
+    if (isNaN(cardDateTime.getTime())) {
+      console.warn('Invalid date string for overdue time difference:', dateString);
+      return '';
+    }
+    
+    const diffMs = now.getTime() - cardDateTime.getTime();
+    
+    if (diffMs <= 0) {
+      return 'just now';
+    }
+    
+    const diffMinutes = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMinutes / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    
+    if (diffDays > 0) {
+      return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    } else if (diffHours > 0) {
+      return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    } else if (diffMinutes > 0) {
+      return `${diffMinutes} minute${diffMinutes > 1 ? 's' : ''} ago`;
+    } else {
+      return 'just now';
+    }
+  } catch (error) {
+    console.warn('Error calculating overdue time difference:', error);
+    return '';
+  }
+};
+
+/**
+ * Checks if a backend datetime is due soon (within the next hour)
+ * @param {string} dateString - Datetime string from backend (UTC)
+ * @returns {boolean} - True if the datetime is due within the next hour
+ */
+export const isBackendDateTimeDueSoon = (dateString) => {
+  if (!dateString) return false;
+  
+  try {
+    const cardDateTime = new Date(dateString);
+    const now = new Date();
+    const oneHourFromNow = new Date(now.getTime() + 60 * 60 * 1000); // 1 hour from now
+    
+    // Check if the date is valid
+    if (isNaN(cardDateTime.getTime())) {
+      console.warn('Invalid date string for due soon check:', dateString);
+      return false;
+    }
+    
+    // Get today's date at midnight for date comparison
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const cardDate = new Date(cardDateTime);
+    cardDate.setHours(0, 0, 0, 0);
+    
+    // Same date AND the scheduled time is more than an hour from now but within the next hour
+    return cardDate.getTime() === today.getTime() && 
+           cardDateTime > now && 
+           cardDateTime <= oneHourFromNow;
+  } catch (error) {
+    console.warn('Error checking if datetime is due soon:', error);
+    return false;
+  }
+};
+
+/**
+ * Formats time display for cards based on their category
+ * @param {string} dateString - Datetime string from backend (UTC)
+ * @param {string} category - Card category ('overdue', 'dueNow', 'dueSoon', 'upcoming')
+ * @returns {string} - Formatted time string for display
+ */
+export const formatTimeForCardDisplay = (dateString, category) => {
+  if (!dateString) return 'Not scheduled';
+  
+  try {
+    const cardDateTime = new Date(dateString);
+    const now = new Date();
+    
+    // Check if the date is valid
+    if (isNaN(cardDateTime.getTime())) {
+      console.warn('Invalid date string for card display:', dateString);
+      return 'Invalid date';
+    }
+    
+    switch (category) {
+      case 'upcoming':
+        // Show exact time for upcoming cards
+        return cardDateTime.toLocaleString('en-US', {
+          weekday: 'short',
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true,
+          timeZoneName: 'short'
+        });
+        
+      case 'dueSoon':
+        // Show "Due in X" format
+        const diffMs = cardDateTime.getTime() - now.getTime();
+        const diffMinutes = Math.floor(diffMs / (1000 * 60));
+        const diffHours = Math.floor(diffMinutes / 60);
+        
+        if (diffHours > 0) {
+          return `Due in ${diffHours} hour${diffHours > 1 ? 's' : ''}`;
+        } else if (diffMinutes > 0) {
+          return `Due in ${diffMinutes} minute${diffMinutes > 1 ? 's' : ''}`;
+        } else {
+          return 'Due now';
+        }
+        
+      case 'dueNow':
+        // Show "Due now" for cards due now
+        return 'Due now';
+        
+      case 'overdue':
+        // Show "Overdue by X" format
+        const overdueMs = now.getTime() - cardDateTime.getTime();
+        const overdueMinutes = Math.floor(overdueMs / (1000 * 60));
+        const overdueHours = Math.floor(overdueMinutes / 60);
+        const overdueDays = Math.floor(overdueHours / 24);
+        
+        if (overdueDays > 0) {
+          return `Overdue by ${overdueDays} day${overdueDays > 1 ? 's' : ''}`;
+        } else if (overdueHours > 0) {
+          return `Overdue by ${overdueHours} hour${overdueHours > 1 ? 's' : ''}`;
+        } else if (overdueMinutes > 0) {
+          return `Overdue by ${overdueMinutes} minute${overdueMinutes > 1 ? 's' : ''}`;
+        } else {
+          return 'Overdue by less than a minute';
+        }
+        
+      default:
+        return formatDateTimeForDisplay(dateString);
+    }
+  } catch (error) {
+    console.warn('Error formatting time for card display:', error);
+    return formatDateTimeForDisplay(dateString);
   }
 }; 
