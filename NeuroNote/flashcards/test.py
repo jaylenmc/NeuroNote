@@ -7,6 +7,8 @@ from django.utils import timezone
 from datetime import timedelta, datetime
 from zoneinfo import ZoneInfo
 from django.urls import reverse
+from freezegun import freeze_time
+
 
 class CardTestCase(APITestCase):
     # fixtures = ['initial_data.json']
@@ -25,10 +27,10 @@ class CardTestCase(APITestCase):
             card_deck=self.deck,
             scheduled_date=timezone.now().isoformat()
         )
-        # self.user = AuthUser.objects.get(email='jayzilla195@gmail.com')
+        self.user = AuthUser.objects.get(email=self.user.email)
+        self.deck = Deck.objects.all()
 
         self.client.force_authenticate(user=self.user)
-        self.url = reverse('get-cards', args=[self.deck.id])
 
     def test_create_card(self):
         data = {
@@ -49,3 +51,33 @@ class CardTestCase(APITestCase):
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         print(response.data)
+
+    def test_due_cards(self):
+        url = reverse('due-cards', args=[self.deck.id])
+        response = self.client.get(url, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        print(f'response data: {response.data}')
+
+    def test_review_card(self):
+        card = Card.objects.get(id=self.cards.id)
+        print(f'Before update: {card.scheduled_date}')
+
+        with freeze_time("2025-07-07 20:40:51+00:00"):
+            card.update_sm21(rating=1)
+            print('--------------------------------')
+            print(f'After update 1: {card.scheduled_date}')
+            print(f'Stability: {card.stability}')
+
+        with freeze_time("2025-07-09 20:41:00+00:00"):
+            card.refresh_from_db()
+            card.update_sm21(rating=1)
+            print('--------------------------------')
+            print(f'After update 2: {card.scheduled_date}')
+            print(f'Stability: {card.stability}')
+
+        with freeze_time("2025-07-10 20:41:00+00:00"):
+            card.refresh_from_db()
+            card.update_sm21(rating=1)
+            print('--------------------------------')
+            print(f'After update 2: {card.scheduled_date}')
+            print(f'Stability: {card.stability}')

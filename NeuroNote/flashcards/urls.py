@@ -11,7 +11,7 @@ urlpatterns = [
     path('cards/delete/<int:deck_id>/<int:card_id>/', views.CardCollection.as_view()),
     path('cards/update/<int:deck_id>/<int:card_id>/', views.CardCollection.as_view()),
 
-    path('cards/<int:deck_id>/due/', views.DueCardsView.as_view()),
+    path('cards/<int:deck_id>/due/', views.DueCardsView.as_view(), name='due-cards'),
 
-    path('review/', views.review_card)
+    path('review/', views.review_card, name='review-card')
 ]

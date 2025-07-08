@@ -11,6 +11,7 @@ from achievements.services import knowledge_engineer, memory_architect, deck_des
 from django.utils import timezone
 from folders.models import Folder
 from .services import check_past_week_cards, num_of_cards
+from zoneinfo import ZoneInfo
 
 class DeckCollection(APIView):
     permission_classes = [IsAuthenticated]
@@ -200,7 +201,5 @@ class DueCardsView(APIView):
             card_deck__id=deck_id,
             scheduled_date__isnull=True
         )
-        print(f"Due cards in deck {deck_id}: {due_cards.count()}")
-        
         serialized = CardSerializer(due_cards, many=True)
         return Response(serialized.data, status=status.HTTP_200_OK)

@@ -24,7 +24,7 @@ class Card(models.Model):
 
     repetitions = models.IntegerField(default=0)
     difficulty = models.FloatField(default=5.0)
-    stability = models.FloatField(default=1.0)
+    stability = models.FloatField(default=1440.0)
     learning_status = models.CharField(max_length=255, default="Unseen")
 
     last_review_date = models.DateTimeField(null=True, blank=True)
@@ -33,46 +33,55 @@ class Card(models.Model):
     def update_sm21(self, rating):
         now_utc = timezone.now()
 
-        # ────────────────────────────
-        # 1.  Time elapsed (in minutes)
-        # ────────────────────────────
+        # 1. Elapsed time
+        elapsed_minutes = 0
         if self.last_review_date:
-            elapsed_minutes = (now_utc - self.last_review_date).total_seconds() // MINUTE
-        else:
-            elapsed_minutes = 0
+            elapsed_minutes = (now_utc - self.last_review_date).total_seconds() / 60.0
 
-        self.last_review_date = now_utc
-        self.repetitions += 1
-
-        # ────────────────────────────
-        # 2.  Difficulty & Stability
-        # ────────────────────────────
+        # 2. Difficulty adjustment
         diff_change = 0.1 * (2 - rating)
         self.difficulty = max(1.0, min(10.0, self.difficulty + diff_change))
 
+        # 3. Stability and interval
         if rating == 0:
             self.stability *= 0.7
+            interval_min = 30  # Retry quickly
+
+        elif rating == 1:
+            retrievability = max(math.exp(-elapsed_minutes / self.stability), 0.1)
+            self.stability *= 0.8 * retrievability
+            self.stability = max(self.stability, 10.0)  # Minimum floor
+            interval_min = max(
+                5,
+                min(int(self.stability * (retrievability + 0.1) * 1.2), 480)  # cap at 8h
+            )
+
+        elif rating == 2:
+            retrievability = max(math.exp(-elapsed_minutes / self.stability), 0.1)
+            self.stability *= 0.9 * retrievability
+            self.stability = max(self.stability, 10.0)
+            interval_min = max(
+                10,
+                min(int(self.stability * (retrievability + 0.2) * 1.3), 1440)  # cap at 24h
+            )
+
         else:
-            # NOTE: stability is now in *minutes*
-            retrievability = math.exp(-elapsed_minutes / self.stability) if self.stability else 0.01
+            retrievability = max(math.exp(-elapsed_minutes / self.stability), 0.1)
             gain = (0.1 + 0.1 * rating) * math.exp(1 - retrievability)
             self.stability *= (1 + gain)
+            interval_min = int(max(
+                10,
+                min(self.stability * 1.3, 365 * DAY // MINUTE)  # cap at 1 year
+            ))
 
-        # ────────────────────────────
-        # 3.  Next-interval (minutes)
-        # ────────────────────────────
-        if rating == 0:
-            interval_min = 30                    # 30-minute immediate retry
-        else:
-            # base 10-minute logarithmic schedule, cap at 365 days
-            interval_min = int(10 * math.log(self.stability + 1))
-            interval_min = max(30, min(interval_min, 365 * DAY // MINUTE))
-
+        # 4. Schedule next review
         self.scheduled_date = now_utc + timedelta(minutes=interval_min)
 
-        # ────────────────────────────
-        # 4.  Status labels (now minute-aware)
-        # ────────────────────────────
+        # 5. Bookkeeping
+        self.last_review_date = now_utc
+        self.repetitions += 1
+
+        # 6. Learning status
         if interval_min < 10 * MINUTE and self.difficulty > 5.5:
             self.learning_status = "Struggling"
         elif interval_min > 45 * DAY // MINUTE and self.difficulty <= 4.0:
@@ -80,6 +89,7 @@ class Card(models.Model):
         else:
             self.learning_status = "In Progress"
 
+        # 7. Save + log
         reward_xp(self.card_deck.user, rating)
         ReviewLog.objects.create(card=self)
         self.save()
