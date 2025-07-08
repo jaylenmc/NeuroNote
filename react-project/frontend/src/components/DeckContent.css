@@ -7,9 +7,13 @@
   border-radius: 0;
   box-shadow: none;
   min-height: 0;
+  /* Add flexbox for button positioning */
+  display: flex;
+  flex-direction: column;
 }
 .deck-header {
   display: flex;
+  flex-direction: column;
   align-items: flex-start;
   gap: 18px;
   margin-bottom: 18px;
@@ -22,6 +26,7 @@
 }
 .deck-header-info {
   flex: 1;
+  width: 100%;
 }
 .deck-title-section {
   display: flex;
@@ -36,10 +41,16 @@
   font-family: 'Inter', 'Segoe UI', sans-serif;
 }
 .deck-subject {
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.8);
   font-size: 1rem;
   font-weight: 500;
   margin: 0;
+  background: rgba(124, 131, 253, 0.1);
+  border: 1px solid rgba(124, 131, 253, 0.2);
+  border-radius: 999px;
+  padding: 0.25rem 1rem;
+  display: inline-block;
+  width: fit-content;
 }
 .deck-subtitle {
   font-size: 1rem;
@@ -49,6 +60,7 @@
 .deck-header-actions {
   display: flex;
   gap: 8px;
+  align-self: flex-start;
 }
 .deck-header-btn {
   background: none;
@@ -79,6 +91,34 @@
   align-items: center;
   gap: 1rem;
   margin: 1.5rem 0;
+}
+
+.claude-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  color: var(--text-primary, #fff);
+  transition: all 0.3s ease;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.claude-toggle-btn:hover {
+  background: rgba(124, 131, 253, 0.1);
+  border-color: rgba(124, 131, 253, 0.3);
+  color: #7c83fd;
+  transform: translateY(-1px);
+}
+
+.claude-toggle-btn.active {
+  background: rgba(124, 131, 253, 0.15);
+  border-color: rgba(124, 131, 253, 0.4);
+  color: #7c83fd;
 }
 .deck-search-bar {
   position: relative;
@@ -166,33 +206,24 @@
   transform: translateX(-2px);
 }
 .add-card-btn {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.875rem 1.5rem;
-  border-radius: 9999px;
-  background: rgba(124, 131, 253, 0.1);
-  color: #7c83fd;
-  border: 1px solid rgba(124, 131, 253, 0.2);
-  font-weight: 600;
-  font-size: 0.95rem;
-  transition: all 0.2s ease;
+  background: transparent;
+  border: 1px solid var(--border-color, #23242b);
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
   cursor: pointer;
-  margin: 1rem 0 2rem;
-  box-shadow: 0 4px 12px rgba(124, 131, 253, 0.1);
-  position: absolute;
-  right: 2rem;
-  top: 1rem;
+  color: var(--text-primary, #fff);
+  transition: all 0.3s ease;
+  font-size: 1rem;
+  font-weight: 500;
+  /* Remove margin and align-self since we're using flexbox container */
+  margin: 0;
 }
 .add-card-btn:hover {
-  background: rgba(124, 131, 253, 0.15);
-  border-color: rgba(124, 131, 253, 0.3);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(124, 131, 253, 0.15);
-}
-.add-card-btn:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(124, 131, 253, 0.1);
+  opacity: 0.8;
+  transform: translateX(-4px);
 }
 .card-list-grid {
   display: grid;
@@ -436,16 +467,7 @@
     padding: 14px 8px 12px 8px;
   }
 }
-@media (prefers-color-scheme: dark) {
-  .add-card-btn {
-    background: rgba(124, 131, 253, 0.15);
-    border-color: rgba(124, 131, 253, 0.25);
-  }
-  .add-card-btn:hover {
-    background: rgba(124, 131, 253, 0.2);
-    border-color: rgba(124, 131, 253, 0.35);
-  }
-}
+
 
 /* Modal Overlay */
 .modal-overlay {
@@ -1234,4 +1256,156 @@
   width: 100% !important;
   display: flex !important;
   flex-direction: column !important;
+}
+
+/* Button container for positioning back and add card buttons */
+.button-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1.5rem;
+}
+
+.back-button {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: transparent;
+  border: 1px solid var(--border-color, #23242b);
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  color: var(--text-primary, #fff);
+  transition: all 0.3s ease;
+  font-size: 1rem;
+  font-weight: 500;
+  margin-bottom: 0;
+}
+.back-button:hover {
+  opacity: 0.8;
+  transform: translateX(-4px);
+}
+
+.add-card-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: transparent;
+  border: 1px solid var(--border-color, #23242b);
+  padding: 0.5rem 1rem;
+  border-radius: 0.5rem;
+  cursor: pointer;
+  color: var(--text-primary, #fff);
+  transition: all 0.3s ease;
+  font-size: 1rem;
+  font-weight: 500;
+  /* Remove margin and align-self since we're using flexbox container */
+  margin: 0;
+}
+.add-card-btn:hover {
+  opacity: 0.8;
+  transform: translateX(-4px);
+}
+
+.claude-flashcard-generator {
+  margin-bottom: 2rem;
+  background: #1b1c22;
+  padding: 1.5rem;
+  border-radius: 16px;
+  border: 1px solid rgba(124, 131, 253, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 700px;
+  margin-left: auto;
+  margin-right: auto;
+  width: 100%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+  opacity: 1;
+  transform: translateY(0);
+  overflow: hidden;
+}
+
+.claude-flashcard-generator.hidden {
+  opacity: 0;
+  transform: translateY(-20px);
+  max-height: 0;
+  padding: 0;
+  margin: 0;
+  border: none;
+}
+
+.claude-generator-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #7c83fd;
+  margin-bottom: 0.5rem;
+  letter-spacing: 0.01em;
+}
+
+.claude-generator-textarea {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  font-size: 1rem;
+  padding: 1rem;
+  margin-bottom: 0.5rem;
+  resize: vertical;
+  min-height: 80px;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.claude-generator-textarea:focus {
+  outline: none;
+  border-color: #7c83fd;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 2px rgba(124, 131, 253, 0.2);
+}
+
+.claude-generator-textarea::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+  font-weight: 400;
+}
+
+.claude-generator-btn {
+  padding: 0.75rem 1.5rem;
+  border-radius: 12px;
+  background: #2a2b32;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  align-self: flex-start;
+}
+
+.claude-generator-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.claude-generator-btn:hover:not(:disabled) {
+  background: #323237;
+}
+
+.claude-generator-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(124, 131, 253, 0.2);
+}
+
+.claude-generator-error {
+  color: #ef4444;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+  font-weight: 500;
+  padding: 0.5rem;
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: 8px;
+  border: 1px solid rgba(239, 68, 68, 0.2);
 } 

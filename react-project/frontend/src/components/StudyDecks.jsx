@@ -253,133 +253,54 @@ const StudyDecks = () => {
                     <LoadingSpinner />
                 </div>
             ) : (
-                <div className="decks-grid">
+                <div className="studydeck-grid">
                     {decks.map((deck) => (
-                        <div 
-                            key={deck.id} 
-                            className="deck-card"
+                        <div
+                            key={deck.id}
+                            className="studydeck-card"
+                            data-status={deck.status || 'in-progress'}
                             onClick={() => handleDeckClick(deck.id)}
                         >
-                            <div className="deck-actions">
-                                <button 
-                                    className="action-button star"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        // Handle star/favorite
-                                    }}
-                                >
-                                    <Star size={18} />
-                                </button>
-                                <button 
-                                    className="action-button"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        setShowMenu(showMenu === deck.id ? null : deck.id);
-                                    }}
-                                >
-                                    <MoreVertical size={18} />
-                                </button>
+                            {/* Status chip */}
+                            <div className={`studydeck-status-chip ${deck.status || 'in-progress'}`}>
+                                {deck.statusLabel || 'In Progress'}
                             </div>
-
-                            <div className="deck-icon">
-                                {getSubjectEmoji(deck.subject)}
+                            {/* Icon circle */}
+                            <div className="studydeck-icon-circle">
+                                <span className="studydeck-icon">{getSubjectEmoji(deck.subject)}</span>
                             </div>
-
-                            <div className="deck-content">
-                                <div className="deck-header">
-                                    <h3>{deck.title}</h3>
+                            {/* Title */}
+                            <div className="studydeck-title">{deck.title}</div>
+                            {/* Subject tag */}
+                            <div className="studydeck-subject">{deck.subject}</div>
+                            {/* Metrics */}
+                            <div className="studydeck-metrics">
+                                <div className="studydeck-metric-row">
+                                    <span className="studydeck-metric-label"><BookOpen size={16}/> Cards</span>
+                                    <span className="studydeck-metric-value">{deck.cards?.length || 0}</span>
                                 </div>
-                                <div className="deck-info">
-                                    <span className="deck-subject">{deck.subject}</span>
-                                    
-                                    <div className="deck-stats">
-                                        <div className="deck-stat-row">
-                                            <span className="deck-stat-label">
-                                                <BookOpen size={16} />
-                                                Total Cards
-                                            </span>
-                                            <span>{typeof deck.num_of_cards === 'number' ? deck.num_of_cards : (deck.cards?.length || 0)}</span>
-                                        </div>
-                                        
-                                        <div className="deck-stat-row">
-                                            <span className="deck-stat-label">
-                                                <CheckCircle size={16} />
-                                                Reviewed
-                                            </span>
-                                            <span>
-                                                {deck.cards?.filter((card, idx) => {
-                                                    return card.last_review_date;
-                                                })?.length || 0}
-                                            </span>
-                                        </div>
-
-                                        <div className="progress-bar">
-                                            <div 
-                                                className="progress-fill"
-                                                style={{ width: `${calculateProgress(deck)}%` }}
-                                            />
-                                        </div>
-
-                                        <div className="deck-stat-row">
-                                            <span className="deck-stat-label">
-                                                <Clock size={16} />
-                                                Last Review
-                                            </span>
-                                            <span>
-                                                {(() => {
-                                                    const cardsWithReviews = deck.cards?.filter(card => card.last_review_date) || [];
-                                                    console.log(`Deck ${deck.title} - cards with reviews:`, cardsWithReviews);
-                                                    if (cardsWithReviews.length === 0) {
-                                                        console.log(`Deck ${deck.title} - no cards with reviews, returning 'Never'`);
-                                                        return 'Never';
-                                                    }
-                                                    
-                                                    const mostRecentReview = cardsWithReviews.reduce((latest, card) => {
-                                                        const cardDate = new Date(card.last_review_date);
-                                                        const latestDate = new Date(latest);
-                                                        return cardDate > latestDate ? card.last_review_date : latest;
-                                                    }, cardsWithReviews[0].last_review_date);
-                                                    
-                                                    console.log(`Deck ${deck.title} - most recent review date:`, mostRecentReview);
-                                                    const formattedDate = formatDateTimeForDisplay(mostRecentReview);
-                                                    console.log(`Deck ${deck.title} - formatted date:`, formattedDate);
-                                                    console.log(`Deck ${deck.title} - returning formatted date:`, formattedDate);
-                                                    return formattedDate;
-                                                })()}
-                                            </span>
-                                        </div>
-
-                                        <div className="deck-stat-row">
-                                            <span className="deck-stat-label">
-                                                <Calendar size={16} />
-                                                Next Review
-                                            </span>
-                                            <span>
-                                                {(() => {
-                                                    const cardsWithScheduledDates = deck.cards?.filter(card => card.scheduled_date) || [];
-                                                    console.log(`Deck ${deck.title} - cards with scheduled dates:`, cardsWithScheduledDates);
-                                                    if (cardsWithScheduledDates.length === 0) {
-                                                        console.log(`Deck ${deck.title} - no cards with scheduled dates, returning 'Not scheduled'`);
-                                                        return 'Not scheduled';
-                                                    }
-                                                    
-                                                    const nextScheduledReview = cardsWithScheduledDates.reduce((next, card) => {
-                                                        const cardDate = new Date(card.scheduled_date);
-                                                        const nextDate = new Date(next);
-                                                        return cardDate < nextDate ? card.scheduled_date : next;
-                                                    }, cardsWithScheduledDates[0].scheduled_date);
-                                                    
-                                                    console.log(`Deck ${deck.title} - next scheduled review date:`, nextScheduledReview);
-                                                    const formattedDate = formatDateTimeForDisplay(nextScheduledReview);
-                                                    console.log(`Deck ${deck.title} - formatted scheduled date:`, formattedDate);
-                                                    console.log(`Deck ${deck.title} - returning formatted scheduled date:`, formattedDate);
-                                                    return formattedDate;
-                                                })()}
-                                            </span>
-                                        </div>
-                                    </div>
+                                <div className="studydeck-metric-row">
+                                    <span className="studydeck-metric-label"><CheckCircle size={16}/> Reviewed</span>
+                                    <span className="studydeck-metric-value">{deck.cards?.filter(c => c.last_review_date)?.length || 0}</span>
                                 </div>
                             </div>
+                            {/* Progress bar */}
+                            <div className="studydeck-progress-rail">
+                                <div
+                                    className="studydeck-progress-fill"
+                                    style={{ width: `${calculateProgress(deck)}%` }}
+                                />
+                            </div>
+                            {/* Review button */}
+                            <button
+                                className="studydeck-review-btn"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeckClick(deck.id);
+                                }}
+                            >
+                                <CheckCircle size={18} style={{marginRight: 8}}/> Review Now
+                            </button>
                         </div>
                     ))}
                 </div>

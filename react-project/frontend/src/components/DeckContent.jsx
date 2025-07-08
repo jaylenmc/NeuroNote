@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FiEdit2, FiTrash2, FiPlus, FiSearch, FiStar, FiClock, FiTag, FiArrowLeft, FiX, FiFilter, FiCheck } from 'react-icons/fi';
+import { FiEdit2, FiTrash2, FiPlus, FiSearch, FiStar, FiClock, FiTag, FiArrowLeft, FiX, FiFilter, FiCheck, FiZap } from 'react-icons/fi';
 import './DeckContent.css';
 import { formatDateForDisplay, formatDateTimeForDisplay, convertLocalDateToBackend } from '../utils/dateUtils';
 import api from '../api/axios';
@@ -46,6 +46,7 @@ export default function DeckContent() {
   const [generatedPrompt, setGeneratedPrompt] = useState('');
   const [generatedCards, setGeneratedCards] = useState([]);
   const [generating, setGenerating] = useState(false);
+  const [showClaudeGenerator, setShowClaudeGenerator] = useState(false);
   const generatedInputRef = useRef(null);
 
   const ribbonColors = [
@@ -498,369 +499,385 @@ export default function DeckContent() {
   }
 
   return (
-    <div className="deck-content-page">
-      <button className="deck-back-btn" onClick={() => navigate('/study-room/decks')}><FiArrowLeft /> Back to Decks</button>
-      <div className="deck-header">
-        <span className="deck-emoji">📘</span>
-        <div className="deck-header-info">
-          <div className="deck-title-section">
-            <h1 className="deck-title">{deck?.title || 'Deck'}</h1>
-            <span className="deck-subject">{deck?.subject || 'No subject'}</span>
-            <div className="deck-subtitle">{cards.length} cards · Last updated 2 days ago</div>
-          </div>
+    <>
+      <div className="deck-content-page">
+        <div className="button-container">
+          <button className="back-button" onClick={() => navigate('/study-room/decks')}><FiArrowLeft /> Back</button>
+          <button className="add-card-btn" onClick={() => setShowAdd(true)} disabled={!deck}><FiPlus /> Add New Card</button>
         </div>
-        <div className="deck-header-actions">
-          <button 
-            className="deck-header-btn" 
-            title="Edit Deck" 
-            onClick={() => {
-              setEditingDeck(deck);
-              setEditDeckTitle(deck.title);
-              setEditDeckSubject(deck.subject);
-              setShowEditDeck(true);
-            }}
-          >
-            <FiEdit2 />
-          </button>
-          <button className="deck-header-btn" title="Delete Deck" onClick={handleDeleteDeck}>
-            <FiTrash2 />
-          </button>
-        </div>
-      </div>
-      <div className="deck-search-filter">
-        <div className="deck-search-bar">
-          <input
-            type="text"
-            placeholder="Search cards..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-          />
-          <FiSearch className="search-icon" />
-        </div>
-        <div className="ribbon-filter">
-          <button className="filter-button">
-            <FiFilter size={16} />
-            Filter
-          </button>
-          <div className="ribbon-filter-dropdown">
-            {ribbonColors.map(({ value, label, color }) => (
-              <button
-                key={value || 'all'}
-                className={`ribbon-filter-option ${selectedRibbonColor === value ? 'active' : ''}`}
-                onClick={() => setSelectedRibbonColor(value)}
-                data-value={value}
-              >
-                <span className="ribbon-color-dot"/>
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-      <button className="add-card-btn" onClick={() => setShowAdd(true)} disabled={!deck}><FiPlus /> Add New Card</button>
-      <div className="claude-flashcard-generator" style={{ marginBottom: '2rem', background: '#23272f', padding: '1rem', borderRadius: '12px' }}>
-        <h3>Generate Flashcards with Claude</h3>
-        <textarea
-          ref={generatedInputRef}
-          value={generatedPrompt}
-          onChange={e => setGeneratedPrompt(e.target.value)}
-          placeholder="Enter a topic, chapter, or concept to generate flashcards..."
-          rows={3}
-          style={{ width: '100%', marginBottom: '0.5rem', borderRadius: '8px', padding: '0.5rem', border: '1px solid #444', background: '#18181b', color: '#fff' }}
-        />
-        <button onClick={handleGenerateFlashcards} disabled={generating || !generatedPrompt.trim()} style={{ padding: '0.5rem 1.5rem', borderRadius: '8px', background: '#0CBABA', color: '#fff', border: 'none', fontWeight: 600 }}>
-          {generating ? 'Generating...' : 'Generate Flashcards'}
-        </button>
-        {error && <div style={{ color: 'red', marginTop: '0.5rem' }}>{error}</div>}
-      </div>
-      <div className="card-list-grid cards-grid">
-        {/* Render generated cards first */}
-        {generatedCards.length > 0 && generatedCards.map((card, idx) => {
-          const genId = `generated-${idx}`;
-          const isOpen = openCardId === genId;
-          // Add delete handler for generated cards
-          const handleDeleteGeneratedCard = async () => {
-            try {
-              await api.delete(`/flashcards/cards/delete/${deckId}/${card.id}/`);
-              setGeneratedCards(generatedCards => generatedCards.filter((_, i) => i !== idx));
-            } catch (err) {
-              alert('Failed to delete card');
-            }
-          };
-          // Use the same ribbon and structure as user cards
-          return (
-            <div
-              className={`card-preview card-theme-dark`}
-              key={genId}
-              style={{ position: 'relative', border: '2px dashed #0CBABA' }}
-              onClick={() => setOpenCardId(isOpen ? null : genId)}
-            >
-              {/* Ribbon and tooltip structure */}
-              <div className="ribbon-tooltip-wrapper">
-                <div className={`card-ribbon-bookmark ribbon-soft-blue`}>&nbsp;</div>
-                <span className="badge-tooltip badge-tooltip-outside show" style={{ background: '#0CBABA' }}>Generated by AI</span>
-              </div>
-              {/* Generated badge */}
-              <div style={{ position: 'absolute', top: 8, right: 8, background: '#0CBABA', color: '#fff', borderRadius: 6, padding: '2px 8px', fontSize: 12, fontWeight: 700, zIndex: 2 }}>
-                Generated
-              </div>
-              <div className="card-preview-inner">
-                {/* Only show the front if not open, only show the back if open */}
-                {!isOpen && (
-                  <div className="card-content-stack">
-                    <span className="card-preview-label">Question</span>
-                    <div className="card-preview-content">{card.front}</div>
-                  </div>
-                )}
-                {isOpen && (
-                  <>
-                    <div className="card-preview-label">Answer</div>
-                    <div className="card-preview-content" style={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{card.back}</div>
-                    {card.scheduled_date && (
-                      <div className="card-preview-date">
-                        Scheduled: {formatDateTimeForDisplay(card.scheduled_date)}
-                      </div>
-                    )}
-                    <button className="card-action-btn delete" style={{ marginTop: 16 }} onClick={e => { e.stopPropagation(); handleDeleteGeneratedCard(); }}>
-                      Delete
-                    </button>
-                  </>
-                )}
-              </div>
+        <div className="deck-header">
+          <span className="deck-emoji">📘</span>
+          <div className="deck-header-info">
+            <div className="deck-title-section">
+              <h1 className="deck-title">{deck?.title || 'Deck'}</h1>
+              <span className="deck-subject">{deck?.subject || 'No subject'}</span>
+              <div className="deck-subtitle">{cards.length} cards · Last updated 2 days ago</div>
             </div>
-          );
-        })}
-        {loading ? <div className="loading">Loading...</div> :
-          filteredCards.map(card => {
-            const isEditing = editingCardId === card.id;
-            const reps = card.repetitions || 0;
-            const correct = card.correct || 0;
-            const incorrect = card.incorrect || 0;
-            let ribbonColorClass = '', ribbonTooltip = '';
-            if (card.learning_status === 'Mastered') {
-              ribbonColorClass = 'ribbon-dark-pink';
-              ribbonTooltip = "Mastered: You've reviewed this card enough times to master it!";
-            } else if (card.learning_status === 'Struggling') {
-              ribbonColorClass = 'ribbon-soft-red';
-              ribbonTooltip = 'Struggling: More incorrect than correct answers.';
-            } else if (card.learning_status === 'Unseen') {
-              ribbonColorClass = 'ribbon-soft-blue';
-              ribbonTooltip = 'Unseen: You have not reviewed this card yet.';
-            } else if (card.learning_status === 'In Progress') {
-              ribbonColorClass = 'ribbon-muted-purple';
-              ribbonTooltip = 'In Progress: Partially reviewed.';
-            } else {
-              ribbonColorClass = 'ribbon-muted-purple';
-              ribbonTooltip = 'In Progress: Partially reviewed.';
-            }
-            const showTooltip = badgeTooltip && badgeTooltip.cardId === card.id;
-            let ribbonBackground = '#18181b';
-            let arrowColor = '#18181b';
-            if (ribbonColorClass === 'ribbon-soft-blue') {
-              ribbonBackground = 'linear-gradient(100deg, #60a5fa 60%, #38bdf8 100%)';
-              arrowColor = '#38bdf8';
-            }
-            if (ribbonColorClass === 'ribbon-dark-pink') {
-              ribbonBackground = 'linear-gradient(100deg, #a21caf 60%, #db2777 100%)';
-              arrowColor = '#db2777';
-            }
-            if (ribbonColorClass === 'ribbon-soft-red') {
-              ribbonBackground = 'linear-gradient(100deg, #f87171 60%, #f43f5e 100%)';
-              arrowColor = '#f43f5e';
-            }
-            if (ribbonColorClass === 'ribbon-muted-purple') {
-              ribbonBackground = 'linear-gradient(100deg, #a78bfa 60%, #7c3aed 100%)';
-              arrowColor = '#7c3aed';
-            }
-
+          </div>
+          <div className="deck-header-actions">
+            <button 
+              className="deck-header-btn" 
+              title="Edit Deck" 
+              onClick={() => {
+                setEditingDeck(deck);
+                setEditDeckTitle(deck.title);
+                setEditDeckSubject(deck.subject);
+                setShowEditDeck(true);
+              }}
+            >
+              <FiEdit2 />
+            </button>
+            <button className="deck-header-btn" title="Delete Deck" onClick={handleDeleteDeck}>
+              <FiTrash2 />
+            </button>
+          </div>
+        </div>
+        <div className="deck-search-filter">
+          <div className="deck-search-bar">
+            <input
+              type="text"
+              placeholder="Search cards..."
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+            <FiSearch className="search-icon" />
+          </div>
+          <div className="ribbon-filter">
+            <button className="filter-button">
+              <FiFilter size={16} />
+              Filter
+            </button>
+            <div className="ribbon-filter-dropdown">
+              {ribbonColors.map(({ value, label, color }) => (
+                <button
+                  key={value || 'all'}
+                  className={`ribbon-filter-option ${selectedRibbonColor === value ? 'active' : ''}`}
+                  onClick={() => setSelectedRibbonColor(value)}
+                  data-value={value}
+                >
+                  <span className="ribbon-color-dot"/>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <button 
+            className="claude-toggle-btn"
+            onClick={() => setShowClaudeGenerator(!showClaudeGenerator)}
+            title={showClaudeGenerator ? "Hide Claude Generator" : "Show Claude Generator"}
+          >
+            <FiZap size={16} />
+            {showClaudeGenerator ? "Hide" : "Show"}
+          </button>
+        </div>
+        <div className={`claude-flashcard-generator ${!showClaudeGenerator ? 'hidden' : ''}`}>
+          <h3 className="claude-generator-title">Generate Flashcards</h3>
+          <textarea
+            ref={generatedInputRef}
+            value={generatedPrompt}
+            onChange={e => setGeneratedPrompt(e.target.value)}
+            placeholder="Enter a topic, chapter, or concept to generate flashcards..."
+            rows={3}
+            className="claude-generator-textarea"
+          />
+          <button
+            className="claude-generator-btn"
+            onClick={handleGenerateFlashcards}
+            disabled={generating || !generatedPrompt.trim()}
+          >
+            {generating ? 'Generating...' : 'Generate Flashcards'}
+          </button>
+          {error && <div className="claude-generator-error">{error}</div>}
+        </div>
+        <div className="card-list-grid cards-grid">
+          {/* Render generated cards first */}
+          {generatedCards.length > 0 && generatedCards.map((card, idx) => {
+            const genId = `generated-${idx}`;
+            const isOpen = openCardId === genId;
+            // Add delete handler for generated cards
+            const handleDeleteGeneratedCard = async () => {
+              try {
+                await api.delete(`/flashcards/cards/delete/${deckId}/${card.id}/`);
+                setGeneratedCards(generatedCards => generatedCards.filter((_, i) => i !== idx));
+              } catch (err) {
+                alert('Failed to delete card');
+              }
+            };
+            // Use the same ribbon and structure as user cards
             return (
               <div
-                className={`card-preview card-theme-${theme}`}
-                key={card.id}
-                onClick={e => {
-                  if (e.target.closest('.card-action-btn') || isEditing) return;
-                  setOpenCardId(openCardId === card.id ? null : card.id);
-                }}
+                className={`card-preview card-theme-dark`}
+                key={genId}
+                style={{ position: 'relative', border: '2px dashed #0CBABA' }}
+                onClick={() => setOpenCardId(isOpen ? null : genId)}
               >
-                <div
-                  className="ribbon-tooltip-wrapper"
-                  onMouseEnter={e => {
-                    if (!badgeTooltip || badgeTooltip.cardId !== card.id) {
-                      setBadgeTooltip({cardId: card.id, message: ribbonTooltip});
-                    }
-                  }}
-                  onMouseLeave={e => {
-                    if (badgeTooltip && badgeTooltip.cardId === card.id) {
-                      setBadgeTooltip(null);
-                    }
-                  }}
-                >
-                  <div className={`card-ribbon-bookmark ${ribbonColorClass}`}>&nbsp;</div>
-                  <span className={`badge-tooltip badge-tooltip-outside${showTooltip ? ' show' : ''}`}
-                        style={{ background: ribbonBackground }}>{ribbonTooltip}
-                  </span>
+                {/* Ribbon and tooltip structure */}
+                <div className="ribbon-tooltip-wrapper">
+                  <div className={`card-ribbon-bookmark ribbon-soft-blue`}>&nbsp;</div>
+                  <span className="badge-tooltip badge-tooltip-outside show" style={{ background: '#0CBABA' }}>Generated by AI</span>
+                </div>
+                {/* Generated badge */}
+                <div style={{ position: 'absolute', top: 8, right: 8, background: '#0CBABA', color: '#fff', borderRadius: 6, padding: '2px 8px', fontSize: 12, fontWeight: 700, zIndex: 2 }}>
+                  Generated
                 </div>
                 <div className="card-preview-inner">
-                  <div className="card-actions" >
-                    <button 
-                      type="button"
-                      className="card-action-btn edit"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (isEditing) {
-                          handleEditCard(card.id);
-                        } else {
-                          setEditingCardId(card.id);
-                          setEditCardQuestion(card.question);
-                          setEditCardAnswer(card.answer);
-                          setEditCardScheduledDate(card.scheduled_date || '');
-                        }
-                      }}
-                    >
-                      {isEditing ? <FiCheck /> : <FiEdit2 />}
-                    </button>
-                    <button 
-                      type="button"
-                      className="card-action-btn delete"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteCard(card.id);
-                      }}
-                    >
-                      <FiTrash2 />
-                    </button>
-                  </div>
-                  {isEditing && (
-                    <div className="badge-tooltip-outside show">
-                      Edit Mode
+                  {/* Only show the front if not open, only show the back if open */}
+                  {!isOpen && (
+                    <div className="card-content-stack">
+                      <span className="card-preview-label">Question</span>
+                      <div className="card-preview-content">{card.front}</div>
                     </div>
                   )}
-                  <div className="card-content-stack">
-                    <span className="card-preview-label">{isEditing ? (editingSide === 'front' ? 'Question' : 'Answer') : 'Question'}</span>
-                    {isEditing ? (
-                      <textarea
-                        className="card-preview-content"
-                        value={editingSide === 'front' ? editCardQuestion : editCardAnswer}
-                        onChange={(e) => {
-                          if (editingSide === 'front') {
-                            setEditCardQuestion(e.target.value);
-                          } else {
-                            setEditCardAnswer(e.target.value);
-                          }
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          color: 'inherit',
-                          fontFamily: 'inherit',
-                          fontSize: 'inherit',
-                          lineHeight: 'inherit',
-                          padding: '0',
-                          resize: 'none',
-                          minHeight: '100px',
-                          width: '100%',
-                          outline: 'none',
-                          caretColor: 'var(--primary-color)'
-                        }}
-                      />
-                    ) : (
-                      <div className="card-preview-content">
-                        {card.question}
-                        {isEditing && <span className="caret">|</span>}
-                      </div>
-                    )}
-                    {!isEditing && (
-                      <button 
-                        className="card-preview-tag notes-button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedCard(card);
-                          setShowNotesModal(true);
-                        }}
-                      >
-                        Notes
-                      </button>
-                    )}
-                  </div>
-                  {isEditing && (
-                    <div className="edit-controls" >
-                      <button 
-                        className={`card-action-btn ${editingSide === 'front' ? 'active' : ''}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingSide('front');
-                        }}
-                      >
-                        Front
-                      </button>
-                      <button 
-                        className={`card-action-btn ${editingSide === 'back' ? 'active' : ''}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingSide('back');
-                        }}
-                      >
-                        Back
-                      </button>
-                      <button 
-                        className="card-action-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setEditingCardId(null);
-                          setEditingSide('front');
-                        }}
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  )}
-                  <span className="card-preview-date">
-                    {card.last_review_date ? `Last reviewed: ${formatDateTimeForDisplay(card.last_review_date)}` : 'Not reviewed yet'}
-                  </span>
-                  {openCardId === card.id && (
-                    <div className="card-preview-back" style={{
-                      opacity: 1,
-                      pointerEvents: 'auto',
-                      transform: 'translateY(0)',
-                      minHeight: isEditing ? '200px' : 'auto',
-                    }}>
+                  {isOpen && (
+                    <>
                       <div className="card-preview-label">Answer</div>
-                      {isEditing ? (
-                        <textarea
-                          className="card-preview-content"
-                          value={editingSide === 'back' ? editCardAnswer : editCardQuestion}
-                          onChange={(e) => {
-                            if (editingSide === 'back') {
-                              setEditCardAnswer(e.target.value);
-                            } else {
-                              setEditCardQuestion(e.target.value);
-                            }
-                          }}
-                          onClick={(e) => e.stopPropagation()}
-                          
-                        />
-                      ) : (
-                        <div className="card-preview-content">
-                          {card.answer}
-                          {isEditing && <span className="caret">|</span>}
+                      <div className="card-preview-content" style={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{card.back}</div>
+                      {card.scheduled_date && (
+                        <div className="card-preview-date">
+                          Scheduled: {formatDateTimeForDisplay(card.scheduled_date)}
                         </div>
                       )}
-                      <div className="card-preview-meta">
-                        <div className="card-preview-tags">
-                          <span className="card-preview-tag">Difficulty: {card.difficulty?.toFixed(1) || '0.0'}</span>
-                          <span className="card-preview-tag">Stability: {card.stability?.toFixed(1) || '0.0'}</span>
-                        </div>
-                        <div className="card-preview-date">
-                          Next review: {card.scheduled_date ? formatDateTimeForDisplay(card.scheduled_date) : 'Not scheduled'}
-                        </div>
-                      </div>
-                    </div>
+                      <button className="card-action-btn delete" style={{ marginTop: 16 }} onClick={e => { e.stopPropagation(); handleDeleteGeneratedCard(); }}>
+                        Delete
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
             );
           })}
+          {loading ? <div className="loading">Loading...</div> :
+            filteredCards.map(card => {
+              const isEditing = editingCardId === card.id;
+              const reps = card.repetitions || 0;
+              const correct = card.correct || 0;
+              const incorrect = card.incorrect || 0;
+              let ribbonColorClass = '', ribbonTooltip = '';
+              if (card.learning_status === 'Mastered') {
+                ribbonColorClass = 'ribbon-dark-pink';
+                ribbonTooltip = "Mastered: You've reviewed this card enough times to master it!";
+              } else if (card.learning_status === 'Struggling') {
+                ribbonColorClass = 'ribbon-soft-red';
+                ribbonTooltip = 'Struggling: More incorrect than correct answers.';
+              } else if (card.learning_status === 'Unseen') {
+                ribbonColorClass = 'ribbon-soft-blue';
+                ribbonTooltip = 'Unseen: You have not reviewed this card yet.';
+              } else if (card.learning_status === 'In Progress') {
+                ribbonColorClass = 'ribbon-muted-purple';
+                ribbonTooltip = 'In Progress: Partially reviewed.';
+              } else {
+                ribbonColorClass = 'ribbon-muted-purple';
+                ribbonTooltip = 'In Progress: Partially reviewed.';
+              }
+              const showTooltip = badgeTooltip && badgeTooltip.cardId === card.id;
+              let ribbonBackground = '#18181b';
+              let arrowColor = '#18181b';
+              if (ribbonColorClass === 'ribbon-soft-blue') {
+                ribbonBackground = 'linear-gradient(100deg, #60a5fa 60%, #38bdf8 100%)';
+                arrowColor = '#38bdf8';
+              }
+              if (ribbonColorClass === 'ribbon-dark-pink') {
+                ribbonBackground = 'linear-gradient(100deg, #a21caf 60%, #db2777 100%)';
+                arrowColor = '#db2777';
+              }
+              if (ribbonColorClass === 'ribbon-soft-red') {
+                ribbonBackground = 'linear-gradient(100deg, #f87171 60%, #f43f5e 100%)';
+                arrowColor = '#f43f5e';
+              }
+              if (ribbonColorClass === 'ribbon-muted-purple') {
+                ribbonBackground = 'linear-gradient(100deg, #a78bfa 60%, #7c3aed 100%)';
+                arrowColor = '#7c3aed';
+              }
+
+              return (
+                <div
+                  className={`card-preview card-theme-${theme}`}
+                  key={card.id}
+                  onClick={e => {
+                    if (e.target.closest('.card-action-btn') || isEditing) return;
+                    setOpenCardId(openCardId === card.id ? null : card.id);
+                  }}
+                >
+                  <div
+                    className="ribbon-tooltip-wrapper"
+                    onMouseEnter={e => {
+                      if (!badgeTooltip || badgeTooltip.cardId !== card.id) {
+                        setBadgeTooltip({cardId: card.id, message: ribbonTooltip});
+                      }
+                    }}
+                    onMouseLeave={e => {
+                      if (badgeTooltip && badgeTooltip.cardId === card.id) {
+                        setBadgeTooltip(null);
+                      }
+                    }}
+                  >
+                    <div className={`card-ribbon-bookmark ${ribbonColorClass}`}>&nbsp;</div>
+                    <span className={`badge-tooltip badge-tooltip-outside${showTooltip ? ' show' : ''}`}
+                          style={{ background: ribbonBackground }}>{ribbonTooltip}
+                    </span>
+                  </div>
+                  <div className="card-preview-inner">
+                    <div className="card-actions" >
+                      <button 
+                        type="button"
+                        className="card-action-btn edit"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (isEditing) {
+                            handleEditCard(card.id);
+                          } else {
+                            setEditingCardId(card.id);
+                            setEditCardQuestion(card.question);
+                            setEditCardAnswer(card.answer);
+                            setEditCardScheduledDate(card.scheduled_date || '');
+                          }
+                        }}
+                      >
+                        {isEditing ? <FiCheck /> : <FiEdit2 />}
+                      </button>
+                      <button 
+                        type="button"
+                        className="card-action-btn delete"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteCard(card.id);
+                        }}
+                      >
+                        <FiTrash2 />
+                      </button>
+                    </div>
+                    {isEditing && (
+                      <div className="badge-tooltip-outside show">
+                        Edit Mode
+                      </div>
+                    )}
+                    <div className="card-content-stack">
+                      <span className="card-preview-label">{isEditing ? (editingSide === 'front' ? 'Question' : 'Answer') : 'Question'}</span>
+                      {isEditing ? (
+                        <textarea
+                          className="card-preview-content"
+                          value={editingSide === 'front' ? editCardQuestion : editCardAnswer}
+                          onChange={(e) => {
+                            if (editingSide === 'front') {
+                              setEditCardQuestion(e.target.value);
+                            } else {
+                              setEditCardAnswer(e.target.value);
+                            }
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: 'inherit',
+                            fontFamily: 'inherit',
+                            fontSize: 'inherit',
+                            lineHeight: 'inherit',
+                            padding: '0',
+                            resize: 'none',
+                            minHeight: '100px',
+                            width: '100%',
+                            outline: 'none',
+                            caretColor: 'var(--primary-color)'
+                          }}
+                        />
+                      ) : (
+                        <div className="card-preview-content">
+                          {card.question}
+                          {isEditing && <span className="caret">|</span>}
+                        </div>
+                      )}
+                      {!isEditing && (
+                        <button 
+                          className="card-preview-tag notes-button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedCard(card);
+                            setShowNotesModal(true);
+                          }}
+                        >
+                          Notes
+                        </button>
+                      )}
+                    </div>
+                    {isEditing && (
+                      <div className="edit-controls" >
+                        <button 
+                          className={`card-action-btn ${editingSide === 'front' ? 'active' : ''}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingSide('front');
+                          }}
+                        >
+                          Front
+                        </button>
+                        <button 
+                          className={`card-action-btn ${editingSide === 'back' ? 'active' : ''}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingSide('back');
+                          }}
+                        >
+                          Back
+                        </button>
+                        <button 
+                          className="card-action-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingCardId(null);
+                            setEditingSide('front');
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
+                    <span className="card-preview-date">
+                      {card.last_review_date ? `Last reviewed: ${formatDateTimeForDisplay(card.last_review_date)}` : 'Not reviewed yet'}
+                    </span>
+                    {openCardId === card.id && (
+                      <div className="card-preview-back" style={{
+                        opacity: 1,
+                        pointerEvents: 'auto',
+                        transform: 'translateY(0)',
+                        minHeight: isEditing ? '200px' : 'auto',
+                      }}>
+                        <div className="card-preview-label">Answer</div>
+                        {isEditing ? (
+                          <textarea
+                            className="card-preview-content"
+                            value={editingSide === 'back' ? editCardAnswer : editCardQuestion}
+                            onChange={(e) => {
+                              if (editingSide === 'back') {
+                                setEditCardAnswer(e.target.value);
+                              } else {
+                                setEditCardQuestion(e.target.value);
+                              }
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            
+                          />
+                        ) : (
+                          <div className="card-preview-content">
+                            {card.answer}
+                            {isEditing && <span className="caret">|</span>}
+                          </div>
+                        )}
+                        <div className="card-preview-meta">
+                          <div className="card-preview-tags">
+                            <span className="card-preview-tag">Difficulty: {card.difficulty?.toFixed(1) || '0.0'}</span>
+                            <span className="card-preview-tag">Stability: {card.stability?.toFixed(1) || '0.0'}</span>
+                          </div>
+                          <div className="card-preview-date">
+                            Next review: {card.scheduled_date ? formatDateTimeForDisplay(card.scheduled_date) : 'Not scheduled'}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+        </div>
       </div>
       {CreateDeckModal}
       {showEditDeck && (
@@ -939,6 +956,6 @@ export default function DeckContent() {
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 } 

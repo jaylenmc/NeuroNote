@@ -60,7 +60,7 @@
 
 .dashboard-sidebar {
     width: 250px;
-    height: 100vh;
+    height: calc(100vh - 48px);
     overflow: hidden;
     display: flex;
     flex-direction: column;
