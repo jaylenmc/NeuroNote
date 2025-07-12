@@ -151,6 +151,7 @@ class CardCollection(APIView):
 def review_card(request):
     deck_id = request.data.get('deck_id')
     card_id = request.data.get('card_id')
+    all_cards = request.data.get('all_cards')
 
     deck = Deck.objects.filter(user=request.user, id=deck_id).first()
     
