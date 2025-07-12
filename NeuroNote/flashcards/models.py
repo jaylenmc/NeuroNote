@@ -44,8 +44,8 @@ class Card(models.Model):
 
         # 3. Stability and interval
         if rating == 0:
-            self.stability *= 0.7
-            interval_min = 30  # Retry quickly
+            self.stability *= 0.85
+            interval_min = 5 
 
         elif rating == 1:
             retrievability = max(math.exp(-elapsed_minutes / self.stability), 0.1)

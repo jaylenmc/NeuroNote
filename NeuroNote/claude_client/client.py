@@ -139,6 +139,7 @@ def cards_to_quiz(user_answers):
                 "Return the response in JSON format in the following format with score being either Correct or Incorrect: "
                 "{'question_input': '...', 'score': 'Correct' or 'Incorrect', 'explanation': '...', 'user_answer': '...', 'correct_answer': '...'} — do not reference the user. "
                 "Make sure each explanation clearly matches its question."
+                "Make as many flashcards as needed to cover everything in the prompt, dont hold back on the number of flashcards"
             ),
             messages=[
                 {
@@ -151,8 +152,6 @@ def cards_to_quiz(user_answers):
             ]
         )
 
-        print(type(message.content))
-        print(message.content)
         cleaned_response = clean_claude_response(message.content)
         return cleaned_response
     except Exception as e:
