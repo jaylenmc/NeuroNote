@@ -91,19 +91,14 @@ export const formatDateForDisplay = (dateString, options = {}) => {
  */
 export const formatDateTimeForDisplay = (dateString, options = {}) => {
   if (!dateString) return '';
-  
   try {
     // Create a date object from the backend datetime string (UTC)
     const utcDate = new Date(dateString);
-    
-    // Check if the date is valid
     if (isNaN(utcDate.getTime())) {
       console.warn('Invalid date string for display:', dateString);
       return '';
     }
-    
-    // Convert UTC to local timezone for display
-    // toLocaleString automatically converts to user's local timezone
+    // Default: hide seconds and timezone
     return utcDate.toLocaleString('en-US', {
       weekday: 'short',
       year: 'numeric',
@@ -112,7 +107,7 @@ export const formatDateTimeForDisplay = (dateString, options = {}) => {
       hour: '2-digit',
       minute: '2-digit',
       hour12: true,
-      timeZoneName: 'short', // This will show the timezone abbreviation
+      // Remove seconds and timezone
       ...options
     });
   } catch (error) {
@@ -491,17 +486,8 @@ export const formatTimeForCardDisplay = (dateString, category) => {
     
     switch (category) {
       case 'upcoming':
-        // Show exact time for upcoming cards
-        return cardDateTime.toLocaleString('en-US', {
-          weekday: 'short',
-          month: 'short',
-          day: 'numeric',
-          year: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: true,
-          timeZoneName: 'short'
-        });
+        // Use consistent formatDateTimeForDisplay for upcoming cards (no seconds, no timezone)
+        return formatDateTimeForDisplay(dateString);
         
       case 'dueSoon':
         // Show "Due in X" format

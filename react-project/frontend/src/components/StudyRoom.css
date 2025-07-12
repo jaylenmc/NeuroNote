@@ -54,13 +54,20 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 2rem;
-    padding: 1rem;
-    background: rgba(37, 37, 37, 0.7) !important;
+    padding: 0 !important;;
+    background: transparent !important;
     backdrop-filter: blur(10px);
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    border: none !important;
     color: #fff !important;
     box-shadow: none !important;
+    width: 100%;
+}
+
+.buttons-container{
+    display: flex;
+    width: 100%!important;
+    justify-content: space-between;
 }
 
 .study-room-header h1,
@@ -73,6 +80,17 @@
     font-size: 2rem;
     font-weight: 600;
     margin: 0;
+}
+
+.study-room-subtitle {
+    font-size: 16px;
+    color: #a0aec0;
+    text-align: center;
+    margin-bottom: 32px;
+    line-height: 1.5;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
 }
 
 .header-controls {
@@ -454,7 +472,8 @@
 .card-preview {
     position: relative;
     width: 100%;
-    min-height: 200px;
+    min-height: 260px;
+    height: auto;
     margin: 0 auto;
     cursor: pointer;
     border-radius: 1.5rem;
@@ -462,74 +481,41 @@
     box-shadow: 0 8px 32px rgba(0,0,0,0.18);
     transition: transform 0.2s, box-shadow 0.2s;
     overflow: visible !important;
-}
-
-.card-preview:hover {
-    transform: translateY(-4px) scale(1.03);
-    box-shadow: 0 16px 32px rgba(0,0,0,0.28);
+    padding-bottom: 2.5rem;
 }
 
 .card-preview-inner {
     position: relative;
     width: 100%;
-    height: 100%;
+    height: auto;
+    min-height: 220px;
     border-radius: 1.5rem;
-    padding: 2rem;
+    padding: 2.5rem 2rem 2rem 2rem;
     background: #23272f;
     overflow: visible !important;
-    min-height: 180px;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
-}
-
-.card-preview-front {
-    position: relative;
-    z-index: 1;
-}
-
-.card-preview-label {
-    position: absolute;
-    top: 1.25rem;
-    left: 1.25rem;
-    font-size: 0.85rem;
-    color: #7dd3fc;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    font-weight: 600;
-    background: rgba(36, 41, 51, 0.85);
-    padding: 0.25rem 0.75rem;
-    border-radius: 9999px;
-    backdrop-filter: blur(4px);
-}
-
-.card-preview-content {
-    margin-top: 2.5rem;
-    font-size: 1.25rem;
-    font-weight: 600;
-    color: #f3f4f6;
-    line-height: 1.6;
-    word-break: break-word;
+    box-sizing: border-box;
 }
 
 .card-preview-back {
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    opacity: 0;
-    pointer-events: none;
-    z-index: 2;
-    transition: opacity 0.4s cubic-bezier(0.4,0,0.2,1), transform 0.4s cubic-bezier(0.4,0,0.2,1);
+    position: relative;
     background: #23272f;
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    padding: 2rem;
-    border-radius: 1.5rem;
-    transform: translateY(16px);
+    height: auto;
+    min-height: 180px;
+    box-sizing: border-box;
+    overflow: visible;
+    padding-bottom: 2.5rem;
 }
 
-.card-preview:hover .card-preview-back {
-    opacity: 1;
-    pointer-events: auto;
-    transform: translateY(0);
+.card-preview-content {
+    font-size: 1.125rem;
+    line-height: 1.6;
+    color: rgba(255, 255, 255, 0.9);
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    max-width: 100%;
+    margin-bottom: 1.5rem;
 }
 
 .card-preview-back .card-preview-label {
@@ -541,6 +527,8 @@
     font-size: 1.1rem;
     font-weight: 400;
     font-style: italic;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
 }
 
 .card-preview-meta {
@@ -923,4 +911,273 @@
 }
 .timer-edit-input[type=number] {
     -moz-appearance: textfield;
+} 
+
+.card-preview-back, .card-preview-front {
+    all: unset;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    background: #23272f;
+    border: none;
+    border-radius: 1.5rem;
+    box-shadow: none;
+    padding: 0;
+    min-height: 180px;
+    height: auto;
+    color: #fff;
+    font-size: 1.125rem;
+    line-height: 1.6;
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    box-sizing: border-box;
+    overflow: visible;
+    padding-bottom: 2.5rem;
+}
+
+.card-preview-back {
+    background: #23272f;
+} 
+
+/* 1. Card Depth & Texture */
+.study-room-card {
+  background: #23283a !important;
+  border-radius: 0!important;
+  box-shadow: none;
+  border: 1px solid rgb(37, 37, 37) !important;
+  transition: transform 0.2s;
+  padding: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  position: relative;
+  z-index: 1;
+  min-width: 320px;
+  max-width: 600px;
+  width: 100%;
+}
+.study-room-card::before,
+.study-room-card::after {
+  pointer-events: none;
+}
+
+
+/* 2. Icons + Labels */
+.study-room-card svg {
+  color: #a0aec0;
+  font-size: 22px;
+  transition: color 0.2s;
+}
+.study-room-card:hover svg {
+  color: #68d391;
+}
+
+/* 3. Typography Adjustments */
+.study-room-header {
+  text-align: center;
+  font-size: 32px;
+  font-weight: 700;
+  color: #fff;
+  margin-top: 16px;
+  margin-bottom: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+.study-room-header h1 {
+  font-size: 2.2rem;
+  font-weight: 700;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.study-room-header .leaf-emoji {
+  font-size: 1.5rem;
+  margin-right: 0.5rem;
+}
+.study-room-subtitle {
+  text-align: center;
+  font-size: 16px;
+  color: #a0aec0;
+  margin-bottom: 32px;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* 4. Button Consistency */
+.btn-ghost {
+  background-color: transparent;
+  border: 1px solid #2d3748;
+  padding: 8px 16px;
+  color: #fff;
+  border-radius: 12px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+.btn-ghost:hover {
+  background-color: #2d3748;
+  box-shadow: 0 0 12px rgba(255,255,255,0.05);
+}
+
+/* 5. Spacing & Layout Refinement */
+.study-room-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 25px;
+  padding: 0 32px;
+  margin-bottom: 25px;
+  justify-content: center;
+}
+
+/* 6. Timer Panel Consistency */
+.focus-timer-panel {
+  background-color: #1c1f26;
+  border-radius: 16px;
+  padding: 24px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  margin: 0 32px;
+}
+.focus-timer-panel h3 {
+  font-size: 18px;
+  color: #fff;
+  margin-bottom: 8px;
+}
+.focus-timer-panel .time {
+  font-size: 40px;
+  color: #f56565;
+  font-weight: bold;
+} 
+
+.focus-tasks-list {
+  margin-top: 24px;
+  padding: 0;
+  list-style: none;
+}
+.focus-task-item {
+  display: flex;
+  align-items: center;
+  background: #23272f;
+  border-radius: 10px;
+  border: 1px solid #23272f;
+  padding: 12px 18px;
+  margin-bottom: 12px;
+  transition: background 0.2s, color 0.2s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.10);
+}
+.focus-task-item.checked {
+  background: #1b2e1b;
+  color: #22c55e;
+  opacity: 0.7;
+}
+.focus-task-checkbox {
+  accent-color: #22c55e;
+  width: 20px;
+  height: 20px;
+  margin-right: 14px;
+  border-radius: 6px;
+  border: 2px solid #23272f;
+  background: #18181b;
+  transition: accent-color 0.2s;
+}
+.focus-task-label {
+  color: #fff;
+  font-weight: 500;
+  font-size: 16px;
+  transition: color 0.2s, opacity 0.2s, text-decoration 0.2s;
+}
+.focus-task-item.checked .focus-task-label {
+  color: #22c55e;
+  text-decoration: line-through;
+  opacity: 0.7;
+} 
+
+.pomodoro-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(20, 22, 30, 0.55);
+  z-index: 1001;
+  transition: background 0.2s;
+} 
+
+.study-room-card:hover {
+  background: #23283a !important;
+  box-shadow: none !important;
+  filter: none !important;
+} 
+
+.pinned-resources-section {
+  max-width: 1200px;
+  margin: 0 auto 32px auto;
+}
+.pinned-resources-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 24px 0 12px 0;
+}
+.pinned-resources-header h3 {
+  color: #fff;
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+}
+.pinned-resources-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 20px;
+}
+.pinned-resource-card {
+  background: #18181b;
+  border-radius: 12px;
+  border: 1px solid #23272f;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.13);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+  min-height: 90px;
+  transition: border 0.2s, background 0.2s;
+}
+.pinned-resource-card.pinned {
+  background: #23272f;
+  border: 2px solid #7c83fd;
+}
+.pinned-resource-title {
+  color: #fff;
+  font-weight: 500;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pinned-resource-pin-btn {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  font-size: 13px;
+  padding: 4px 10px;
+  background: none;
+  color: #fff;
+  border: 1px solid #7c83fd;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  z-index: 2;
+}
+.pinned-resource-card.pinned .pinned-resource-pin-btn {
+  background: #7c83fd;
+  color: #fff;
+  border: 1px solid #7c83fd;
+}
+.pinned-resource-pin-btn:hover {
+  background: #7c83fd;
+  color: #fff;
 } 

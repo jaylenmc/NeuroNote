@@ -117,7 +117,6 @@ const ReviewSession = () => {
   // Initialize review session
   useEffect(() => {
     const initializeReviewSession = async () => {
-      console.log('initializeReviewSession called');
       try {
         setLoading(true);
         console.log('Set loading to true');
@@ -126,12 +125,6 @@ const ReviewSession = () => {
         const deckFromState = location.state?.selectedDeck;
         const deckFromQuery = new URLSearchParams(location.search).get('deck');
         const includeDueSoonFromState = location.state?.includeDueSoon || false;
-        
-        console.log('ReviewSession: deckFromState:', deckFromState);
-        console.log('ReviewSession: deckFromQuery:', deckFromQuery);
-        console.log('ReviewSession: location.state:', location.state);
-        console.log('ReviewSession: location.search:', location.search);
-        console.log('ReviewSession: includeDueSoonFromState:', includeDueSoonFromState);
         
         setIncludeDueSoon(includeDueSoonFromState);
         

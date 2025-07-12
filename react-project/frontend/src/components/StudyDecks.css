@@ -26,28 +26,37 @@
     align-items: center;
     gap: 0.5rem;
     background: transparent;
-    border: 1px solid var(--border-color);
+    border: 1px solid rgba(255, 255, 255, 0.2);
     padding: 0.5rem 1rem;
     border-radius: 0.5rem;
     cursor: pointer;
-    color: var(--text-primary);
+    color: #fff;
     transition: all 0.3s ease;
 }
 
 .back-button:hover {
     opacity: 0.8;
     transform: translateX(-4px);
+    border-color: rgba(255, 255, 255, 0.4);
 }
 
 .create-deck-button {
-    background: var(--accent-primary);
-    color: white;
-    border: none;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2)!important;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    cursor: pointer;
+    color: #fff;
+    transition: all 0.3s ease;
 }
 
 .create-deck-button:hover {
-    background: var(--accent-secondary);
-    transform: translateY(-2px);
+    opacity: 0.8;
+    transform: translateX(-4px);
+    background: transparent;
 }
 
 /* --- Isolated StudyDecks styles --- */
@@ -482,7 +491,7 @@
 
 .form-group input:focus {
     outline: none;
-    border-color: var(--accent-primary);
+    border-color: #7c83fd;
     box-shadow: 0 0 0 2px rgba(124, 131, 253, 0.2);
 }
 
@@ -497,7 +506,7 @@
     gap: 1rem;
     margin-top: 2rem;
     padding-top: 1rem;
-    border-top: 1px solid var(--border-color);
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .modal-actions button {
