@@ -18,14 +18,12 @@
 /* Background Elements - Matching Solo Study Room with Enhanced Gradients */
 .study-room-main::before {
   content: '';
-  position: absolute;
+  position: absolute; 
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background: 
-    linear-gradient(45deg, rgba(78, 205, 196, 0.03) 25%, transparent 25%),
-    linear-gradient(-45deg, rgba(78, 205, 196, 0.03) 25%, transparent 25%);
+  background: red;
   background-size: 60px 60px;
   opacity: 0.1;
   z-index: 0;
@@ -38,10 +36,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: 
-    radial-gradient(circle at 20% 80%, rgba(124, 131, 253, 0.08) 0%, transparent 50%),
-    radial-gradient(circle at 80% 20%, rgba(78, 205, 196, 0.06) 0%, transparent 50%),
-    radial-gradient(circle at 50% 50%, rgba(255, 107, 107, 0.04) 0%, transparent 50%);
+  background: red;
   animation: particleFloat 20s ease-in-out infinite;
   z-index: 0;
 }
@@ -886,13 +881,50 @@
 
 .study-room-timer-content {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 20px;
-  padding: 24px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.05) 100%);
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  justify-content: center;
+  padding: 20px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* Override Pomodoro timer styles for study room context */
+.study-room-timer-content .pomodoro-timer {
+  max-width: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 1.5rem;
+}
+
+.study-room-timer-content .pomodoro-time {
+  font-size: 2.5rem;
+}
+
+.study-room-timer-content .pomodoro-controls {
+  gap: 0.5rem;
+}
+
+.study-room-timer-content .pomodoro-btn {
+  padding: 0.5rem 1rem;
+  font-size: 0.8rem;
+}
+
+.study-room-timer-content .pomodoro-settings-btn {
+  width: 32px;
+  height: 32px;
+}
+
+.study-room-timer-content .pomodoro-phase-info {
+  gap: 0.25rem;
+}
+
+.study-room-timer-content .phase-name {
+  font-size: 1rem;
+}
+
+.study-room-timer-content .completed-count {
+  font-size: 0.8rem;
+  padding: 0.25rem 0.75rem;
 }
 
 .study-room-timer-title {

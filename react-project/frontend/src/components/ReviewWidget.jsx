@@ -457,6 +457,13 @@ const ReviewWidget = ({ decks = [], selectedDeckId, setSelectedDeckId }) => {
     );
   };
 
+  // Progress summary calculation
+  const totalCards = allCards.length;
+  const reviewedToday = allCards.filter(card => card.last_reviewed_today).length;
+  const mastered = allCards.filter(card => card.learning_status === 'Mastered').length;
+  const leftToday = totalCards - reviewedToday;
+  const progressPct = totalCards ? Math.round((reviewedToday / totalCards) * 100) : 0;
+
   if (loading) {
     return (
       <div className="review-widget">
@@ -535,8 +542,9 @@ const ReviewWidget = ({ decks = [], selectedDeckId, setSelectedDeckId }) => {
   const renderCardList = () => (
     <div className="card-preview-section">
       {/* Sticky Tab Bar */}
-      <div className="sticky-tab-container">
-        <div className="tab-bar-with-filter">
+      <div className="sticky-tab-container enhanced-tab-container">
+        {/* Progress summary bar removed */}
+        <div className="tab-bar-with-filter enhanced-tab-bar">
           <div className="tab-bar">
             <button 
               className={`tab ${activeTab === 'overdue' ? 'active' : ''}`}
@@ -545,11 +553,8 @@ const ReviewWidget = ({ decks = [], selectedDeckId, setSelectedDeckId }) => {
               onMouseEnter={() => setHoveredTab('overdue')}
               onMouseLeave={() => setHoveredTab(null)}
             >
-              <FiAlertCircle className="tab-icon" />
-              <span>Overdue ({cards.overdue?.length || 0})</span>
-              {hoveredTab === 'overdue' && (
-                <div className="tooltip">{tabTooltips.overdue}</div>
-              )}
+              <span className="tab-icon">⚠️</span>
+              <span>Overdue <span className="tab-count animated-count">{cards.overdue?.length || 0}</span></span>
             </button>
             <button 
               className={`tab ${activeTab === 'dueNow' ? 'active' : ''}`}
@@ -558,11 +563,8 @@ const ReviewWidget = ({ decks = [], selectedDeckId, setSelectedDeckId }) => {
               onMouseEnter={() => setHoveredTab('dueNow')}
               onMouseLeave={() => setHoveredTab(null)}
             >
-              <FiClock className="tab-icon" />
-              <span>Due Now ({cards.dueNow?.length || 0})</span>
-              {hoveredTab === 'dueNow' && (
-                <div className="tooltip">{tabTooltips.dueNow}</div>
-              )}
+              <span className="tab-icon">⏰</span>
+              <span>Due Now <span className="tab-count animated-count">{cards.dueNow?.length || 0}</span></span>
             </button>
             <button 
               className={`tab ${activeTab === 'dueSoon' ? 'active' : ''}`}
@@ -571,11 +573,8 @@ const ReviewWidget = ({ decks = [], selectedDeckId, setSelectedDeckId }) => {
               onMouseEnter={() => setHoveredTab('dueSoon')}
               onMouseLeave={() => setHoveredTab(null)}
             >
-              <FiEye className="tab-icon" />
-              <span>Due Soon ({cards.dueSoon?.length || 0})</span>
-              {hoveredTab === 'dueSoon' && (
-                <div className="tooltip">{tabTooltips.dueSoon}</div>
-              )}
+              <span className="tab-icon">👁️</span>
+              <span>Due Soon <span className="tab-count animated-count">{cards.dueSoon?.length || 0}</span></span>
             </button>
             <button 
               className={`tab ${activeTab === 'upcoming' ? 'active' : ''}`}
@@ -584,16 +583,12 @@ const ReviewWidget = ({ decks = [], selectedDeckId, setSelectedDeckId }) => {
               onMouseEnter={() => setHoveredTab('upcoming')}
               onMouseLeave={() => setHoveredTab(null)}
             >
-              <FiCalendar className="tab-icon" />
-              <span>Upcoming ({cards.upcoming?.length || 0})</span>
-              {hoveredTab === 'upcoming' && (
-                <div className="tooltip">{tabTooltips.upcoming}</div>
-              )}
+              <span className="tab-icon">📅</span>
+              <span>Upcoming <span className="tab-count animated-count">{cards.upcoming?.length || 0}</span></span>
             </button>
           </div>
         </div>
       </div>
-
       {/* Card Content */}
       <div className="card-content-area">
         {loading ? (

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Users, UserPlus, LogOut, Info, BookOpen, Brain, MessageCircle, Mic, Clock, FileText, Paperclip, Star, Timer, ChevronLeft, ChevronRight, PenTool, Square, StickyNote, Image, Undo2, Download, Volume2, Bell, Zap, ArrowLeft, Book, Plus, X, MessageSquare, PanelRightClose, PanelRightOpen, Play, Pause, RotateCcw, Smile } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import PomodoroTimer from '../components/PomodoroTimer';
 import './StudyRoomPage.css';
 
 const mockParticipants = [
@@ -420,13 +421,7 @@ const StudyRoom = () => {
 
             {showRightTab === 'timer' && (
               <div className="study-room-timer-content">
-                <div className="study-room-timer-title">Study Timer</div>
-                <div className="study-room-timer-timer">25:00</div>
-                <div className="study-room-timer-actions">
-                  <button className="study-room-timer-action-button"><Play size={16} /> Start</button>
-                  <button className="study-room-timer-action-button"><Pause size={16} /> Pause</button>
-                  <button className="study-room-timer-action-button"><RotateCcw size={16} /> Reset</button>
-                </div>
+                <PomodoroTimer />
               </div>
             )}
           </div>

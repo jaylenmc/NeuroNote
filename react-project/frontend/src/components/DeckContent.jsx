@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { FiEdit2, FiTrash2, FiPlus, FiSearch, FiStar, FiClock, FiTag, FiArrowLeft, FiX, FiFilter, FiCheck, FiZap } from 'react-icons/fi';
+import { FiEdit2, FiTrash2, FiPlus, FiSearch, FiStar, FiClock, FiTag, FiArrowLeft, FiX, FiFilter, FiCheck, FiZap, FiEdit3 } from 'react-icons/fi';
 import './DeckContent.css';
 import { formatDateForDisplay, formatDateTimeForDisplay, convertLocalDateToBackend } from '../utils/dateUtils';
 import api from '../api/axios';
@@ -8,6 +8,12 @@ import api from '../api/axios';
 const API_URL = import.meta.env.VITE_API_URL;
 
 export default function DeckContent() {
+  const [showBack, setShowBack] = useState(false);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  useEffect(() => {
+    const interval = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
   const { deckId } = useParams();
   const navigate = useNavigate();
   const [deck, setDeck] = useState(null);
@@ -48,6 +54,14 @@ export default function DeckContent() {
   const [generating, setGenerating] = useState(false);
   const [showClaudeGenerator, setShowClaudeGenerator] = useState(false);
   const generatedInputRef = useRef(null);
+  
+  // Sticky note state
+  const [stickyNote, setStickyNote] = useState('');
+  const [showStickyNote, setShowStickyNote] = useState(false);
+  const [editingStickyNote, setEditingStickyNote] = useState(false);
+  const [stickyNoteTitle, setStickyNoteTitle] = useState('Sticky Note');
+  const [lastUpdated, setLastUpdated] = useState(null);
+  const [savedGenerated, setSavedGenerated] = useState(false);
 
   const ribbonColors = [
     { value: null, label: 'All Cards', color: '#666' },
@@ -62,8 +76,45 @@ export default function DeckContent() {
   useEffect(() => {
     fetchDeck();
     fetchCards();
+    // Load sticky note from localStorage
+    const savedNote = localStorage.getItem(`stickyNote_${deckId}`);
+    if (savedNote) {
+      const noteData = JSON.parse(savedNote);
+      setStickyNote(noteData.content || '');
+      setStickyNoteTitle(noteData.title || 'Sticky Note');
+      setLastUpdated(noteData.lastUpdated || null);
+      setShowStickyNote(true);
+    }
     // eslint-disable-next-line
   }, [deckId]);
+
+  // Sticky note functions
+  const saveStickyNote = () => {
+    const noteData = {
+      content: stickyNote,
+      title: stickyNoteTitle,
+      lastUpdated: new Date().toISOString()
+    };
+    localStorage.setItem(`stickyNote_${deckId}`, JSON.stringify(noteData));
+    setLastUpdated(new Date().toISOString());
+    setEditingStickyNote(false);
+  };
+
+  const deleteStickyNote = () => {
+    localStorage.removeItem(`stickyNote_${deckId}`);
+    setStickyNote('');
+    setStickyNoteTitle('Sticky Note');
+    setShowStickyNote(false);
+    setEditingStickyNote(false);
+    setLastUpdated(null);
+  };
+
+  const toggleStickyNote = () => {
+    if (!showStickyNote && !stickyNote) {
+      setEditingStickyNote(true);
+    }
+    setShowStickyNote(!showStickyNote);
+  };
 
   async function fetchDeck() {
     try {
@@ -208,13 +259,13 @@ export default function DeckContent() {
           <div className="preview-toggle">
             <button 
               className={!showPreview ? 'active' : ''} 
-              onClick={() => setShowPreview(false)}
+              onClick={() => { setShowPreview(false); setShowBack(false); }}
             >
               Edit
             </button>
             <button 
               className={showPreview ? 'active' : ''} 
-              onClick={() => setShowPreview(true)}
+              onClick={() => { setShowPreview(true); setShowBack(false); }}
             >
               Preview
             </button>
@@ -285,26 +336,36 @@ export default function DeckContent() {
               </div>
             </form>
           ) : (
-            <div className="card-preview">
+            <div 
+              className={`card-preview${showBack ? ' show-back' : ''}`}
+              style={{ cursor: 'pointer' }}
+              onClick={() => setShowBack((prev) => !prev)}
+              title={showBack ? 'Click to show question' : 'Click to show answer'}
+            >
               <div className="card-preview-front">
-                <div className="card-preview-front-label">Question</div>
-                {newCard.question || 'No question entered'}
+                <div className="card-preview-label">
+                  QUESTION
+                </div>
+                <div className="card-preview-content">{newCard.question || 'No question entered'}</div>
+                <div className="card-preview-date">
+                  Last reviewed: {formatDateTimeForDisplay(currentTime.toISOString())}
+                </div>
               </div>
               <div className="card-preview-back">
-                <div className="card-preview-back-label">Answer</div>
-                {newCard.answer || 'No answer entered'}
-              </div>
-              {newCard.scheduled_date && (
-                <div className="card-preview-date">
-                  Review: {newCard.scheduled_date ? formatDateTimeForDisplay(newCard.scheduled_date) : 'Not scheduled'}
+                <div className="card-preview-label">
+                  ANSWER
                 </div>
-              )}
+                <div className="card-preview-content">{newCard.answer || 'No answer entered'}</div>
+                <div className="card-preview-date">
+                  Next review: {newCard.scheduled_date ? formatDateTimeForDisplay(newCard.scheduled_date) : 'Not scheduled'}
+                </div>
+              </div>
             </div>
           )}
         </div>
       </div>
     );
-  }, [showAdd, newCard, newTag, showPreview]);
+  }, [showAdd, newCard, newTag, showPreview, showBack, currentTime]);
 
   const handleEditDeck = async (e) => {
     e.preventDefault();
@@ -506,30 +567,111 @@ export default function DeckContent() {
           <button className="add-card-btn" onClick={() => setShowAdd(true)} disabled={!deck}><FiPlus /> Add New Card</button>
         </div>
         <div className="deck-header">
-          <span className="deck-emoji">📘</span>
-          <div className="deck-header-info">
-            <div className="deck-title-section">
-              <h1 className="deck-title">{deck?.title || 'Deck'}</h1>
-              <span className="deck-subject">{deck?.subject || 'No subject'}</span>
-              <div className="deck-subtitle">{cards.length} cards · Last updated 2 days ago</div>
+          <div className="deck-header-content">
+            <div style={{display: 'flex', flexDirection: 'column', flex: 1}}>
+              <span className="deck-emoji">📘</span>
+              <div className="deck-header-info">
+                <div className="deck-title-section">
+                  <h1 className="deck-title">{deck?.title || 'Deck'}</h1>
+                  <span className="deck-subject">{deck?.subject || 'No subject'}</span>
+                  <div className="deck-subtitle">{cards.length} cards · Last updated 2 days ago</div>
+                  {/* Micro Stats Chips */}
+                  <div className="micro-stats-row">
+                    <span className="micro-stat-chip"><span className="chip-emoji">⏱️</span>Avg. Review Time: 3.2s</span>
+                    <span className="micro-stat-chip"><span className="chip-emoji">♻️</span>Cards Due: 5</span>
+                    <span className="micro-stat-chip"><span className="chip-emoji">🧠</span>Mastered: 3 / 14</span>
+                  </div>
+                  {/* Progress Summary Bar */}
+                  {cards.length > 0 && (() => {
+                    const total = cards.length;
+                    const mastered = cards.filter(c => c.learning_status === 'Mastered').length;
+                    const masteredPct = (mastered / total) * 100;
+                    return (
+                      <div className="mastery-progress-container">
+                        <div className="mastery-progress-label">Mastery Progress</div>
+                        <div className="mastery-progress-bar">
+                          <div className="mastery-progress-fill" style={{ width: '75%' }} />
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+              </div>
+              <div className="deck-header-actions">
+                <button 
+                  className="deck-header-btn" 
+                  title="Edit Deck" 
+                  disabled={!deck}
+                  onClick={() => {
+                    if (!deck) return;
+                    setEditingDeck(deck);
+                    setEditDeckTitle(deck.title || '');
+                    setEditDeckSubject(deck.subject || '');
+                    setShowEditDeck(true);
+                  }}
+                >
+                  <FiEdit2 />
+                </button>
+                <button className="deck-header-btn" title="Delete Deck" onClick={handleDeleteDeck}>
+                  <FiTrash2 />
+                </button>
+              </div>
             </div>
-          </div>
-          <div className="deck-header-actions">
-            <button 
-              className="deck-header-btn" 
-              title="Edit Deck" 
-              onClick={() => {
-                setEditingDeck(deck);
-                setEditDeckTitle(deck.title);
-                setEditDeckSubject(deck.subject);
-                setShowEditDeck(true);
-              }}
-            >
-              <FiEdit2 />
-            </button>
-            <button className="deck-header-btn" title="Delete Deck" onClick={handleDeleteDeck}>
-              <FiTrash2 />
-            </button>
+            {/* Sticky Note Component */}
+            {showStickyNote && (
+              <div className="sticky-note">
+                <div className="sticky-note-pin">📌</div>
+                <div className="sticky-note-header">
+                  {editingStickyNote ? (
+                    <input
+                      type="text"
+                      className="sticky-note-title-input"
+                      value={stickyNoteTitle}
+                      onChange={(e) => setStickyNoteTitle(e.target.value)}
+                      placeholder="Note title..."
+                    />
+                  ) : (
+                    <h4 className="sticky-note-title">{stickyNoteTitle}</h4>
+                  )}
+                  <div className="sticky-note-actions">
+                    <button 
+                      className="sticky-note-btn"
+                      onClick={() => setEditingStickyNote(!editingStickyNote)}
+                      title={editingStickyNote ? "Save" : "Edit"}
+                    >
+                      {editingStickyNote ? <FiCheck size={14} /> : <FiEdit3 size={14} />}
+                    </button>
+                    <button 
+                      className="sticky-note-btn"
+                      onClick={deleteStickyNote}
+                      title="Delete"
+                    >
+                      <FiTrash2 size={14} />
+                    </button>
+                  </div>
+                </div>
+                <div className="sticky-note-content">
+                  {editingStickyNote ? (
+                    <textarea
+                      className="sticky-note-textarea"
+                      value={stickyNote}
+                      onChange={(e) => setStickyNote(e.target.value)}
+                      placeholder="Write your notes here..."
+                      onBlur={saveStickyNote}
+                    />
+                  ) : (
+                    <div className="sticky-note-text">
+                      {stickyNote || "Click edit to add your notes..."}
+                    </div>
+                  )}
+                </div>
+                {lastUpdated && (
+                  <div className="sticky-note-timestamp">
+                    Updated {formatDateTimeForDisplay(lastUpdated)}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
         <div className="deck-search-filter">
@@ -567,7 +709,15 @@ export default function DeckContent() {
             title={showClaudeGenerator ? "Hide Claude Generator" : "Show Claude Generator"}
           >
             <FiZap size={16} />
-            {showClaudeGenerator ? "Hide" : "Show"}
+            {showClaudeGenerator ? "Close" : "Generate"}
+          </button>
+          <button 
+            className="sticky-note-toggle-btn"
+            onClick={toggleStickyNote}
+            title={showStickyNote ? "Hide Sticky Note" : "Show Sticky Note"}
+          >
+            📝
+            {showStickyNote ? "Hide" : "Note"}
           </button>
         </div>
         <div className={`claude-flashcard-generator ${!showClaudeGenerator ? 'hidden' : ''}`}>
@@ -584,68 +734,135 @@ export default function DeckContent() {
             className="claude-generator-btn"
             onClick={handleGenerateFlashcards}
             disabled={generating || !generatedPrompt.trim()}
+            style={{ display: generatedCards.length > 0 && !savedGenerated ? 'none' : undefined }}
           >
             {generating ? 'Generating...' : 'Generate Flashcards'}
           </button>
           {error && <div className="claude-generator-error">{error}</div>}
+          {generatedCards.length > 0 && !savedGenerated && (
+            <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+              <button className="submit-button" style={{ background: '#7c83fd', color: '#fff', border: 'none' }} onClick={() => {
+                setCards([...generatedCards.map(card => ({
+                  ...card,
+                  question: card.front || card.question,
+                  answer: card.back || card.answer
+                })), ...cards]);
+                setGeneratedCards([]);
+                setSavedGenerated(true);
+                setGeneratedPrompt('');
+              }}>
+                Save
+              </button>
+              <button className="cancel-button" onClick={() => {
+                setGeneratedCards([]);
+                setSavedGenerated(false);
+              }}>
+                Cancel
+              </button>
+            </div>
+          )}
         </div>
+        {cards.length === 0 && generatedCards.length === 0 && (
+          <div className="empty-state">
+            <div className="empty-state-message">
+              <div className="onboarding-ghost" role="img" aria-label="Ghost">👻</div>
+              <h3>This deck is empty</h3>
+              <p>💡 Pro Tip: Use the <b>AI Generator</b> to create your first 10 cards.</p>
+            </div>
+            <div className="empty-state-actions">
+              <button className="add-item-btn" onClick={() => setShowClaudeGenerator(true)}>
+                <FiZap style={{marginRight: 6}} /> Generate
+              </button>
+              <button className="add-item-btn" onClick={() => setShowAdd(true)}>
+                <FiPlus style={{marginRight: 6}} /> Add Card
+              </button>
+            </div>
+          </div>
+        )}
         <div className="card-list-grid cards-grid">
           {/* Render generated cards first */}
-          {generatedCards.length > 0 && generatedCards.map((card, idx) => {
-            const genId = `generated-${idx}`;
-            const isOpen = openCardId === genId;
-            // Add delete handler for generated cards
-            const handleDeleteGeneratedCard = async () => {
-              try {
-                await api.delete(`/flashcards/cards/delete/${deckId}/${card.id}/`);
-                setGeneratedCards(generatedCards => generatedCards.filter((_, i) => i !== idx));
-              } catch (err) {
-                alert('Failed to delete card');
-              }
-            };
-            // Use the same ribbon and structure as user cards
-            return (
-              <div
-                className={`card-preview card-theme-dark`}
-                key={genId}
-                style={{ position: 'relative', border: '2px dashed #0CBABA' }}
-                onClick={() => setOpenCardId(isOpen ? null : genId)}
-              >
-                {/* Ribbon and tooltip structure */}
-                <div className="ribbon-tooltip-wrapper">
-                  <div className={`card-ribbon-bookmark ribbon-soft-blue`}>&nbsp;</div>
-                  <span className="badge-tooltip badge-tooltip-outside show" style={{ background: '#0CBABA' }}>Generated by AI</span>
-                </div>
-                {/* Generated badge */}
-                <div style={{ position: 'absolute', top: 8, right: 8, background: '#0CBABA', color: '#fff', borderRadius: 6, padding: '2px 8px', fontSize: 12, fontWeight: 700, zIndex: 2 }}>
-                  Generated
-                </div>
-                <div className="card-preview-inner">
-                  {/* Only show the front if not open, only show the back if open */}
-                  {!isOpen && (
-                    <div className="card-content-stack">
-                      <span className="card-preview-label">Question</span>
-                      <div className="card-preview-content">{card.front}</div>
+          {(generatedCards.length > 0 && !savedGenerated) && (
+            <>
+              {generatedCards.map((card, idx) => {
+                const genId = `generated-${idx}`;
+                const isOpen = openCardId === genId;
+                const question = card.front || card.question || '';
+                const answer = card.back || card.answer || '';
+                const lastReview = card.last_review_date ? formatDateTimeForDisplay(card.last_review_date) : 'Not reviewed yet';
+                const scheduledDate = card.scheduled_date ? formatDateTimeForDisplay(card.scheduled_date) : 'Not scheduled';
+                // Save handler for this card
+                const handleSave = (e) => {
+                  e.stopPropagation();
+                  setCards(cards => [
+                    {
+                      ...card,
+                      question: card.front || card.question,
+                      answer: card.back || card.answer
+                    },
+                    ...cards
+                  ]);
+                  setGeneratedCards(generatedCards => generatedCards.filter((_, i) => i !== idx));
+                };
+                // Delete handler for this card
+                const handleDelete = (e) => {
+                  e.stopPropagation();
+                  setGeneratedCards(generatedCards => generatedCards.filter((_, i) => i !== idx));
+                };
+                return (
+                  <div
+                    className="card-preview card-theme-dark generated-card"
+                    key={genId}
+                    style={{ position: 'relative' }}
+                    onClick={() => setOpenCardId(isOpen ? null : genId)}
+                  >
+                    {/* Purple Generated badge */}
+                    <div style={{ position: 'absolute', top: 8, right: 8, background: '#7c83fd', color: '#fff', borderRadius: 6, padding: '2px 10px', fontSize: 13, fontWeight: 700, zIndex: 2, boxShadow: '0 2px 8px rgba(124,131,253,0.13)' }}>
+                      Generated
                     </div>
-                  )}
-                  {isOpen && (
-                    <>
-                      <div className="card-preview-label">Answer</div>
-                      <div className="card-preview-content" style={{ wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{card.back}</div>
-                      {card.scheduled_date && (
-                        <div className="card-preview-date">
-                          Scheduled: {formatDateTimeForDisplay(card.scheduled_date)}
-                        </div>
-                      )}
-                      <button className="card-action-btn delete" style={{ marginTop: 16 }} onClick={e => { e.stopPropagation(); handleDeleteGeneratedCard(); }}>
-                        Delete
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+                    <div className="card-preview-inner">
+                      <div className="card-content-stack">
+                        {!isOpen ? (
+                          <>
+                            <span className="card-preview-label">Question</span>
+                            <div className="card-preview-content">{question || <em>No question</em>}</div>
+                            <div className="card-preview-date" style={{ marginTop: 10 }}>
+                              <FiClock size={14} style={{ marginRight: 4 }} />
+                              {lastReview}
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: 16 }}>
+                              <button className="card-action-btn generated-action-btn save" onClick={handleSave} title="Save">
+                                <FiCheck size={22} />
+                              </button>
+                              <button className="card-action-btn generated-action-btn delete" onClick={handleDelete} title="Delete">
+                                <FiTrash2 size={22} />
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <span className="card-preview-label">Answer</span>
+                            <div className="card-preview-content">{answer || <em>No answer</em>}</div>
+                            <div className="card-preview-date" style={{ marginTop: 10 }}>
+                              <FiClock size={14} style={{ marginRight: 4 }} />
+                              Scheduled: {scheduledDate}
+                            </div>
+                            <div style={{ display: 'flex', gap: '0.5rem', marginTop: 16 }}>
+                              <button className="card-action-btn generated-action-btn save" onClick={handleSave} title="Save">
+                                <FiCheck size={22} />
+                              </button>
+                              <button className="card-action-btn generated-action-btn delete" onClick={handleDelete} title="Delete">
+                                <FiTrash2 size={22} />
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </>
+          )}
           {loading ? <div className="loading">Loading...</div> :
             filteredCards.map(card => {
               const isEditing = editingCardId === card.id;
@@ -691,7 +908,7 @@ export default function DeckContent() {
 
               return (
                 <div
-                  className={`card-preview card-theme-${theme}`}
+                  className={`card-preview card-theme-${theme} ${openCardId === card.id ? 'expanded' : ''}`}
                   key={card.id}
                   onClick={e => {
                     if (e.target.closest('.card-action-btn') || isEditing) return;
@@ -751,96 +968,8 @@ export default function DeckContent() {
                         Edit Mode
                       </div>
                     )}
-                    <div className="card-content-stack">
-                      <span className="card-preview-label">{isEditing ? (editingSide === 'front' ? 'Question' : 'Answer') : 'Question'}</span>
-                      {isEditing ? (
-                        <textarea
-                          className="card-preview-content"
-                          value={editingSide === 'front' ? editCardQuestion : editCardAnswer}
-                          onChange={(e) => {
-                            if (editingSide === 'front') {
-                              setEditCardQuestion(e.target.value);
-                            } else {
-                              setEditCardAnswer(e.target.value);
-                            }
-                          }}
-                          onClick={(e) => e.stopPropagation()}
-                          style={{
-                            background: 'transparent',
-                            border: 'none',
-                            color: 'inherit',
-                            fontFamily: 'inherit',
-                            fontSize: 'inherit',
-                            lineHeight: 'inherit',
-                            padding: '0',
-                            resize: 'none',
-                            minHeight: '100px',
-                            width: '100%',
-                            outline: 'none',
-                            caretColor: 'var(--primary-color)'
-                          }}
-                        />
-                      ) : (
-                        <div className="card-preview-content">
-                          {card.question}
-                          {isEditing && <span className="caret">|</span>}
-                        </div>
-                      )}
-                      {!isEditing && (
-                        <button 
-                          className="card-preview-tag notes-button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedCard(card);
-                            setShowNotesModal(true);
-                          }}
-                        >
-                          Notes
-                        </button>
-                      )}
-                    </div>
-                    {isEditing && (
-                      <div className="edit-controls" >
-                        <button 
-                          className={`card-action-btn ${editingSide === 'front' ? 'active' : ''}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingSide('front');
-                          }}
-                        >
-                          Front
-                        </button>
-                        <button 
-                          className={`card-action-btn ${editingSide === 'back' ? 'active' : ''}`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingSide('back');
-                          }}
-                        >
-                          Back
-                        </button>
-                        <button 
-                          className="card-action-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingCardId(null);
-                            setEditingSide('front');
-                          }}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    )}
-                    <span className="card-preview-date">
-                      {card.last_review_date ? `Last reviewed: ${formatDateTimeForDisplay(card.last_review_date)}` : 'Not reviewed yet'}
-                    </span>
-                    {openCardId === card.id && (
-                      <div className="card-preview-back" style={{
-                        opacity: 1,
-                        pointerEvents: 'auto',
-                        transform: 'translateY(0)',
-                        minHeight: isEditing ? '200px' : 'auto',
-                      }}>
+                    {openCardId === card.id ? (
+                      <div className="card-preview-back">
                         <div className="card-preview-label">Answer</div>
                         {isEditing ? (
                           <textarea
@@ -854,7 +983,6 @@ export default function DeckContent() {
                               }
                             }}
                             onClick={(e) => e.stopPropagation()}
-                            
                           />
                         ) : (
                           <div className="card-preview-content">
@@ -862,15 +990,65 @@ export default function DeckContent() {
                             {isEditing && <span className="caret">|</span>}
                           </div>
                         )}
-                        <div className="card-preview-meta">
                           <div className="card-preview-tags">
                             <span className="card-preview-tag">Difficulty: {card.difficulty?.toFixed(1) || '0.0'}</span>
                             <span className="card-preview-tag">Stability: {card.stability?.toFixed(1) || '0.0'}</span>
                           </div>
-                          <div className="card-preview-date">
+                        <div className="card-preview-date">
                             Next review: {card.scheduled_date ? formatDateTimeForDisplay(card.scheduled_date) : 'Not scheduled'}
                           </div>
-                        </div>
+                      </div>
+                    ) : (
+                      <div className="card-content-stack">
+                        <span className="card-preview-label">{isEditing ? (editingSide === 'front' ? 'Question' : 'Answer') : 'Question'}</span>
+                        {isEditing ? (
+                          <textarea
+                            className="card-preview-content"
+                            value={editingSide === 'front' ? editCardQuestion : editCardAnswer}
+                            onChange={(e) => {
+                              if (editingSide === 'front') {
+                                setEditCardQuestion(e.target.value);
+                              } else {
+                                setEditCardAnswer(e.target.value);
+                              }
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: 'inherit',
+                              fontFamily: 'inherit',
+                              fontSize: 'inherit',
+                              lineHeight: 'inherit',
+                              padding: '0',
+                              resize: 'none',
+                              minHeight: '100px',
+                              width: '100%',
+                              outline: 'none',
+                              caretColor: 'var(--primary-color)'
+                            }}
+                          />
+                        ) : (
+                          <div className="card-preview-content">
+                            {card.question}
+                            {isEditing && <span className="caret">|</span>}
+                          </div>
+                        )}
+                        {!isEditing && (
+                          <button 
+                            className="card-preview-tag notes-button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedCard(card);
+                              setShowNotesModal(true);
+                            }}
+                          >
+                            Notes
+                          </button>
+                        )}
+                        <span className="card-preview-date">
+                          {card.last_review_date ? `Last reviewed: ${formatDateTimeForDisplay(card.last_review_date)}` : 'Not reviewed yet'}
+                        </span>
                       </div>
                     )}
                   </div>
