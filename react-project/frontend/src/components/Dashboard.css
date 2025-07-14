@@ -120,7 +120,8 @@
     padding: 16px;
     display: flex;
     flex-direction: column;
-    overflow: hidden; /* Prevent content overflow */
+    overflow: hidden; 
+    gap: 0px!important;
 }
 
 .sidebar-bottom {
@@ -3164,11 +3165,10 @@
 
 .block-wrapper {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   position: relative;
-  width: 100%;
-  min-height: 2rem;
-  padding: 0.25rem 0;
+  min-height: 32px;
+  /* No padding-left needed, flex handles spacing */
 }
 
 .block-wrapper.active {
@@ -3177,39 +3177,59 @@
 }
 
 .block-menu-button {
-  position: absolute;
-  left: -2rem;
-  top: 0.5rem;
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
-  color: #F5F5F5;
-  width: 1.5rem;
-  height: 1.5rem;
-  border-radius: 50%;
-  cursor: pointer;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1rem;
-  font-weight: bold;
-  transition: all 0.2s ease;
-  opacity: 0.7;
+  border-radius: 50%;
+  background: #232323;
+  color: #fff;
+  font-size: 20px;
+  margin-right: 8px;
+  border: none;
+  cursor: pointer;
+  transition: background 0.2s;
+  position: static;
+  z-index: 3;
 }
 
-.block-menu-button:hover {
-  background: rgba(255, 255, 255, 0.2);
-  opacity: 1;
-  transform: scale(1.1);
+.block-menu-button:focus {
+  outline: 2px solid #7c83fd;
+}
+
+.block-wrapper {
+  display: flex;
+  align-items: center;
+  min-height: 32px;
 }
 
 .block-content {
-  flex: 1;
-  width: 100%;
-  height: 100%;
-  margin: 0 !important;
-  padding: 0 !important;
+  flex: 1 1 auto;
+  position: relative;
+  min-width: 0;
+}
+
+.block-placeholder.paragraph {
+  font-size: 16px !important;
+  line-height: 1.5 !important;
+  padding: 0 0 0 4px !important;
   display: flex;
-  align-items: stretch;
+  align-items: center;
+  height: 32px;
+}
+
+.block-input.paragraph {
+  font-size: 16px !important;
+  line-height: 1.5 !important;
+  padding: 0 0 0 4px !important;
+  height: 100% !important;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  background: transparent;
+  border: none;
 }
 
 .block-input {
@@ -3243,8 +3263,6 @@
   position: relative !important;
   top: auto !important;
   left: auto !important;
-  height: auto !important;
-  min-height: 2rem !important;
   z-index: auto !important;
 }
 
@@ -3252,12 +3270,12 @@
   font-size: 32px !important;
   line-height: 1.2 !important;
   font-weight: 700 !important;
+  margin: 0 !important;
   color: #F5F5F5;
   position: relative !important;
   top: auto !important;
   left: auto !important;
-  height: auto !important;
-  min-height: 2rem !important;
+  height: 100% !important;
   z-index: auto !important;
 }
 
@@ -3269,8 +3287,6 @@
   position: relative !important;
   top: auto !important;
   left: auto !important;
-  height: auto !important;
-  min-height: 2rem !important;
   z-index: auto !important;
 }
 
@@ -3281,9 +3297,8 @@
   color: #F5F5F5;
   position: relative !important;
   top: auto !important;
+  margin: 0 !important;
   left: auto !important;
-  height: auto !important;
-  min-height: 2rem !important;
   z-index: auto !important;
 }
 
@@ -3492,19 +3507,6 @@
   background: rgba(255, 255, 255, 0.3);
 }
 
-.block-input[contenteditable="true"]:empty:before {
-  content: attr(data-placeholder);
-  color: #888;
-  opacity: 0.7;
-  pointer-events: none;
-  font-style: italic;
-  position: absolute;
-  left: 0;
-  top: 0;
-  width: 100%;
-  display: block;
-}
-
 .block-input[contenteditable="true"]:focus:before {
   opacity: 0.7;
 }
@@ -3545,4 +3547,148 @@
 .subfolder-item .folder-count {
     font-size: 11px;
     color: #666;
+}
+
+.block-wrapper {
+  position: relative;
+}
+
+.block-placeholder {
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: #888;
+  opacity: 0.7;
+  pointer-events: none;
+  font-style: italic;
+  z-index: 1;
+  padding-left: 2px;
+  padding-top: 2px;
+  user-select: none;
+}
+
+.block-input.paragraph:focus + .block-placeholder,
+.block-input.paragraph:not(:empty) + .block-placeholder {
+  display: none;
+}
+
+.block-input.paragraph {
+  position: relative;
+  background: transparent;
+  z-index: 2;
+}
+.block-content {
+  display: block;
+  position: relative;
+  height: auto !important;
+}
+
+.block-wrapper {
+  display: block;
+  position: relative;
+  min-height: 32px;
+  height: auto !important;
+}
+
+.block-input.heading-1,
+.block-placeholder.heading-1 {
+  font-size: 32px !important;
+  line-height: 40px !important;
+  padding-left: 4px !important;
+  font-weight: 700 !important;
+}
+
+.block-input.heading-2,
+.block-placeholder.heading-2 {
+  font-size: 24px !important;
+  line-height: 36px !important;
+  padding-left: 4px !important;
+  font-weight: 600 !important;
+}
+
+.block-input.heading-3,
+.block-placeholder.heading-3 {
+  font-size: 20px !important;
+  line-height: 32px !important;
+  padding-left: 4px !important;
+  font-weight: 600 !important;
+}
+.block-type-tag {
+  position: absolute;
+  left: -110px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  font-size: 0.95rem;
+  color: #aaa;
+  background: rgba(40,40,40,0.85);
+  border-radius: 6px;
+  padding: 4px 12px;
+  font-style: italic;
+  opacity: 0.85;
+  pointer-events: none;
+  transition: opacity 0.2s;
+  user-select: none;
+  white-space: nowrap;
+  min-width: fit-content;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  z-index: 10;
+}
+
+.block-wrapper {
+  position: relative;
+  min-height: 32px;
+  /* No flex or padding-left needed */
+}
+
+.block-input:focus, .block-content:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* If you want a subtle focus style, you can add it here, e.g.:
+.block-input:focus {
+  background: rgba(255,255,255,0.02);
+}
+*/
+
+.block-wrapper *:focus,
+.block-wrapper *:focus:before,
+.block-wrapper *:focus:after,
+[contenteditable]:focus,
+[contenteditable]:focus:before,
+[contenteditable]:focus:after {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+  border-left: none !important;
+  background: none !important;
+}
+
+.block-input,
+.block-input.paragraph,
+.block-input.heading-1,
+.block-input.heading-2,
+.block-input.heading-3 {
+  margin: 0 !important;
+  height: 100% !important;
+  min-height: 100% !important;
+  box-sizing: border-box;
+}
+
+.block-content {
+  display: flex;
+  align-items: stretch;
+  height: 100%;
+}
+
+.block-input {
+  flex: 1 1 auto;
+  height: 100% !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  box-sizing: border-box;
 }
