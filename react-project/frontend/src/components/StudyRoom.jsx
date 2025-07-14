@@ -41,7 +41,7 @@ const phaseMeta = {
 const StudyRoom = () => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isStudyMode, setIsStudyMode] = useState(false);
-  const navigate = useNavigate();
+    const navigate = useNavigate();
   const [tasks, setTasks] = useState(mockTasks);
   const [showPomodoro, setShowPomodoro] = useState(false);
   const [resources, setResources] = useState(mockResources);
@@ -72,7 +72,7 @@ const StudyRoom = () => {
     );
   }, [phase, pomodoroTime, breakTime, longBreakTime]);
 
-  useEffect(() => {
+    useEffect(() => {
     if (!isRunning) return;
     if (timeLeft <= 0) {
       handleTimerComplete();
@@ -151,9 +151,9 @@ const StudyRoom = () => {
     setImportFile(null);
   };
 
-  return (
+    return (
     <div className="study-room">
-      <div className="study-room-header">
+            <div className="study-room-header">
         <div className="buttons-container">
             <div className="header-left">
             <button className="btn-ghost back-button" onClick={() => navigate('/night-owl-flashcards')}>
@@ -164,18 +164,18 @@ const StudyRoom = () => {
             <div className="header-right">
                 <div className="header-controls">
                     <button className="btn-ghost theme-toggle" onClick={() => setIsDarkMode((d) => !d)} aria-label="Toggle theme">
-                    {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+                        {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
                     </button>
                     <button className="btn-ghost" onClick={() => setShowPomodoro(s => !s)} title="Pomodoro Timer">
                       <Timer size={20} />
                     </button>
                     <button className="btn-ghost study-mode-toggle" onClick={() => setIsStudyMode((s) => !s)}>
-                    {isStudyMode ? 'Exit Study Mode' : 'Enter Study Mode'}
+                        {isStudyMode ? 'Exit Study Mode' : 'Enter Study Mode'}
                     </button>
                 </div>
             </div>
-        </div>
-        
+            </div>
+
         <div className="header-center">
           <h1><span className="leaf-emoji">🌱</span>Study Room</h1>
         </div>
@@ -184,13 +184,13 @@ const StudyRoom = () => {
         Get started by choosing what study tool you'd like to work with today.
       </div>
       <div className="study-room-grid">
-        {tools.map((tool, index) => (
+                {tools.map((tool, index) => (
           <div key={index} className="study-room-card" onClick={() => navigate(tool.route)} style={{ cursor: 'pointer' }}>
             {React.cloneElement(tool.icon, { color: tool.color })}
-            <span>{tool.label}</span>
-          </div>
-        ))}
-      </div>
+                        <span>{tool.label}</span>
+                    </div>
+                ))}
+            </div>
       {/* Pinned Notes & Resources Section */}
       <div className="pinned-resources-section">
         <div className="pinned-resources-header">
@@ -232,7 +232,7 @@ const StudyRoom = () => {
             </div>
           ))}
         </div>
-      </div>
+                        </div>
       {/* Import Modal (placeholder) */}
       {showImportModal && (
         <div style={{
@@ -292,7 +292,7 @@ const StudyRoom = () => {
                   />
                 )}
                 {selectedType === 'link' && (
-                  <input
+                <input
                     type="url"
                     placeholder="Paste a link (https://...)"
                     value={importValue}
@@ -352,7 +352,7 @@ const StudyRoom = () => {
               </div>
               <div style={{ width: '100%', height: 6, background: 'rgba(255,255,255,0.1)', borderRadius: 3, overflow: 'hidden', marginBottom: 16 }}>
                 <div style={{ height: '100%', borderRadius: 3, background: phaseMeta[phase].color, width: `${100 - (timeLeft / (phase === 'pomodoro' ? pomodoroTime * 60 : phase === 'break' ? breakTime * 60 : longBreakTime * 60)) * 100}%`, transition: 'width 0.3s' }} />
-              </div>
+                    </div>
               <div style={{ display: 'flex', gap: 12, marginBottom: 8 }}>
                 {isRunning ? (
                   <button className="pomodoro-btn" onClick={handlePause}><Pause size={18} />Pause</button>
@@ -404,11 +404,11 @@ const StudyRoom = () => {
                 ))}
               </ul>
             </div>
-          </div>
+            </div>
         </div>
       )}
-    </div>
-  );
+        </div>
+    );
 };
 
 export default StudyRoom; 
