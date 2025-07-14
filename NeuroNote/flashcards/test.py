@@ -48,6 +48,8 @@ class CardTestCase(APITestCase):
         print(response.data)
 
     def test_get_cards(self):
+        self.url = reverse('get-all-cards')
+        print(f'User card: {self.cards}')
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         print(response.data)
@@ -58,7 +60,7 @@ class CardTestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         print(f'response data: {response.data}')
 
-    def test_review_card(self):
+    def test_review_card_times(self):
         card = Card.objects.get(id=self.cards.id)
         print(f'Before update: {card.scheduled_date}')
 

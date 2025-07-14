@@ -81,7 +81,18 @@ class DeckCollection(APIView):
 class CardCollection(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, deck_id):
+    def get(self, request, deck_id=None):
+        if not deck_id:
+            try:
+                cards = Card.objects.filter(card_deck__user=request.user)
+                return Response(CardSerializer(CardSerializer(cards), many=True).data, status=status.HTTP_200_OK)
+            except AttributeError as e:
+                import traceback
+                print(traceback.format_exc())
+                return Response({f"Message: Attribute error - {e}"}, status=status.HTTP_404_NOT_FOUND)
+            except Exception as e:
+                return Response({f"Message: Error occured - {e}"}, status=status.HTTP_400_BAD_REQUEST)
+        
         cards = Card.objects.filter(card_deck__user=request.user, card_deck__id=deck_id)
         serialized = CardSerializer(cards, many=True)
 
@@ -151,13 +162,11 @@ class CardCollection(APIView):
 def review_card(request):
     deck_id = request.data.get('deck_id')
     card_id = request.data.get('card_id')
-    all_cards = request.data.get('all_cards')
 
     deck = Deck.objects.filter(user=request.user, id=deck_id).first()
-    
     if not deck:
         return Response({"Message": "Deck not found"}, status=status.HTTP_404_NOT_FOUND)
-
+    
     card = Card.objects.filter(card_deck=deck, id=card_id).first()
     if not card:
         return Response({"Message": "Card not found"}, status=status.HTTP_404_NOT_FOUND)
@@ -167,9 +176,7 @@ def review_card(request):
     except (TypeError, ValueError):
         return Response({"Message": "Invalid quality rating"}, status=status.HTTP_400_BAD_REQUEST)
     
-    
     card.update_sm21(quality)
-
     # Assigning Achievements
     user, created = UserAchievements.objects.get_or_create(user=request.user)
     # knowledge_engineer(user=user, deck=deck)
