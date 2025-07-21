@@ -9,9 +9,9 @@ from authentication.models import AuthUser
 from achievements.models import UserAchievements
 from achievements.services import knowledge_engineer, memory_architect, deck_destroyer
 from django.utils import timezone
-from folders.models import Folder
 from .services import check_past_week_cards, num_of_cards
-from zoneinfo import ZoneInfo
+from django.db.models import Q
+from datetime import timedelta
 
 class DeckCollection(APIView):
     permission_classes = [IsAuthenticated]
@@ -38,14 +38,12 @@ class DeckCollection(APIView):
         user = AuthUser.objects.filter(email=request.user.email).first()
         subject = request.data.get('subject')
 
-        if Deck.objects.filter(title=title).exists():
-            return Response({"Message": "Already have card with title"}, status=status.HTTP_400_BAD_REQUEST)
+        if Deck.objects.filter(title__iexact=title).exists():
+            return Response({"Message": "Already have card with title"}, status=status.HTTP_406_NOT_ACCEPTABLE)
         else:
-            user_collection = Deck(title=title, user=user, subject=subject)
-            user_collection.save()
+            user_collection = Deck.objects.create(title=title, user=user, subject=subject)
         
         serialized = DeckSerializer(user_collection)
-
         deck_destroyer(user=user)
 
         return Response(serialized.data, status=status.HTTP_200_OK)
@@ -58,10 +56,12 @@ class DeckCollection(APIView):
         title = request.data.get('title')
         subject = request.data.get('subject')
 
-        deck.title = title
-        deck.subject = subject
-        deck.save()
+        if title:
+            deck.title = title
+        if subject:
+            deck.subject = subject
 
+        deck.save()
         serialized = DeckSerializer(deck)
 
         return Response(serialized.data, status=status.HTTP_200_OK)
@@ -82,38 +82,32 @@ class CardCollection(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request, deck_id=None):
-        if not deck_id:
-            try:
-                cards = Card.objects.filter(card_deck__user=request.user)
-                return Response(CardSerializer(CardSerializer(cards), many=True).data, status=status.HTTP_200_OK)
-            except AttributeError as e:
-                import traceback
-                print(traceback.format_exc())
-                return Response({f"Message: Attribute error - {e}"}, status=status.HTTP_404_NOT_FOUND)
-            except Exception as e:
-                return Response({f"Message: Error occured - {e}"}, status=status.HTTP_400_BAD_REQUEST)
-        
-        cards = Card.objects.filter(card_deck__user=request.user, card_deck__id=deck_id)
+        if deck_id:
+            cards = Card.objects.filter(card_deck__user=request.user, card_deck__id=deck_id)
+            serialized = CardSerializer(cards, many=True)
+            return Response(serialized.data, status=status.HTTP_200_OK)
+
+        cards = Card.objects.filter(card_deck__user=request.user)
         serialized = CardSerializer(cards, many=True)
 
         return Response(serialized.data, status=status.HTTP_200_OK)
 
+    # Test this
     def post(self, request):
         question = request.data.get('question')
         answer = request.data.get('answer')
         deck_id = request.data.get('deck_id')
         scheduled_date = request.data.get('scheduled_date')
+        deck = Deck.objects.get(user=request.user, id=deck_id)
 
-        user_deck = Deck.objects.filter(user=request.user, id=deck_id).first()
-
-        if Card.objects.filter(card_deck=user_deck, question=question).exists():
+        if Card.objects.filter(card_deck=deck, question__iexact=question).exists():
             return Response({"Message": "Card already exists"}, status=status.HTTP_406_NOT_ACCEPTABLE)
         
         user_card = Card.objects.create(
             question=question,
             answer=answer,
-            card_deck=user_deck,
-            scheduled_date=scheduled_date
+            card_deck=deck,
+            scheduled_date=(timezone.now() + timedelta(hours=1)).isoformat() if not scheduled_date else scheduled_date
             )
                 
         serialized = CardSerializer(user_card)
@@ -146,17 +140,23 @@ class CardCollection(APIView):
 
         return Response(serialized.data, status=status.HTTP_200_OK)
     
-    def delete(self, request, deck_id, card_id):
-        deck = Deck.objects.filter(user=request.user, id=deck_id).first()
+    def delete(self, request, deck_id=None, card_id=None):
+        if request.query_params.get('bulk_delete'):
+            ids = request.query_params.get('bulk_delete')
+            ids_nums = [int(id.strip()) for id in ids.split(',') if id.strip().isdigit()]
+            Card.objects.filter(card_deck__user=request.user, id__in=ids_nums).delete()
+            return Response({'Message': 'Cards successfully deleted'}, status=status.HTTP_200_OK)
 
-        if not Card.objects.filter(card_deck=deck, id=card_id).exists():
+        if not Card.objects.filter(card_deck__user=request.user, card_deck=deck_id, id=card_id).exists():
             return Response({"Message": 'Card doesnt exists'}, status=status.HTTP_404_NOT_FOUND)
         
-        card = Card.objects.filter(card_deck=deck, id=card_id).first()
+        card = Card.objects.filter(card_deck__user=request.user, card_deck=deck_id, id=card_id).first()
         card.delete()
 
         return Response({"Message": "Successfully deleted"}, status=status.HTTP_200_OK)
     
+
+        
 @api_view(['PUT'])
 @permission_classes([IsAuthenticated])
 def review_card(request):
@@ -182,32 +182,23 @@ def review_card(request):
     # knowledge_engineer(user=user, deck=deck)
     memory_architect(user=user, deck=deck)
 
-    reviewed_cards = check_past_week_cards()
-    finalized_data = {
-        'Message': 'Card reviewed and updated successfully',
-        'reviewed_dates': reviewed_cards,
-    }
-    return Response(finalized_data, status=status.HTTP_200_OK)
+    return Response({'Message': 'Card reviewed and updated successfully'}, status=status.HTTP_200_OK)
 
 class DueCardsView(APIView):
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, deck_id):
-        """Get only due cards for a specific deck"""
-        if not Deck.objects.filter(user=request.user, id=deck_id).exists():
-            return Response({"Message": "Deck not found"}, status=status.HTTP_404_NOT_FOUND)
+    def get(self, request):
+        filters = Q(card_deck__user=request.user)
+
+        if request.query_params.get('due_soon', 'false').lower() == 'true':
+            filters &= Q(scheduled_date__lte=timezone.now() + timedelta(hours=1))
+        else:
+            filters &= Q(scheduled_date__lte=timezone.now())
+          
+        due_cards = Card.objects.filter(filters)
+
+        if not due_cards:
+            return Response({"Message": "No cards due for review"}, status=status.HTTP_200_OK)
         
-        today = timezone.now()
-  
-        due_cards = Card.objects.filter(
-            card_deck__user=request.user,
-            card_deck__id=deck_id
-        ).filter(
-            scheduled_date__lte=today
-        ) | Card.objects.filter(
-            card_deck__user=request.user,
-            card_deck__id=deck_id,
-            scheduled_date__isnull=True
-        )
         serialized = CardSerializer(due_cards, many=True)
         return Response(serialized.data, status=status.HTTP_200_OK)

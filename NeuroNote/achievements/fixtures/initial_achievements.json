@@ -1,0 +1,82 @@
+[
+  {
+    "model": "achievements.achievements",
+    "pk": 1,
+    "fields": {
+      "name": "The Journey Begins",
+      "description": "Complete your first study session",
+      "tier": "Bronze",
+      "family": "General"
+    }
+  },
+  {
+    "model": "achievements.achievements",
+    "pk": 2,
+    "fields": {
+      "name": "Knowledge Engineer",
+      "description": "Review all cards in a deck with 10+ cards",
+      "tier": "Silver",
+      "family": "Flashcards"
+    }
+  },
+  {
+    "model": "achievements.achievements",
+    "pk": 3,
+    "fields": {
+      "name": "Memory Architect",
+      "description": "Maintain 90%+ accuracy on a deck for 7 days",
+      "tier": "Gold",
+      "family": "Flashcards"
+    }
+  },
+  {
+    "model": "achievements.achievements",
+    "pk": 4,
+    "fields": {
+      "name": "Deck Destroyer",
+      "description": "Create 10 different study decks",
+      "tier": "Bronze",
+      "family": "Flashcards"
+    }
+  },
+  {
+    "model": "achievements.achievements",
+    "pk": 5,
+    "fields": {
+      "name": "Study Streak",
+      "description": "Study for 7 consecutive days",
+      "tier": "Silver",
+      "family": "Consistency"
+    }
+  },
+  {
+    "model": "achievements.achievements",
+    "pk": 6,
+    "fields": {
+      "name": "Quiz Master",
+      "description": "Score 95%+ on any quiz",
+      "tier": "Gold",
+      "family": "Quizzes"
+    }
+  },
+  {
+    "model": "achievements.achievements",
+    "pk": 7,
+    "fields": {
+      "name": "Team Player",
+      "description": "Join your first study group",
+      "tier": "Bronze",
+      "family": "Study Groups"
+    }
+  },
+  {
+    "model": "achievements.achievements",
+    "pk": 8,
+    "fields": {
+      "name": "Night Owl",
+      "description": "Study after 10 PM for 5 consecutive nights",
+      "tier": "Silver",
+      "family": "Consistency"
+    }
+  }
+] 
