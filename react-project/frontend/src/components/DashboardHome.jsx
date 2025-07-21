@@ -34,9 +34,8 @@ const DashboardHome = () => {
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/';
         const response = await makeAuthenticatedRequest(`${apiUrl}achievements/user/`);
         if (!response) throw new Error('No response from server');
-        if (!response.ok) throw new Error(await response.text());
-        const data = await response.json();
-        setAchievements(data);
+        if (response.status !== 200) throw new Error(response.data?.message || 'Failed to fetch achievements');
+        setAchievements(response.data);
       } catch (err) {
         setAchievementsError(err.message || 'Failed to fetch achievements');
         // Fallback to empty array if API fails
@@ -169,11 +168,11 @@ const DashboardHome = () => {
 
     // Take first 3 achievements and format them for display
     return achievements.slice(0, 3).map(achievement => ({
-      name: achievement.name || achievement.title || "Achievement",
+      name: achievement.name || "Achievement",
       description: achievement.description || "Complete this achievement",
       type: getAchievementType(achievement.family),
       tier: achievement.tier || "general",
-      progress: achievement.progress || 0,
+      progress: 100, // All achievements from backend are considered completed
       isNew: false // You could add logic to determine if achievement is new
     }));
   };
@@ -250,92 +249,6 @@ const DashboardHome = () => {
           <div className="xp-next">
             <span>{nextLevelXp - xp} XP to Level {level + 1}</span>
           </div>
-        </div>
-      </div>
-
-      {/* Achievements Section */}
-      <div className="dashboard-achievements">
-        <div className="section-header">
-          <div className="achievements-header">
-            <div className="achievements-title">
-              <h2><Trophy size={24} /> Achievements</h2>
-              <p>Track your learning milestones and accomplishments</p>
-            </div>
-          </div>
-          <button 
-            className="view-achievements-btn"
-            onClick={() => navigate('/achievements')}
-          >
-            View Achievements
-          </button>
-        </div>
-        <div className="achievements-grid">
-          {getDisplayAchievements().map((achievement, index) => (
-            <div key={index} className={`achievement-card ${achievement.isNew ? 'new' : ''}`}>
-              <div className="achievement-icon" style={{ background: getAchievementTier(achievement.tier) }}>
-                {getAchievementIcon(achievement.type)}
-                {achievement.isNew && <Sparkles className="sparkle" />}
-              </div>
-              <h3>{achievement.name}</h3>
-              <p>{achievement.description}</p>
-              <div className="achievement-progress">
-                <div className="progress-bar">
-                  <div 
-                    className="progress-fill" 
-                    style={{ width: `${achievement.progress}%` }}
-                  />
-                </div>
-                <span>{achievement.progress}%</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Collaborations Section */}
-      <div className="dashboard-collaborations">
-        <div className="section-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <h2 style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Users size={24} /> Study Groups</h2>
-            <p>Connect with peers and study together</p>
-          </div>
-          <button
-            className="view-study-groups-btn"
-            style={{ marginLeft: 'auto', padding: '8px 16px', borderRadius: '6px', background: '#4ECDC4', color: '#fff', border: 'none', fontWeight: 500, fontSize: '1rem', cursor: 'pointer' }}
-            onClick={() => navigate('/study-groups')}
-          >
-            View Study Groups
-          </button>
-        </div>
-        <div className="collaborations-grid">
-          {collaborations.map((collab, index) => (
-            <div key={index} className="collaboration-card">
-              <div className="collab-header">
-                <div className="collab-avatars">
-                  {collab.members.map((member, i) => (
-                    <div key={i} className="collab-avatar" style={{ background: member.color }}>
-                      {member.name[0]}
-                    </div>
-                  ))}
-                </div>
-                {collab.isLive && (
-                  <span className="live-badge">
-                    <Clock size={14} /> Live
-                  </span>
-                )}
-              </div>
-              <h3>{collab.name}</h3>
-              <p>{collab.description}</p>
-              <div className="collab-actions">
-                <button className="join-btn">
-                  <Users size={16} /> Join Session
-                </button>
-                <button className="message-btn">
-                  <MessageSquare size={16} /> Message
-                </button>
-              </div>
-            </div>
-          ))}
         </div>
       </div>
 

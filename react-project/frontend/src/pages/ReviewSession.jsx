@@ -19,12 +19,8 @@ function isTokenExpired(token) {
 }
 
 const ReviewSession = () => {
-  console.log('ReviewSession component rendered');
   const navigate = useNavigate();
   const location = useLocation();
-  
-  console.log('ReviewSession location:', location);
-  console.log('ReviewSession location.state:', location.state);
   
   // State for review session
   const [reviewCards, setReviewCards] = useState([]);
@@ -63,11 +59,11 @@ const ReviewSession = () => {
       const response = await api.get(`/flashcards/deck/${deckId}/`);
       if (response.status === 200) {
         const deckData = response.data;
-        console.log('ReviewSession: Setting selectedDeck from query:', deckData);
+
         return deckData;
       }
     } catch (err) {
-      console.error('Error fetching deck details:', err);
+      
     }
     return null;
   };
@@ -84,7 +80,7 @@ const ReviewSession = () => {
       sessionStorage.setItem('jwt_token', response.data.access);
       return true;
     } catch (error) {
-      console.error('Error refreshing token:', error);
+      
       return false;
     }
   };
@@ -119,7 +115,7 @@ const ReviewSession = () => {
     const initializeReviewSession = async () => {
       try {
         setLoading(true);
-        console.log('Set loading to true');
+
         
         // Get selected deck from location state or query params
         const deckFromState = location.state?.selectedDeck;
@@ -131,7 +127,7 @@ const ReviewSession = () => {
         let deckToUse = null;
         
         if (deckFromState) {
-          console.log('ReviewSession: Setting selectedDeck from state:', deckFromState);
+  
           setSelectedDeck(deckFromState);
           deckToUse = deckFromState;
         } else if (deckFromQuery) {
@@ -140,15 +136,15 @@ const ReviewSession = () => {
             const token = sessionStorage.getItem('jwt_token');
             const deckData = await fetchDeckDetails(deckFromQuery, token);
             if (deckData) {
-              console.log('ReviewSession: Setting selectedDeck from query:', deckData);
+      
               setSelectedDeck(deckData);
               deckToUse = deckData;
             }
           } catch (err) {
-            console.error('Error fetching deck details:', err);
+            
           }
         } else {
-          console.log('ReviewSession: No deck selected, will fetch all cards');
+  
         }
         
         const token = sessionStorage.getItem('jwt_token');
@@ -159,17 +155,19 @@ const ReviewSession = () => {
         }
         
         // Fetch cards with the deck information
-        console.log('ReviewSession: Fetching cards with deckToUse:', deckToUse);
-        const cards = await fetchReviewCards(token, deckToUse);
+
+
+        const cards = await fetchReviewCards(token, deckToUse, includeDueSoonFromState);
+        
         
         if (!cards || cards.length === 0) {
-          console.log('ReviewSession: No cards found, setting error and redirecting');
+  
           setError('No cards for review today');
           setTimeout(() => navigate('/study-room'), 2000);
           return;
         }
         
-        console.log('ReviewSession: Cards found, setting up session');
+
         setReviewCards(cards);
         setCurrentReviewCardIndex(0);
         setIsFlipped(false);
@@ -178,7 +176,7 @@ const ReviewSession = () => {
         setIsPaused(false);
         setLoading(false);
       } catch (err) {
-        console.error('Error initializing review session:', err);
+        
         setError(err.message);
         setLoading(false);
       }
@@ -228,58 +226,62 @@ const ReviewSession = () => {
     return () => window.removeEventListener('keydown', handleKeyPress);
   }, [showQuiz]);
 
-  const fetchReviewCards = async (token, deckToUse = null) => {
+  const fetchReviewCards = async (token, deckToUse = null, includeDueSoonParam = null) => {
     try {
       const deckId = deckToUse?.id || selectedDeck?.id;
-      console.log('fetchReviewCards - deckToUse:', deckToUse);
-      console.log('fetchReviewCards - selectedDeck:', selectedDeck);
-      console.log('fetchReviewCards - deckId:', deckId);
-      console.log('fetchReviewCards - includeDueSoon:', includeDueSoon);
+      const shouldIncludeDueSoon = includeDueSoonParam !== null ? includeDueSoonParam : includeDueSoon;
       
       if (!deckId) {
-        console.log('No specific deck selected, fetching all due cards from all decks');
-        // If no specific deck is selected, we need to fetch all cards and filter them
-        // This is a fallback since the backend doesn't have an endpoint for all due cards across decks
+
+
+        // Use the new backend endpoint that handles due cards across all decks
+        const params = shouldIncludeDueSoon ? { due_soon: 'true' } : {};
+
+        
         try {
-          const response = await api.get('/flashcards/deck/');
-          const decks = response.data.decks || [];
+          const response = await api.get('/flashcards/cards/due/', { params });
           
-          let allDueCards = [];
-          for (const deck of decks) {
-            try {
-              const deckResponse = await api.get(`/flashcards/cards/${deck.id}/due/`);
-              if (deckResponse.data && deckResponse.data.length > 0) {
-                allDueCards = allDueCards.concat(deckResponse.data);
+          if (response.data && response.data.length > 0) {
+    
+            // Shuffle the cards for random review order
+            return response.data.sort(() => Math.random() - 0.5);
+          } else {
+    
+            return [];
+          }
+        } catch (error) {
+          
+          
+          // If it's a 401 error, try to refresh token and retry
+          if (error.response?.status === 401) {
+            const refreshSuccess = await refreshToken();
+            if (refreshSuccess) {
+              try {
+                const retryResponse = await api.get('/flashcards/cards/due/', { params });
+                
+                if (retryResponse.data && retryResponse.data.length > 0) {
+          
+                  return retryResponse.data.sort(() => Math.random() - 0.5);
+                } else {
+          
+                  return [];
+                }
+              } catch (retryError) {
+                
               }
-            } catch (deckError) {
-              console.error(`Error fetching cards for deck ${deck.id}:`, deckError);
             }
           }
           
-          console.log('All due cards from all decks:', allDueCards.length);
-          
-          if (!allDueCards || allDueCards.length === 0) {
-            console.log('No due cards found in any deck');
-            return [];
-          }
-          
-          // Shuffle the cards for random review order
-          const shuffledCards = allDueCards.sort(() => Math.random() - 0.5);
-          return shuffledCards;
-        } catch (allDecksError) {
-          console.error('Error fetching all decks:', allDecksError);
           return [];
         }
       }
 
       // For specific deck, we need to fetch all cards and filter them based on includeDueSoon
-      console.log('fetchReviewCards - Fetching all cards for deck:', deckId);
       const response = await api.get(`/flashcards/cards/${deckId}/`);
       const allCards = response.data;
-      console.log('fetchReviewCards - All cards from API:', allCards);
 
       if (!allCards || allCards.length === 0) {
-        console.log('No cards found for this deck');
+
         return [];
       }
 
@@ -292,16 +294,14 @@ const ReviewSession = () => {
         const isDueSoon = isBackendDateTimeDueSoon(card.scheduled_date);
         
         if (isOverdue || isDueNow) return true;
-        if (includeDueSoon && isDueSoon) return true;
+        if (shouldIncludeDueSoon && isDueSoon) return true;
         
         return false;
       });
 
-      console.log('Filtered due cards:', dueCards.length);
-      console.log('includeDueSoon enabled:', includeDueSoon);
 
       if (!dueCards || dueCards.length === 0) {
-        console.log('No due cards found for this deck');
+
         return [];
       }
 
@@ -309,7 +309,7 @@ const ReviewSession = () => {
       const shuffledCards = dueCards.sort(() => Math.random() - 0.5);
       return shuffledCards;
     } catch (error) {
-      console.error('Error fetching review cards:', error);
+      
       
       // If it's a 401 error, try to refresh token and retry
       if (error.response?.status === 401) {
@@ -318,27 +318,20 @@ const ReviewSession = () => {
           try {
             const deckId = deckToUse?.id || selectedDeck?.id;
             if (!deckId) {
-              // Retry fetching all decks
-              const response = await api.get('/flashcards/deck/');
-              const decks = response.data.decks || [];
-              
-              let allDueCards = [];
-              for (const deck of decks) {
-                try {
-                  const deckResponse = await api.get(`/flashcards/cards/${deck.id}/due/`);
-                  if (deckResponse.data && deckResponse.data.length > 0) {
-                    allDueCards = allDueCards.concat(deckResponse.data);
-                  }
-                } catch (deckError) {
-                  console.error(`Error fetching cards for deck ${deck.id}:`, deckError);
+              // Retry fetching all due cards using the new endpoint
+              const params = shouldIncludeDueSoon ? { due_soon: 'true' } : {};
+              try {
+                const response = await api.get('/flashcards/cards/due/', { params });
+                
+                if (response.data && response.data.length > 0) {
+                  return response.data.sort(() => Math.random() - 0.5);
+                } else {
+                  return [];
                 }
-              }
-              
-              if (!allDueCards || allDueCards.length === 0) {
+              } catch (retryError) {
+                
                 return [];
               }
-              
-              return allDueCards.sort(() => Math.random() - 0.5);
             }
             
             // Retry fetching all cards for specific deck
@@ -357,7 +350,7 @@ const ReviewSession = () => {
               const isDueSoon = isBackendDateTimeDueSoon(card.scheduled_date);
               
               if (isOverdue || isDueNow) return true;
-              if (includeDueSoon && isDueSoon) return true;
+              if (shouldIncludeDueSoon && isDueSoon) return true;
               
               return false;
             });
@@ -368,7 +361,7 @@ const ReviewSession = () => {
             
             return dueCards.sort(() => Math.random() - 0.5);
           } catch (retryError) {
-            console.error('Error fetching review cards after token refresh:', retryError);
+            
           }
         }
       }
@@ -383,10 +376,13 @@ const ReviewSession = () => {
     const currentCard = reviewCards[currentReviewCardIndex];
     
     try {
+      // Use the card's deck ID instead of selectedDeck.id
+      const deckId = selectedDeck?.id || currentCard.card_deck;
+      
       const response = await api.put('/flashcards/review/', {
         card_id: currentCard.id,
         quality: rating,
-        deck_id: selectedDeck.id
+        deck_id: deckId
       });
 
       if (response.status === 200) {
@@ -404,10 +400,10 @@ const ReviewSession = () => {
           [currentCard.id]: rating
         }));
         
-        console.log('Rating submitted:', { cardId: currentCard.id, rating });
+
       }
     } catch (error) {
-      console.error('Error submitting review:', error);
+      
       // If it's a 401 error, try to refresh the token
       if (error.response?.status === 401) {
         try {
@@ -416,10 +412,11 @@ const ReviewSession = () => {
             const refreshResponse = await api.post('/auth/token/refresh/', { refresh });
             sessionStorage.setItem('jwt_token', refreshResponse.data.access);
             // Retry the rating submission
+            const deckId = selectedDeck?.id || currentCard.card_deck;
             const retryResponse = await api.put('/flashcards/review/', {
               card_id: currentCard.id,
               quality: rating,
-              deck_id: selectedDeck.id
+              deck_id: deckId
             });
             
             if (retryResponse.status === 200) {
@@ -435,7 +432,7 @@ const ReviewSession = () => {
                 [currentCard.id]: rating
               }));
               
-              console.log('Rating submitted after token refresh:', { cardId: currentCard.id, rating });
+      
             }
           } else {
             setError('Session expired. Please log in again.');
@@ -443,7 +440,7 @@ const ReviewSession = () => {
             return;
           }
         } catch (refreshError) {
-          console.error('Error refreshing token:', refreshError);
+          
           setError('Session expired. Please log in again.');
           setTimeout(() => navigate('/signin'), 2000);
           return;
@@ -651,7 +648,7 @@ const ReviewSession = () => {
                 key={rating}
                 className={`rating-btn rating-${rating}`}
                 onClick={() => {
-                  console.log(`Rating button ${rating} clicked`);
+          
                   handleRatingSelect(rating);
                 }}
                 style={{ borderBottomColor: ratingColors[rating] }}

@@ -1,0 +1,465 @@
+/* FolderView.css - Night Owl Theme */
+
+.folder-view {
+  padding: 24px;
+  min-height: 100vh;
+  background: transparent;
+  color: #fff;
+  font-family: 'Inter', sans-serif;
+  position: relative;
+  z-index: 1;
+}
+
+/* Folder Header */
+.folder-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 32px;
+  padding: 24px;
+  background: rgba(37, 37, 37, 0.7);
+  backdrop-filter: blur(10px);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+}
+
+.folder-info h2 {
+  font-size: 2rem;
+  font-weight: 700;
+  margin: 0 0 8px 0;
+  color: #fff;
+}
+
+.folder-info p {
+  color: #888;
+  font-size: 1rem;
+  margin: 0;
+}
+
+.folder-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* View Mode Toggle */
+.view-mode-toggle {
+  display: flex;
+  background: rgba(42, 42, 42, 0.7);
+  border-radius: 8px;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.view-mode-btn {
+  background: transparent;
+  border: none;
+  color: #888;
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.view-mode-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.view-mode-btn.active {
+  background: #4ECDC4;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(78, 205, 196, 0.3);
+}
+
+/* New Item Button */
+.new-item-container {
+  position: relative;
+}
+
+.new-item-btn {
+  background: linear-gradient(135deg, #4ECDC4 0%, #45B7AF 100%);
+  color: #fff;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(78, 205, 196, 0.2);
+}
+
+.new-item-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(78, 205, 196, 0.3);
+}
+
+.new-item-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  background: rgba(42, 42, 42, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+  min-width: 200px;
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.new-item-dropdown button {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: #fff;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.9rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.new-item-dropdown button:last-child {
+  border-bottom: none;
+}
+
+.new-item-dropdown button:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.new-item-dropdown button img {
+  width: 16px;
+  height: 16px;
+  filter: brightness(0) invert(1);
+}
+
+/* Folder Items */
+.folder-items {
+  display: grid;
+  gap: 16px;
+}
+
+.folder-items.grid {
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+
+.folder-items.list {
+  grid-template-columns: 1fr;
+}
+
+.folder-item {
+  background: rgba(37, 37, 37, 0.7);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.folder-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(78, 205, 196, 0.05) 0%, transparent 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.folder-item:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  border-color: rgba(78, 205, 196, 0.3);
+}
+
+.folder-item:hover::before {
+  opacity: 1;
+}
+
+.folder-item.document {
+  border-left: 4px solid #4ECDC4;
+}
+
+.folder-item.deck {
+  border-left: 4px solid #FFD93D;
+}
+
+.folder-item.quiz {
+  border-left: 4px solid #FF6B6B;
+}
+
+/* Item Icon */
+.item-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(42, 42, 42, 0.7);
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.item-icon svg {
+  width: 24px;
+  height: 24px;
+  color: #4ECDC4;
+}
+
+.item-icon img {
+  width: 24px;
+  height: 24px;
+  filter: brightness(0) invert(1);
+}
+
+.folder-item.deck .item-icon {
+  background: rgba(255, 217, 61, 0.1);
+}
+
+.folder-item.deck .item-icon img {
+  filter: brightness(0) invert(1) sepia(1) saturate(5) hue-rotate(45deg);
+}
+
+.folder-item.quiz .item-icon {
+  background: rgba(255, 107, 107, 0.1);
+}
+
+.folder-item.quiz .item-icon img {
+  filter: brightness(0) invert(1) sepia(1) saturate(5) hue-rotate(320deg);
+}
+
+/* Item Content */
+.item-content {
+  flex: 1;
+  position: relative;
+  z-index: 1;
+}
+
+.item-title {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #fff;
+  margin: 0 0 4px 0;
+  line-height: 1.4;
+}
+
+.item-subtitle {
+  color: #888;
+  font-size: 0.9rem;
+  margin: 0;
+  line-height: 1.4;
+}
+
+/* Item Actions */
+.item-actions {
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.folder-item:hover .item-actions {
+  opacity: 1;
+}
+
+.item-action-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  padding: 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.item-action-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.05);
+}
+
+.item-action-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Empty State */
+.empty-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  text-align: center;
+}
+
+.empty-state-content {
+  max-width: 400px;
+}
+
+
+.empty-state-icon {
+  font-size: 4rem;
+  margin-bottom: 24px;
+  opacity: 0.5;
+}
+
+.empty-state h3 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #fff;
+  margin: 0 0 12px 0;
+}
+
+.empty-state p {
+  color: #888;
+  font-size: 1rem;
+  margin: 0 0 32px 0;
+  line-height: 1.5;
+}
+
+.empty-state-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 24px;
+}
+
+.empty-state-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
+
+.empty-state-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: translateY(-2px);
+}
+
+.empty-state-btn.primary {
+  background: linear-gradient(135deg, #4ECDC4 0%, #45B7AF 100%);
+  border-color: #4ECDC4;
+  box-shadow: 0 4px 12px rgba(78, 205, 196, 0.2);
+}
+
+.empty-state-btn.primary:hover {
+  box-shadow: 0 6px 20px rgba(78, 205, 196, 0.3);
+}
+
+.empty-state-btn img {
+  width: 16px;
+  height: 16px;
+  filter: brightness(0) invert(1);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .folder-view {
+    padding: 16px;
+  }
+
+  .folder-header {
+    flex-direction: column;
+    gap: 16px;
+    align-items: flex-start;
+  }
+
+  .folder-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .folder-items.grid {
+    grid-template-columns: 1fr;
+  }
+
+  .empty-state-actions {
+    flex-direction: column;
+  }
+
+  .empty-state-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* Loading States */
+.folder-view.loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.folder-item {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.folder-item:nth-child(1) { animation-delay: 0.1s; }
+.folder-item:nth-child(2) { animation-delay: 0.2s; }
+.folder-item:nth-child(3) { animation-delay: 0.3s; }
+.folder-item:nth-child(4) { animation-delay: 0.4s; }
+.folder-item:nth-child(5) { animation-delay: 0.5s; }
+
+/* Scrollbar Styling */
+.folder-view::-webkit-scrollbar {
+  width: 8px;
+}
+
+.folder-view::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+}
+
+.folder-view::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+}
+
+.folder-view::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+} 
