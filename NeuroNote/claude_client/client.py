@@ -8,6 +8,9 @@ from rest_framework import status
 from flashcards.models import Card, Deck
 from datetime import date
 from .services import clean_claude_response
+from rest_framework.decorators import permission_classes, api_view
+import json
+import tiktoken
 
 client = anthropic.Anthropic(
     api_key='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'
@@ -117,6 +120,62 @@ class CardsGen(APIView):
 
             return Response({'Cards': cards}, status=status.HTTP_200_OK)
         except Exception as e:
+            return Response({'Error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def generate_quiz(request):
+    prompt = request.data.get('prompt')
+    if not prompt:
+        return Response({'Message': 'Requires prompt'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        message = client.messages.create(
+            model="claude-3-7-sonnet-20250219",
+            max_tokens=1000,
+            temperature=0.7,
+            system = """Generate a quiz with as many multiple choice questions as needed based on the user’s prompt.
+            Format each question as JSON in the following structure:
+            {
+            "questions": [
+                {
+                "question": "What is Django?",
+                "answer_type": "mc",
+                "choices": [
+                    {"text": "A JavaScript framework", "is_correct": false},
+                    {"text": "A Python web framework", "is_correct": true},
+                    {"text": "A database management system", "is_correct": false},
+                    {"text": "A front-end design tool", "is_correct": false}
+                ]
+                }
+            ]
+            }
+            Return only the JSON object. No explanations or extra text. And make sure nothings has missing values/information""",
+            messages=[
+                {
+                    "role": "user",
+                    "content": [{"type": "text", "text": prompt}]
+                }
+            ]
+        )
+        encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
+        raw_output = message.content
+        text_output = "".join(
+            block.text for block in raw_output if getattr(block, 'type', "") == 'text'
+        )
+
+        cleaned_text = text_output.strip()
+
+        if cleaned_text.startswith("```json"):
+            cleaned_text = cleaned_text[len("```json"):].strip()
+
+        if cleaned_text.endswith("```"):
+            cleaned_text = cleaned_text[:-3].strip()
+        print(f"Cleaned text: {cleaned_text}")
+        data = json.loads(text_output)
+
+        return Response(data, status=status.HTTP_200_OK)
+    except Exception as e:
             return Response({'Error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
         
 def cards_to_quiz(user_answers):

@@ -6,9 +6,8 @@ def check_past_week_cards():
     cards = ReviewLog.objects.filter(
         card__last_review_date__gte=timezone.now() - timedelta(days=7)
         ).values_list('card__last_review_date', flat=True)
-    print(f'cards: {cards}')
 
-    return cards
+    return [card.isoformat() for card in cards]
 
 def num_of_cards(deck):
     num = Card.objects.filter(card_deck=deck).count()
