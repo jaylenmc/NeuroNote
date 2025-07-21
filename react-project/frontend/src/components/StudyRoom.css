@@ -947,6 +947,7 @@
   transition: transform 0.2s;
   padding: 24px;
   display: flex;
+  height: 100%;
   align-items: center;
   gap: 12px;
   cursor: pointer;

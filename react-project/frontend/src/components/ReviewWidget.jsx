@@ -89,7 +89,7 @@ const ReviewWidget = ({ decks = [], selectedDeckId, setSelectedDeckId }) => {
   const fetchCards = async () => {
     try {
       setLoading(true);
-      console.log('Fetching cards in ReviewWidget, decks from props:', decks);
+  
 
       // Fetch cards for each deck
       const allCards = [];
@@ -97,7 +97,7 @@ const ReviewWidget = ({ decks = [], selectedDeckId, setSelectedDeckId }) => {
         try {
           const cardsResponse = await api.get(`/flashcards/cards/${deck.id}/`);
           const deckCards = cardsResponse.data;
-          console.log(`Cards for deck ${deck.id}:`, deckCards);
+      
           
           // Handle different possible card response structures
           let cards = [];
@@ -141,7 +141,7 @@ const ReviewWidget = ({ decks = [], selectedDeckId, setSelectedDeckId }) => {
         }
       });
 
-      console.log('Sorted cards:', sortedCards);
+  
       setCards(sortedCards);
       setLoading(false);
     } catch (err) {
@@ -205,20 +205,14 @@ const ReviewWidget = ({ decks = [], selectedDeckId, setSelectedDeckId }) => {
   }, [selectedDeckId, allCards]);
 
   const handleStartReview = () => {
-    console.log('handleStartReview called');
-    console.log('cards state:', cards);
-    console.log('selectedDeckId:', selectedDeckId);
-    console.log('decks:', decks);
-    console.log('includeDueSoon:', includeDueSoon);
-    
     const dueCards = [...(cards.overdue || []), ...(cards.dueNow || [])];
-    const totalCards = includeDueSoon ? [...dueCards, ...(cards.dueSoon || [])] : dueCards;
     
-    console.log('dueCards:', dueCards);
-    console.log('totalCards (including due soon):', totalCards);
+    // Include due soon cards if the toggle is checked (for both all decks and individual decks)
+    const shouldIncludeDueSoon = includeDueSoon;
+    const totalCards = shouldIncludeDueSoon ? [...dueCards, ...(cards.dueSoon || [])] : dueCards;
     
     if (totalCards.length === 0) {
-      console.log('No due cards found, setting error');
+  
       setError('No cards for review today');
       return;
     }
@@ -226,13 +220,13 @@ const ReviewWidget = ({ decks = [], selectedDeckId, setSelectedDeckId }) => {
     // Navigate to the dedicated review session page with selected deck info
     if (selectedDeckId) {
       const selectedDeck = decks.find(d => d.id === selectedDeckId);
-      console.log(`Starting review session for deck: ${selectedDeck.title} (ID: ${selectedDeck.id})`);
-      console.log('Navigating to /review-session with state:', { selectedDeck, includeDueSoon });
+  
+  
       navigate('/review-session', { state: { selectedDeck, includeDueSoon } });
     } else {
-      console.log('Starting review session for all decks');
-      console.log('Navigating to /review-session without state');
-      navigate('/review-session', { state: { includeDueSoon } });
+  
+  
+      navigate('/review-session', { state: { includeDueSoon: shouldIncludeDueSoon } });
     }
   };
 
@@ -629,7 +623,10 @@ const ReviewWidget = ({ decks = [], selectedDeckId, setSelectedDeckId }) => {
   const renderActionPanel = () => {
     const dueCards = (cards.overdue?.length || 0) + (cards.dueNow?.length || 0);
     const dueSoonCards = cards.dueSoon?.length || 0;
-    const totalCards = includeDueSoon ? dueCards + dueSoonCards : dueCards;
+    
+    // Include due soon cards if the toggle is checked (for both all decks and individual decks)
+    const shouldIncludeDueSoon = includeDueSoon;
+    const totalCards = shouldIncludeDueSoon ? dueCards + dueSoonCards : dueCards;
     
     return (
       <div className="action-panel">
@@ -649,29 +646,34 @@ const ReviewWidget = ({ decks = [], selectedDeckId, setSelectedDeckId }) => {
           </button>
         </div>
         
-        <div className="review-options">
-          <label className="due-soon-toggle">
-            <input
-              type="checkbox"
-              checked={includeDueSoon}
-              onChange={(e) => setIncludeDueSoon(e.target.checked)}
-            />
-            <div className="toggle-content">
-              <span className="toggle-label">
-                Include "Due Soon" cards ({dueSoonCards} available)
-              </span>
-              <span className="toggle-hint">
-                Study ahead - may affect memory retention
-              </span>
-            </div>
-          </label>
-        </div>
+        {/* Show due soon toggle for all deck selections */}
+          <div className="review-options">
+            <label className="due-soon-toggle">
+              <input
+                type="checkbox"
+                checked={includeDueSoon}
+                onChange={(e) => setIncludeDueSoon(e.target.checked)}
+              />
+              <div className="toggle-content">
+                <span className="toggle-label">
+                  Include "Due Soon" cards ({dueSoonCards} available)
+                </span>
+                <span className="toggle-hint">
+                  Study ahead - may affect memory retention
+                </span>
+              </div>
+            </label>
+          </div>
         
         <div className="session-summary">
           <p className="subtext">
-            {includeDueSoon 
-              ? `Review overdue, due now, and due soon cards (${dueCards} + ${dueSoonCards} preview)`
-              : `Review overdue and due now cards (${dueCards} cards)`
+            {selectedDeckId 
+              ? shouldIncludeDueSoon 
+                ? `Review overdue, due now, and due soon cards for selected deck (${dueCards} + ${dueSoonCards} preview)`
+                : `Review overdue and due now cards for selected deck (${dueCards} cards)`
+              : shouldIncludeDueSoon 
+                ? `Review overdue, due now, and due soon cards (${dueCards} + ${dueSoonCards} preview)`
+                : `Review overdue and due now cards (${dueCards} cards)`
             }
           </p>
         </div>

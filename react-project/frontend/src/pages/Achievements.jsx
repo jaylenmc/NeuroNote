@@ -22,9 +22,8 @@ const Achievements = () => {
         const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/';
         const response = await makeAuthenticatedRequest(`${apiUrl}achievements/user/`);
         if (!response) throw new Error('No response from server');
-        if (!response.ok) throw new Error(await response.text());
-        const data = await response.json();
-        setAchievements(data);
+        if (response.status !== 200) throw new Error(response.data?.message || 'Failed to fetch achievements');
+        setAchievements(response.data);
       } catch (err) {
         setError(err.message || 'Failed to fetch achievements');
       } finally {
@@ -49,7 +48,7 @@ const Achievements = () => {
     ? achievements.filter(achievement => !achievement.family || achievement.family === "General")
     : achievements.filter(achievement => achievement.family === selectedCategory);
 
-  const unlockedCount = achievements.filter(a => a.unlocked).length;
+  const unlockedCount = achievements.length; // All achievements from backend are considered unlocked for now
   const totalCount = achievements.length;
 
   const getCategoryIcon = (category) => {
@@ -140,31 +139,31 @@ const Achievements = () => {
         {error && <div style={{color: 'red'}}>Error: {error}</div>}
         {!loading && !error && filteredAchievements.map(achievement => (
           <div
-            key={achievement.id || achievement.name}
-            className={`achievement-card ${achievement.unlocked ? 'unlocked' : 'locked'}`}
-            style={{'--achievement-color': achievement.unlocked ? (achievement.color || '#4ECDC4') : '#444'}}
+            key={achievement.name}
+            className={`achievement-card unlocked`}
+            style={{'--achievement-color': '#4ECDC4'}}
           >
             <div className="card-bg-glow" />
 
             <div className="card-content">
-                <div className="card-icon">{achievement.icon || '🏆'}</div>
-                <h3 className="card-title">{achievement.title || achievement.name}</h3>
+                <div className="card-icon">🏆</div>
+                <h3 className="card-title">{achievement.name}</h3>
                 <p className="card-description">{achievement.description}</p>
 
                 <div className="card-progress-bar-container">
                     <div 
                         className="card-progress-bar-fill"
-                        style={{width: `${achievement.total ? (achievement.progress / achievement.total) * 100 : 0}%`}}
+                        style={{width: '100%'}}
                     />
                 </div>
                 <div className="card-progress-label">
-                    {achievement.progress} / {achievement.total}
+                    Completed
                 </div>
 
                 <div className="card-footer">
-                    <span className="card-category">{achievement.category || achievement.tier || achievement.family || ''}</span>
+                    <span className="card-category">{achievement.tier || achievement.family || 'General'}</span>
                     <span className="card-xp">
-                        <Sparkles size={14} /> {achievement.xp || ''} XP
+                        <Sparkles size={14} /> 10 XP
                     </span>
                 </div>
             </div>

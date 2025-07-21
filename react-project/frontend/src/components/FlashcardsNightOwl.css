@@ -15,6 +15,7 @@ html.nightowl-root-bg, body.nightowl-root-bg {
   width: 100vw;
   background: linear-gradient(135deg, #232323 0%, #373737 100%) !important;
   overflow-x: hidden !important;
+  overflow-y: auto !important;
   box-sizing: border-box;
 }
 
@@ -24,6 +25,7 @@ html.nightowl-root-bg, body.nightowl-root-bg {
   background: none;
   position: relative;
   overflow-x: visible;
+  overflow-y: visible;
   z-index: 0;
 }
 
@@ -35,9 +37,19 @@ html.nightowl-root-bg, body.nightowl-root-bg {
   flex-direction: column;
   gap: 40px;
   overflow-x: visible;
-  overflow-y: auto;
+  overflow-y: visible;
   min-height: 100vh;
   box-sizing: border-box;
+}
+
+/* Hide scrollbar for Night Owl content */
+.nightowl-flashcards-content::-webkit-scrollbar {
+  display: none;
+}
+
+.nightowl-flashcards-content {
+  -ms-overflow-style: none;  /* Internet Explorer 10+ */
+  scrollbar-width: none;  /* Firefox */
 }
 
 body.nightowl-root-bg .dashboard-container,

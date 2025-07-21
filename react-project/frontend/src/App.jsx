@@ -28,6 +28,7 @@ import QuizReviewPage from './pages/QuizReviewPage';
 import QuizTakePage from './pages/QuizTakePage';
 import QuizResultsPage from './pages/QuizResultsPage';
 import NightOwlFlashcardsPage from './pages/NightOwlFlashcardsPage';
+import NotesEditorPage from './pages/NotesEditorPage';
 
 // Protected Route component
 const ProtectedRoute = ({ children }) => {
@@ -49,7 +50,7 @@ function Navbar() {
   const location = useLocation();
   
   // Hide navbar on these routes
-  const hideNavbarRoutes = ['/dashboard', '/signin', '/auth/callback/', '/study-room', '/review', '/chat', '/login', '/register', '/quiz', '/focus', '/progress', '/study-groups', '/achievements'];
+  const hideNavbarRoutes = ['/dashboard', '/signin', '/auth/callback/', '/study-room', '/review', '/chat', '/login', '/register', '/quiz', '/focus', '/progress', '/study-groups', '/achievements', '/notes-editor'];
   if (hideNavbarRoutes.some(route => location.pathname.startsWith(route))) {
     return null;
   }
@@ -80,7 +81,7 @@ function Navbar() {
 // AppContent wrapper to use location
 function AppContent() {
   const location = useLocation();
-  const showNavbar = !['/dashboard', '/signin', '/auth/callback/', '/chat', '/login', '/register', '/quiz', '/progress', '/study-groups', '/achievements'].some(route => 
+  const showNavbar = !['/dashboard', '/signin', '/auth/callback/', '/chat', '/login', '/register', '/quiz', '/progress', '/study-groups', '/achievements', '/notes-editor'].some(route => 
     location.pathname.startsWith(route)
   );
 
@@ -209,6 +210,14 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <NightOwlFlashcardsPage />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/notes-editor" 
+            element={
+              <ProtectedRoute>
+                <NotesEditorPage />
               </ProtectedRoute>
             } 
           />
