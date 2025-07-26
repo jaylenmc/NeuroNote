@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Sun, Moon, ArrowLeft, BookOpen, HelpCircle, Target, RefreshCcw, BarChart2, MessageCircle, Play, Pause, RotateCcw, Settings, Coffee, Timer, Zap, FileText } from 'lucide-react';
+import api from '../api/axios';
 import './StudyRoom.css';
 
 const tools = [
@@ -20,10 +21,7 @@ const mockTasks = [
 ];
 
 const mockResources = [
-  { id: 1, type: 'note', title: 'Neurotransmitters Summary', pinned: true },
-  { id: 2, type: 'pdf', title: 'Lecture Slides.pdf', pinned: false },
-  { id: 3, type: 'link', title: 'Khan Academy: Synapses', pinned: true },
-  { id: 4, type: 'note', title: 'Quiz Review Notes', pinned: false },
+  // Empty resources array - no stock data
 ];
 
 function formatTime(seconds) {
@@ -48,10 +46,16 @@ const StudyRoom = () => {
   const [showImportModal, setShowImportModal] = useState(false);
   
   // Import modal state
-  const [importStep, setImportStep] = useState('select'); // 'select' | 'input'
+  const [importStep, setImportStep] = useState('select'); // 'select' | 'input' | 'documents'
   const [selectedType, setSelectedType] = useState(null);
   const [importValue, setImportValue] = useState('');
   const [importFile, setImportFile] = useState(null);
+  const [userDocuments, setUserDocuments] = useState([]);
+  const [selectedDocument, setSelectedDocument] = useState(null);
+  const [isLoadingDocuments, setIsLoadingDocuments] = useState(false);
+  const [userFolders, setUserFolders] = useState([]);
+  const [selectedFolder, setSelectedFolder] = useState(null);
+  const [isLoadingFolders, setIsLoadingFolders] = useState(false);
 
   // Pomodoro timer state
   const [phase, setPhase] = useState('pomodoro');
@@ -142,6 +146,73 @@ const StudyRoom = () => {
     { key: 'textbook', label: 'Textbook', icon: <BookOpen color="#22c55e" size={22} /> },
   ];
 
+  const fetchUserDocuments = async () => {
+    try {
+      setIsLoadingDocuments(true);
+      const response = await api.get('/documents/notes/');
+      if (response.status === 200) {
+        setUserDocuments(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching documents:', error);
+    } finally {
+      setIsLoadingDocuments(false);
+    }
+  };
+
+  const fetchUserFolders = async () => {
+    try {
+      setIsLoadingFolders(true);
+      const response = await api.get('/folders/user/');
+      if (response.status === 200) {
+        // The API returns {folders: [...]} structure
+        const folders = response.data.folders || [];
+        setUserFolders(folders);
+      }
+    } catch (error) {
+      console.error('Error fetching folders:', error);
+      setUserFolders([]);
+    } finally {
+      setIsLoadingFolders(false);
+    }
+  };
+
+  const fetchFolderDocuments = async (folderId) => {
+    try {
+      setIsLoadingDocuments(true);
+      const response = await api.get(`/documents/notes/${folderId}/`);
+      if (response.status === 200) {
+        // Ensure we always set an array, even if the response structure is different
+        const documents = Array.isArray(response.data) ? response.data : [];
+        setUserDocuments(documents);
+      }
+    } catch (error) {
+      console.error('Error fetching documents:', error);
+      setUserDocuments([]);
+    } finally {
+      setIsLoadingDocuments(false);
+    }
+  };
+
+  const handleFolderSelect = (folder) => {
+    setSelectedFolder(folder);
+    fetchFolderDocuments(folder.id);
+    setImportStep('documents');
+  };
+
+  const handleDocumentSelect = (document) => {
+    setSelectedDocument(document);
+    // Add the selected document as a resource
+    const newResource = {
+      id: Date.now(),
+      type: 'doc',
+      title: document.title,
+      pinned: false
+    };
+    setResources(prev => [...prev, newResource]);
+    handleImportResource();
+  };
+
   const handleImportResource = (e) => {
     // For now, just close modal and reset
     setShowImportModal(false);
@@ -149,6 +220,8 @@ const StudyRoom = () => {
     setSelectedType(null);
     setImportValue('');
     setImportFile(null);
+    setSelectedDocument(null);
+    setSelectedFolder(null);
   };
 
     return (
@@ -213,24 +286,30 @@ const StudyRoom = () => {
           </button>
         </div>
         <div className="pinned-resources-grid">
-          {resources.map(resource => (
-            <div key={resource.id} className={`pinned-resource-card${resource.pinned ? ' pinned' : ''}`}>
-              <div className="pinned-resource-title">
-                <span style={{ fontSize: 20 }}>
-                  {resource.type === 'note' && <BookOpen color="#7c83fd" size={20} />}
-                  {resource.type === 'pdf' && <FileText color="#f56565" size={20} />}
-                  {resource.type === 'link' && <MessageCircle color="#4ecdc4" size={20} />}
-                </span>
-                {resource.title}
-              </div>
-              <button
-                className="pinned-resource-pin-btn"
-                onClick={() => handlePinToggle(resource.id)}
-              >
-                {resource.pinned ? 'Unpin' : 'Pin'}
-              </button>
+          {resources.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '20px 0', color: '#a0aec0' }}>
+              No pinned resources yet. Add some to keep them handy!
             </div>
-          ))}
+          ) : (
+            resources.map(resource => (
+              <div key={resource.id} className={`pinned-resource-card${resource.pinned ? ' pinned' : ''}`}>
+                <div className="pinned-resource-title">
+                  <span style={{ fontSize: 20 }}>
+                    {resource.type === 'note' && <BookOpen color="#7c83fd" size={20} />}
+                    {resource.type === 'pdf' && <FileText color="#f56565" size={20} />}
+                    {resource.type === 'link' && <MessageCircle color="#4ecdc4" size={20} />}
+                  </span>
+                  {resource.title}
+                </div>
+                <button
+                  className="pinned-resource-pin-btn"
+                  onClick={() => handlePinToggle(resource.id)}
+                >
+                  {resource.pinned ? 'Unpin' : 'Pin'}
+                </button>
+              </div>
+            ))
+          )}
         </div>
                         </div>
       {/* Import Modal (placeholder) */}
@@ -258,7 +337,15 @@ const StudyRoom = () => {
                       key={rt.key}
                       className="btn-ghost"
                       style={{ minWidth: 90, minHeight: 70, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, fontSize: 15, borderColor: selectedType === rt.key ? '#7c83fd' : '#2d3748', background: selectedType === rt.key ? '#18181b' : 'transparent', fontWeight: 500, cursor: 'pointer' }}
-                      onClick={() => { setSelectedType(rt.key); setImportStep('input'); }}
+                      onClick={() => { 
+                        setSelectedType(rt.key); 
+                        if (rt.key === 'doc') {
+                          fetchUserFolders();
+                          setImportStep('folders');
+                        } else {
+                          setImportStep('input');
+                        }
+                      }}
                     >
                       {rt.icon}
                       {rt.label}
@@ -310,6 +397,103 @@ const StudyRoom = () => {
                   />
                 )}
                 <button className="btn-ghost" style={{ marginTop: 8, width: '100%' }} onClick={handleImportResource}>Import</button>
+              </>
+            )}
+            {importStep === 'folders' && selectedType === 'doc' && (
+              <>
+                <button className="btn-ghost" style={{ position: 'absolute', top: 18, right: 18, fontSize: 22 }} onClick={handleImportResource}>×</button>
+                <button className="btn-ghost" style={{ marginBottom: 18 }} onClick={() => { setImportStep('select'); setSelectedType(null); setSelectedFolder(null); }}>← Back</button>
+                <div style={{ marginBottom: 18 }}>
+                  <strong style={{ fontSize: 16 }}>Select a Folder</strong>
+                </div>
+                {isLoadingFolders ? (
+                  <div style={{ textAlign: 'center', padding: '20px', color: '#a0aec0' }}>
+                    Loading your folders...
+                  </div>
+                ) : userFolders.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '20px', color: '#a0aec0' }}>
+                    No folders found. Create some folders first!
+                  </div>
+                ) : (
+                  <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                    {Array.isArray(userFolders) && userFolders.map((folder) => (
+                      <div
+                        key={folder.id}
+                        className="btn-ghost"
+                        style={{
+                          width: '100%',
+                          marginBottom: '8px',
+                          textAlign: 'left',
+                          padding: '12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          cursor: 'pointer',
+                          borderColor: selectedFolder?.id === folder.id ? '#7c83fd' : '#2d3748',
+                          background: selectedFolder?.id === folder.id ? '#18181b' : 'transparent'
+                        }}
+                        onClick={() => handleFolderSelect(folder)}
+                      >
+                        <BookOpen color="#7c83fd" size={18} />
+                        <span style={{ flex: 1 }}>{folder.name}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+            {importStep === 'documents' && selectedType === 'doc' && (
+              <>
+                <button className="btn-ghost" style={{ position: 'absolute', top: 18, right: 18, fontSize: 22 }} onClick={handleImportResource}>×</button>
+                <button className="btn-ghost" style={{ marginBottom: 18 }} onClick={() => { setImportStep('folders'); setSelectedDocument(null); setSelectedFolder(null); }}>← Back</button>
+                <div style={{ marginBottom: 18 }}>
+                  <strong style={{ fontSize: 16 }}>Select a Document from "{selectedFolder?.name}"</strong>
+                </div>
+                {isLoadingDocuments ? (
+                  <div style={{ textAlign: 'center', padding: '20px', color: '#a0aec0' }}>
+                    Loading your documents...
+                  </div>
+                ) : userDocuments.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '20px', color: '#a0aec0' }}>
+                    No documents found in this folder.
+                  </div>
+                ) : (
+                  <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                    {Array.isArray(userDocuments) && userDocuments.map((doc) => (
+                      <div
+                        key={doc.id}
+                        className="btn-ghost"
+                        style={{
+                          width: '100%',
+                          marginBottom: '8px',
+                          textAlign: 'left',
+                          padding: '12px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          cursor: 'pointer',
+                          borderColor: selectedDocument?.id === doc.id ? '#7c83fd' : '#2d3748',
+                          background: selectedDocument?.id === doc.id ? '#18181b' : 'transparent'
+                        }}
+                        onClick={() => handleDocumentSelect(doc)}
+                      >
+                        <FileText color="#ffd93d" size={18} />
+                        <span style={{ flex: 1 }}>{doc.title}</span>
+                        {doc.tag && (
+                          <span style={{
+                            fontSize: '12px',
+                            padding: '2px 6px',
+                            background: 'rgba(124, 131, 253, 0.15)',
+                            color: '#7c83fd',
+                            borderRadius: '4px'
+                          }}>
+                            {doc.tag.title}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </>
             )}
           </div>

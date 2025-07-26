@@ -75,6 +75,8 @@
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
+  margin-left: 0px !important;
+  margin-right: 0px !important;
 }
 
 .tag {
@@ -178,7 +180,6 @@
 .block-wrapper {
   position: relative;
   padding: 0;
-  min-height: 1em; /* Minimum height for auto-resize */
 }
 
 .block-wrapper.active {
@@ -243,7 +244,6 @@
   background: transparent;
   color: #fff;
   padding: 0 8px;
-  border-radius: 4px;
   font-family: inherit;
   line-height: 1;
   resize: none;
@@ -252,8 +252,7 @@
   box-sizing: border-box;
   word-wrap: break-word;
   white-space: pre-wrap;
-  min-height: 1em; /* Minimum height instead of fixed height */
-  height: auto !important; /* Force auto height to override any inline styles */
+
 }
 
 .block-input:focus {
@@ -262,7 +261,7 @@
 
 .block-input.paragraph {
   font-size: 1rem;
-  line-height: 1;
+  line-height: 1.5;
 }
 
 .block-input.heading-1 {
@@ -1049,7 +1048,6 @@
 
 .block-wrapper {
   position: relative;
-  padding: 4px 0;
   border-radius: 4px;
   transition: background 0.2s ease;
 }
