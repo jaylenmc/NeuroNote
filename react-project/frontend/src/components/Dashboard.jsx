@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../auth/AuthContext';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import api from '../api/axios';
 import { formatDateForDisplay } from '../utils/dateUtils';
 
@@ -31,6 +31,7 @@ import './DashboardHome.css';
 function Dashboard({ initialView }) {
     const navigate = useNavigate();
     const location = useLocation();
+    const { folderId } = useParams();
     const { user, logout, login } = useAuth();
     
     // State management
@@ -292,7 +293,8 @@ function Dashboard({ initialView }) {
                         id: doc.id,
                         type: 'document',
                         title: doc.title,
-                        created_at: doc.created_at
+                        created_at: doc.created_at,
+                        tag: doc.tag || null
                     })),
                     ...folderQuizzes.map(quiz => ({
                         id: quiz.id,
@@ -332,6 +334,7 @@ function Dashboard({ initialView }) {
             }, 300);
         
         setTransitionTimeout(timeout);
+        navigate(`/dashboard/folder/${folderId}`);
         } catch (error) {
             console.error('Error fetching folder contents:', error);
             setIsTransitioning(false);
@@ -657,6 +660,30 @@ function Dashboard({ initialView }) {
             setIsMounted(false);
         };
     }, []);
+
+    // When folders or folderId changes, auto-select folder if folderId is present in URL
+    useEffect(() => {
+        if (folderId && folders.length > 0) {
+            const folder = folders.find(f => String(f.id) === String(folderId));
+            if (folder) {
+                // If navigation state has documents, use them for instant folder population
+                const docsFromNav = location.state?.documents;
+                if (docsFromNav) {
+                    const items = docsFromNav.map(doc => ({
+                        id: doc.id,
+                        type: 'document',
+                        title: doc.title,
+                        created_at: doc.created_at,
+                        tag: doc.tag || null
+                    }));
+                    setSelectedFolder({ ...folder, items });
+                } else {
+                    setSelectedFolder(folder);
+                }
+                setActiveView('folder');
+            }
+        }
+    }, [folderId, folders, location.state]);
 
     // Apply Night Owl background for flashcards view
     useEffect(() => {

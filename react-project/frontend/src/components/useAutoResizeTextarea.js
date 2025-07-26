@@ -15,28 +15,30 @@ export default function useAutoResizeTextarea(value) {
         textarea.style.overflow = 'hidden';
         
         // Calculate the new height based on content
-        // Use scrollHeight directly, with a minimum height based on line-height
+        // Get computed styles for accurate calculations
         const computedStyle = window.getComputedStyle(textarea);
         const lineHeight = parseFloat(computedStyle.lineHeight) || parseFloat(computedStyle.fontSize);
         const fontSize = parseFloat(computedStyle.fontSize);
         
-        // Use a more reasonable minimum height (at least 1.5x line height)
-        const minHeight = Math.max(lineHeight * 1.5, fontSize * 1.5);
+        // Get padding values to subtract from scrollHeight
+        const paddingTop = parseFloat(computedStyle.paddingTop);
+        const paddingBottom = parseFloat(computedStyle.paddingBottom);
+        const borderTop = parseFloat(computedStyle.borderTopWidth);
+        const borderBottom = parseFloat(computedStyle.borderBottomWidth);
         
-        const newHeight = Math.max(textarea.scrollHeight, minHeight);
-        
-        // Ensure the height is not too small (minimum 40px)
-        const finalHeight = Math.max(newHeight, 40);
-        
+        // Check if content actually needs more than one line by comparing scrollHeight to lineHeight
+        // For single lines, scrollHeight should be close to lineHeight
+        const needsMultipleLines = textarea.scrollHeight > (lineHeight + 4); // Allow 4px tolerance for browser spacing
+        const finalHeight = needsMultipleLines ? textarea.scrollHeight : lineHeight;
         // Debug logging
         console.log('Auto-resize debug:', {
           scrollHeight: textarea.scrollHeight,
           clientHeight: textarea.clientHeight,
           lineHeight,
           fontSize,
-          minHeight,
-          newHeight,
+          needsMultipleLines,
           finalHeight,
+          tolerance: lineHeight + 4,
           computedStyle: {
             lineHeight: computedStyle.lineHeight,
             fontSize: computedStyle.fontSize

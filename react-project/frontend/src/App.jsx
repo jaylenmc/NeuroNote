@@ -105,6 +105,14 @@ function AppContent() {
             } 
           />
           <Route 
+            path="/dashboard/folder/:folderId" 
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
             path="/study-room" 
             element={
               <ProtectedRoute>
@@ -216,10 +224,10 @@ function AppContent() {
           <Route 
             path="/notes-editor" 
             element={
-              <ProtectedRoute>
+            <ProtectedRoute>
                 <NotesEditorPage />
-              </ProtectedRoute>
-            } 
+            </ProtectedRoute>
+          }
           />
           <Route path="*" element={<Navigate to="/" />} />
         </Routes>

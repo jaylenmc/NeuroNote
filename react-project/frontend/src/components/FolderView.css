@@ -17,11 +17,7 @@
   align-items: center;
   margin-bottom: 32px;
   padding: 24px;
-  background: rgba(37, 37, 37, 0.7);
-  backdrop-filter: blur(10px);
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid #323232;
 }
 
 .folder-info h2 {
@@ -71,9 +67,9 @@
 }
 
 .view-mode-btn.active {
-  background: #4ECDC4;
+  background: #7c83fd;
   color: #fff;
-  box-shadow: 0 2px 8px rgba(78, 205, 196, 0.3);
+  box-shadow: 0 2px 8px rgba(124, 131, 253, 0.3);
 }
 
 /* New Item Button */
@@ -82,7 +78,7 @@
 }
 
 .new-item-btn {
-  background: linear-gradient(135deg, #4ECDC4 0%, #45B7AF 100%);
+  background: #7c83fd;
   color: #fff;
   border: none;
   padding: 12px 20px;
@@ -146,72 +142,38 @@
 }
 
 /* Folder Items */
-.folder-items {
+.folderview-items {
   display: grid;
-  gap: 16px;
 }
 
-.folder-items.grid {
+.folderview-items.grid {
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
 }
 
-.folder-items.list {
+.folderview-items.list {
   grid-template-columns: 1fr;
 }
 
-.folder-item {
-  background: rgba(37, 37, 37, 0.7);
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  padding: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+.folderview-item {
+  padding: 10px 5px;
   cursor: pointer;
   transition: all 0.3s ease;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 10px;
   position: relative;
   overflow: hidden;
 }
 
-.folder-item::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(135deg, rgba(78, 205, 196, 0.05) 0%, transparent 100%);
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.folder-item:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
-  border-color: rgba(78, 205, 196, 0.3);
-}
-
-.folder-item:hover::before {
-  opacity: 1;
-}
-
-.folder-item.document {
-  border-left: 4px solid #4ECDC4;
-}
-
-.folder-item.deck {
-  border-left: 4px solid #FFD93D;
-}
-
-.folder-item.quiz {
-  border-left: 4px solid #FF6B6B;
+.folderview-item:hover {
+  background-color: #323232;
+  border-radius: 12px;
 }
 
 /* Item Icon */
 .item-icon {
-  width: 48px;
-  height: 48px;
+  width: 40px;
+  height: 45px;
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -224,32 +186,17 @@
   z-index: 1;
 }
 
+.item-icon svg, .item-icon img {
+  width: 18px;
+  height: 18px;
+}
+
 .item-icon svg {
-  width: 24px;
-  height: 24px;
-  color: #4ECDC4;
+  color: #7c83fd;
 }
 
 .item-icon img {
-  width: 24px;
-  height: 24px;
   filter: brightness(0) invert(1);
-}
-
-.folder-item.deck .item-icon {
-  background: rgba(255, 217, 61, 0.1);
-}
-
-.folder-item.deck .item-icon img {
-  filter: brightness(0) invert(1) sepia(1) saturate(5) hue-rotate(45deg);
-}
-
-.folder-item.quiz .item-icon {
-  background: rgba(255, 107, 107, 0.1);
-}
-
-.folder-item.quiz .item-icon img {
-  filter: brightness(0) invert(1) sepia(1) saturate(5) hue-rotate(320deg);
 }
 
 /* Item Content */
@@ -260,11 +207,11 @@
 }
 
 .item-title {
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 600;
   color: #fff;
-  margin: 0 0 4px 0;
-  line-height: 1.4;
+  margin: 0 0 2px 0;
+  line-height: 1.3;
 }
 
 .item-subtitle {
@@ -274,15 +221,38 @@
   line-height: 1.4;
 }
 
+.item-tags {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 1px;
+  margin-top: 1px;
+}
+.item-tag {
+  background: rgba(124, 131, 253, 0.15);
+  color: #7c83fd;
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-size: 11px;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  max-width: 80px;
+}
+
 /* Item Actions */
 .item-actions {
   opacity: 0;
   transition: opacity 0.3s ease;
   position: relative;
   z-index: 1;
+  padding: 4px;
 }
 
-.folder-item:hover .item-actions {
+.folderview-item:hover .item-actions {
   opacity: 1;
 }
 
@@ -290,7 +260,7 @@
   background: rgba(255, 255, 255, 0.1);
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: #fff;
-  padding: 8px;
+  padding: 4px;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -371,13 +341,8 @@
 }
 
 .empty-state-btn.primary {
-  background: linear-gradient(135deg, #4ECDC4 0%, #45B7AF 100%);
-  border-color: #4ECDC4;
-  box-shadow: 0 4px 12px rgba(78, 205, 196, 0.2);
-}
-
-.empty-state-btn.primary:hover {
-  box-shadow: 0 6px 20px rgba(78, 205, 196, 0.3);
+  background: #7c83fd;
+  border-color: #7c83fd;
 }
 
 .empty-state-btn img {
@@ -403,7 +368,7 @@
     justify-content: space-between;
   }
 
-  .folder-items.grid {
+  .folderview-items.grid {
     grid-template-columns: 1fr;
   }
 
@@ -435,15 +400,15 @@
   }
 }
 
-.folder-item {
+.folderview-item {
   animation: fadeIn 0.3s ease-out;
 }
 
-.folder-item:nth-child(1) { animation-delay: 0.1s; }
-.folder-item:nth-child(2) { animation-delay: 0.2s; }
-.folder-item:nth-child(3) { animation-delay: 0.3s; }
-.folder-item:nth-child(4) { animation-delay: 0.4s; }
-.folder-item:nth-child(5) { animation-delay: 0.5s; }
+.folderview-item:nth-child(1) { animation-delay: 0.1s; }
+.folderview-item:nth-child(2) { animation-delay: 0.2s; }
+.folderview-item:nth-child(3) { animation-delay: 0.3s; }
+.folderview-item:nth-child(4) { animation-delay: 0.4s; }
+.folderview-item:nth-child(5) { animation-delay: 0.5s; }
 
 /* Scrollbar Styling */
 .folder-view::-webkit-scrollbar {

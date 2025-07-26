@@ -28,8 +28,8 @@ const FolderView = ({
             type: 'document',
             created_at: new Date().toISOString()
         };
-        // Navigate to notes editor with document data
-        navigate('/notes-editor', { state: { openNotes: true, document: newDocument } });
+        // Navigate to notes editor with document data and folderId
+        navigate('/notes-editor', { state: { openNotes: true, document: newDocument, folderId: selectedFolder.id } });
     };
     if (!selectedFolder) return null;
 
@@ -67,15 +67,15 @@ const FolderView = ({
         }
 
         return (
-            <div className={`folder-items ${viewMode}`}>
+            <div className={`folderview-items ${viewMode}`}>
                 {folder.items.map(item => (
                     <div 
                         key={item.id} 
-                        className={`folder-item ${item.type}`}
+                        className={`folderview-item ${item.type}`}
                         onClick={(e) => {
                             if (item.type === 'document') {
-                                // Navigate to notes editor with existing document
-                                navigate('/notes-editor', { state: { openNotes: true, document: item } });
+                                // Navigate to notes editor with existing document, include folder id in state
+                                navigate('/notes-editor', { state: { openNotes: true, document: { ...item, folder: selectedFolder.id } } });
                             } else if (item.type === 'deck') {
                                 handleDeckClick(item.id, e);
                             } else if (item.type === 'quiz') {
@@ -94,11 +94,17 @@ const FolderView = ({
                                 {item.type === 'document' ? item.title : 
                                  item.type === 'deck' ? item.name : item.topic}
                             </h4>
-                            <p className="item-subtitle">
-                                {item.type === 'document' && `Created ${formatDateForDisplay(item.created_at)}`}
-                                {item.type === 'deck' && `${item.cardCount || 0} cards`}
-                                {item.type === 'quiz' && item.subject}
-                            </p>
+                            {item.type === 'document' && item.tag && (
+                              <div className="item-tags">
+                                <span className="item-tag">{item.tag.title}</span>
+                              </div>
+                            )}
+                            {item.type === 'deck' && (
+                              <p className="item-subtitle">{`${item.cardCount || 0} cards`}</p>
+                            )}
+                            {item.type === 'quiz' && (
+                              <p className="item-subtitle">{item.subject}</p>
+                            )}
                         </div>
                         <div className="item-actions">
                             <button className="item-action-btn">

@@ -146,7 +146,7 @@ const StudyGroups = () => {
   };
 
   console.log("Rendering component, showOptionsModal:", showOptionsModal);
-  
+
   return (
     <div className="study-groups-page">
       {/* Top Bar: Back + Create Room */}
@@ -353,7 +353,7 @@ const StudyGroups = () => {
          </div>
        )}
 
-       {showCreateModal && (
+      {showCreateModal && (
          <div style={{
            position: 'fixed',
            top: 0,
@@ -377,16 +377,16 @@ const StudyGroups = () => {
              color: 'white'
            }}>
              <h2 style={{margin: '0 0 24px 0', fontSize: '24px', fontWeight: '700', textAlign: 'center', color: '#4ECDC4'}}>Create New Study Room</h2>
-             <form onSubmit={handleCreateRoom}>
+            <form onSubmit={handleCreateRoom}>
                <div style={{marginBottom: '20px'}}>
                  <label style={{display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '8px', color: '#888'}} htmlFor="roomName">Room Name</label>
-                 <input
-                   id="roomName"
-                   type="text"
-                   value={newRoomName}
-                   onChange={(e) => setNewRoomName(e.target.value)}
-                   placeholder="e.g., Organic Chemistry Midterm Prep"
-                   required
+                <input
+                  id="roomName"
+                  type="text"
+                  value={newRoomName}
+                  onChange={(e) => setNewRoomName(e.target.value)}
+                  placeholder="e.g., Organic Chemistry Midterm Prep"
+                  required
                    style={{
                      width: '100%',
                      padding: '12px',
@@ -397,17 +397,17 @@ const StudyGroups = () => {
                      color: '#fff',
                      boxSizing: 'border-box'
                    }}
-                 />
-               </div>
+                />
+              </div>
                <div style={{marginBottom: '20px'}}>
                  <label style={{display: 'block', fontSize: '14px', fontWeight: '600', marginBottom: '8px', color: '#888'}} htmlFor="roomSubject">Subject/Focus</label>
-                 <input
-                   id="roomSubject"
-                   type="text"
-                   value={newRoomSubject}
-                   onChange={(e) => setNewRoomSubject(e.target.value)}
-                   placeholder="e.g., Chemistry"
-                   required
+                <input
+                  id="roomSubject"
+                  type="text"
+                  value={newRoomSubject}
+                  onChange={(e) => setNewRoomSubject(e.target.value)}
+                  placeholder="e.g., Chemistry"
+                  required
                    style={{
                      width: '100%',
                      padding: '12px',
@@ -418,8 +418,8 @@ const StudyGroups = () => {
                      color: '#fff',
                      boxSizing: 'border-box'
                    }}
-                 />
-               </div>
+                />
+              </div>
                <div style={{display: 'flex', gap: '16px', marginTop: '24px'}}>
                  <button 
                    type="button" 
@@ -437,8 +437,8 @@ const StudyGroups = () => {
                    }}
                    onClick={() => setShowCreateModal(false)}
                  >
-                   Cancel
-                 </button>
+                  Cancel
+                </button>
                  <button 
                    type="submit" 
                    style={{
@@ -454,13 +454,13 @@ const StudyGroups = () => {
                      boxShadow: '0 4px 12px rgba(78, 205, 196, 0.2)'
                    }}
                  >
-                   Create Room
-                 </button>
-               </div>
-             </form>
-           </div>
-         </div>
-       )}
+                  Create Room
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
        {showJoinModal && (
          <div style={{

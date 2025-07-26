@@ -1,257 +1,125 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { FiSave, FiGlobe, FiTag, FiX, FiMenu } from 'react-icons/fi';
-import { useAuth } from '../auth/AuthContext';
-import Block from '../components/Block';
-import Sidebar from '../components/Sidebar';
-import ContextMenu from '../components/ContextMenu';
-import NewFolderModal from '../components/modals/NewFolderModal';
+import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { FiSave, FiGlobe, FiTag, FiX, FiList, FiMaximize2, FiMinimize2 } from 'react-icons/fi';
+import { FaListOl } from 'react-icons/fa';
 import api from '../api/axios';
-import '../components/NotesEditor.css';
-import '../components/Dashboard.css';
 import './NotesEditorPage.css';
 
 const NotesEditorPage = () => {
-  const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
-  
-  // State for notes editor
-  const [isNotesMode, setIsNotesMode] = useState(true);
-  const [showSidebar, setShowSidebar] = useState(false);
-  const [folders, setFolders] = useState([]);
-  const [selectedFolder, setSelectedFolder] = useState(null);
-  const [expandedFolders, setExpandedFolders] = useState({});
-  const [showDropdown, setShowDropdown] = useState(false);
-  const [sidebarContextMenu, setSidebarContextMenu] = useState({ show: false, x: 0, y: 0, folderId: null });
-  const [showNewFolderModal, setShowNewFolderModal] = useState(false);
-  const [newFolderName, setNewFolderName] = useState('');
+  const location = useLocation();
   const [noteTitle, setNoteTitle] = useState('Untitled Note');
-  const [noteContent, setNoteContent] = useState('');
   const [noteTags, setNoteTags] = useState([]);
   const [newTag, setNewTag] = useState('');
   const [showTagInput, setShowTagInput] = useState(false);
-  const [lastSaved, setLastSaved] = useState(null);
-  const [isSaving, setIsSaving] = useState(false);
   const [isPublished, setIsPublished] = useState(false);
-  const [blocks, setBlocks] = useState([
-    { id: '1', type: 'paragraph', content: '', checked: false }
-  ]);
-  const [activeBlockId, setActiveBlockId] = useState('1');
-  const [showBlockMenu, setShowBlockMenu] = useState({ blockId: null, x: 0, y: 0 });
-  const [hoveredBlockId, setHoveredBlockId] = useState(null);
-  const [selectedMenuIndex, setSelectedMenuIndex] = useState(0);
-  const [editingBlocks, setEditingBlocks] = useState(new Set());
-  const blockRefs = React.useRef({});
-  const [justAddedBlockId, setJustAddedBlockId] = useState(null);
-  const [formatBar, setFormatBar] = useState({ show: false, x: 0, y: 0 });
-  const formatBarRef = React.useRef(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [content, setContent] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
+  const [currentDocumentId, setCurrentDocumentId] = useState(null);
+  const [currentFolderId, setCurrentFolderId] = useState(null);
+  const contentRef = useRef(null);
 
-  // Initialize from navigation state
+  // Set content programmatically only when content changes from outside (e.g., loading a doc)
   useEffect(() => {
-    if (location.state?.document) {
-      const document = location.state.document;
-      setNoteTitle(document.title || 'Untitled Note');
-      // Clear the state to prevent re-initialization
-      navigate(location.pathname, { replace: true, state: {} });
+    if (contentRef.current && contentRef.current.innerHTML !== content) {
+      contentRef.current.innerHTML = content;
     }
-  }, [location.state, navigate, location.pathname]);
+  }, [content]);
 
-  // Fetch folders for sidebar
-  const fetchFolders = async () => {
-    try {
-      const response = await api.get('/folders/user/');
-      if (!response) return;
-      const foldersData = response.data;
-      
-      const foldersWithCounts = (foldersData.folders || foldersData).map(folder => {
-        return {
-          ...folder,
-          documentCount: folder.content_num || 0,
-          deckCount: 0,
-          quizCount: 0,
-          sub_folders: folder.sub_folders || []
-        };
+  // Load document if editing
+  useEffect(() => {
+    const doc = location.state?.document;
+    if (doc && doc.id && doc.folder) {
+      setCurrentDocumentId(doc.id);
+      setCurrentFolderId(doc.folder);
+      // Fetch document details from backend
+      api.get(`/documents/notes/${doc.folder}/${doc.id}/`).then(response => {
+        const d = response.data;
+        setNoteTitle(d.title || 'Untitled Note');
+        setContent(d.notes || '');
+        setNoteTags(d.tag ? [d.tag.title] : []);
+        setIsPublished(!!d.published);
+      }).catch(err => {
+        // fallback to state if backend fails
+        setNoteTitle(doc.title || 'Untitled Note');
+        setContent(doc.notes || '');
+        setNoteTags(doc.tag ? [doc.tag.title] : []);
+        setIsPublished(!!doc.published);
       });
-      setFolders(foldersWithCounts);
-    } catch (error) {
-      console.error('Error fetching folders:', error);
+    } else if (doc && doc.folder) {
+      setCurrentFolderId(doc.folder);
+    } else if (location.state?.folderId) {
+      setCurrentFolderId(location.state.folderId);
+    }
+  }, [location.state]);
+
+  // Formatting functions
+  const formatText = (cmd, value = null) => {
+    document.execCommand(cmd, false, value);
+    contentRef.current && setContent(contentRef.current.innerHTML);
+  };
+
+  const handleAddTag = () => {
+    if (newTag.trim() && !noteTags.includes(newTag.trim())) {
+      setNoteTags([newTag.trim()]); // Only allow one tag
+      setNewTag('');
     }
   };
 
-  // Sidebar functions
-  const handleFolderClick = async (folderId, e) => {
-    e.stopPropagation();
-    const folder = folders.find(f => f.id === folderId);
-    if (folder) {
-      setSelectedFolder(folder);
-      // Navigate to dashboard with folder selected
-      navigate('/dashboard', { state: { selectedFolderId: folderId } });
-    }
-  };
-
-  const toggleFolder = async (folderId, e) => {
-    e.stopPropagation();
-    setExpandedFolders(prev => ({
-      ...prev,
-      [folderId]: !prev[folderId]
-    }));
-  };
-
-  const handleCreateFolder = async (name, parentId = null) => {
-    if (name.trim()) {
-      try {
-        const body = parentId
-          ? { name: name.trim(), folder_id: parentId }
-          : { name: name.trim() };
-        const response = await api.post('/folders/user/', body);
-        
-        if (response.status === 200 || response.status === 201) {
-          await fetchFolders(); // Refresh folders
+  const handleRemoveTag = (tagToRemove) => {
+    // Call the tag delete endpoint if we have a document ID
+    if (currentDocumentId) {
+      // Find the tag ID from the backend response
+      api.get(`/documents/notes/${currentFolderId}/${currentDocumentId}/`).then(response => {
+        const doc = response.data;
+        if (doc.tag) {
+          const tagId = doc.tag.id;
+          api.delete(`/documents/notes/tags/del/${currentDocumentId}/${tagId}/`).then(() => {
+            setNoteTags([]); // Remove the tag from state after successful deletion
+          }).catch(error => {
+            console.error('Error deleting tag:', error);
+          });
+        } else {
+          setNoteTags([]); // No tag to delete, just update state
         }
-      } catch (error) {
-        console.error('Error creating folder:', error);
-      }
-    }
-  };
-
-  const handleDeleteFolder = async (folderId) => {
-    try {
-      await api.delete(`/folders/user/${folderId}/`);
-      await fetchFolders(); // Refresh folders
-      setSidebarContextMenu({ show: false, x: 0, y: 0, folderId: null });
-    } catch (error) {
-      console.error('Error deleting folder:', error);
-    }
-  };
-
-  // Load folders on mount
-  useEffect(() => {
-    fetchFolders();
-  }, []);
-
-  // Notes editor functions
-  const createNewBlock = (afterId, type = 'paragraph') => {
-    const newBlock = {
-      id: Date.now().toString(),
-      type,
-      content: '',
-      checked: false
-    };
-    
-    setBlocks(prevBlocks => {
-      const index = prevBlocks.findIndex(b => b.id === afterId);
-      const newBlocks = [...prevBlocks];
-      newBlocks.splice(index + 1, 0, newBlock);
-      return newBlocks;
-    });
-    
-    setJustAddedBlockId(newBlock.id);
-    setActiveBlockId(newBlock.id);
-  };
-
-  const updateBlockContent = (blockId, content) => {
-    setBlocks(prevBlocks =>
-      prevBlocks.map(block =>
-        block.id === blockId ? { ...block, content } : block
-      )
-    );
-  };
-
-  const updateBlockType = (blockId, newType) => {
-    setBlocks(prevBlocks =>
-      prevBlocks.map(block =>
-        block.id === blockId ? { ...block, type: newType } : block
-      )
-    );
-  };
-
-  const deleteBlock = (blockId) => {
-    setBlocks(prevBlocks => {
-      const newBlocks = prevBlocks.filter(block => block.id !== blockId);
-      if (newBlocks.length === 0) {
-        newBlocks.push({ id: Date.now().toString(), type: 'paragraph', content: '', checked: false });
-      }
-      return newBlocks;
-    });
-  };
-
-  const handleBlockKeyDown = (e, blockId, blockType) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      createNewBlock(blockId);
-    }
-  };
-
-  const handleBlockMenuClick = (e, blockId) => {
-    e.preventDefault();
-    setShowBlockMenu({
-      blockId,
-      x: e.clientX,
-      y: e.clientY
-    });
-  };
-
-  const handleBlockMenuClose = () => {
-    setShowBlockMenu({ blockId: null, x: 0, y: 0 });
-    setSelectedMenuIndex(0);
-  };
-
-  const handleBlockMenuKeyDown = (e) => {
-    if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      setSelectedMenuIndex(prev => 
-        prev < 4 ? prev + 1 : 0
-      );
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault();
-      setSelectedMenuIndex(prev => 
-        prev > 0 ? prev - 1 : 4
-      );
-    } else if (e.key === 'Enter') {
-      e.preventDefault();
-      const blockTypes = ['paragraph', 'h1', 'h2', 'h3', 'checklist'];
-      const selectedType = blockTypes[selectedMenuIndex];
-      updateBlockType(showBlockMenu.blockId, selectedType);
-      handleBlockMenuClose();
-    } else if (e.key === 'Escape') {
-      handleBlockMenuClose();
-    }
-  };
-
-  const handleSelection = (e, blockId) => {
-    const selection = window.getSelection();
-    if (selection.toString().length > 0) {
-      const range = selection.getRangeAt(0);
-      const rect = range.getBoundingClientRect();
-      setFormatBar({
-        show: true,
-        x: rect.left + rect.width / 2,
-        y: rect.top - 40
+      }).catch(error => {
+        console.error('Error fetching document for tag deletion:', error);
+        setNoteTags([]); // Fallback to just updating state
       });
     } else {
-      setFormatBar({ show: false, x: 0, y: 0 });
+      setNoteTags([]); // No document ID, just update state
     }
   };
 
-  const formatSelection = (cmd, value = null) => {
-    if (cmd === 'bold') {
-      document.execCommand('bold', false, null);
-    } else if (cmd === 'italic') {
-      document.execCommand('italic', false, null);
-    } else if (cmd === 'hiliteColor') {
-      document.execCommand('hiliteColor', false, value);
-    }
-    setFormatBar({ show: false, x: 0, y: 0 });
-  };
-
-  const handleSave = async () => {
+  // Save (create or update)
+  const handleSave = async (publishedOverride = null) => {
     setIsSaving(true);
     try {
-      // Implementation for saving note
-      setLastSaved(new Date());
-      // You can add a notification system here
-      console.log('Note saved successfully');
+      const documentData = {
+        title: noteTitle || 'Untitled Note',
+        notes: content,
+        folder_id: currentFolderId,
+        is_published: publishedOverride !== null ? publishedOverride : isPublished,
+        tag: noteTags.length > 0 ? noteTags[0] : ''
+      };
+      console.log('Document Data:', documentData);
+      let response = null;
+      if (currentDocumentId) {
+        response = await api.put(`/documents/notes/update/${currentDocumentId}/`, documentData);
+        } else {
+        response = await api.post('/documents/notes/', documentData);
+      }
+      if (response && response.status === 200) {
+        const savedDoc = response.data;
+        setCurrentDocumentId(savedDoc.id);
+        setCurrentFolderId(savedDoc.folder);
+        setNoteTitle(savedDoc.title || 'Untitled Note');
+        setContent(savedDoc.notes || '');
+        setNoteTags(savedDoc.tag ? [savedDoc.tag.title] : []);
+        setIsPublished(!!savedDoc.published);
+      }
     } catch (error) {
       console.error('Error saving note:', error);
     } finally {
@@ -259,296 +127,116 @@ const NotesEditorPage = () => {
     }
   };
 
+  // Publish toggle
   const handlePublish = async () => {
-    try {
-      // Implementation for publishing note
-      setIsPublished(true);
-      console.log('Note published successfully');
-    } catch (error) {
-      console.error('Error publishing note:', error);
+    const newPublished = !isPublished;
+    await handleSave(newPublished);
+    // setIsPublished will be updated after save from backend response
+  };
+
+  const handleExit = async () => {
+    const folderId = currentFolderId || location.state?.document?.folder;
+    if (folderId) {
+      try {
+        const docsResponse = await api.get(`/documents/notes/${folderId}/`);
+        const documents = docsResponse.data || [];
+        navigate(`/dashboard/folder/${folderId}`, { state: { documents } });
+      } catch (err) {
+        navigate(`/dashboard/folder/${folderId}`);
+      }
+    } else {
+      navigate('/dashboard');
     }
   };
-
-  const handleAddTag = (e) => {
-    if (newTag.trim() && !noteTags.includes(newTag.trim())) {
-      setNoteTags([...noteTags, newTag.trim()]);
-      setNewTag('');
-    }
-  };
-
-  const handleRemoveTag = (tagToRemove) => {
-    setNoteTags(noteTags.filter(tag => tag !== tagToRemove));
-  };
-
-  const formatLastSaved = () => {
-    if (!lastSaved) return 'Not saved';
-    const now = new Date();
-    const diff = now - lastSaved;
-    const minutes = Math.floor(diff / 60000);
-    if (minutes < 1) return 'Just now';
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
-    return lastSaved.toLocaleDateString();
-  };
-
-  const handleExitNotesMode = () => {
-    navigate('/dashboard');
-  };
-
-  const blockTypes = [
-    { type: 'paragraph', label: 'Text', icon: '¶' },
-    { type: 'h1', label: 'Heading 1', icon: 'H1' },
-    { type: 'h2', label: 'Heading 2', icon: 'H2' },
-    { type: 'h3', label: 'Heading 3', icon: 'H3' },
-    { type: 'checklist', label: 'Checklist', icon: '☐' }
-  ];
-
-  const blockMenuRef = useRef(null);
 
   return (
-    <div className={`notes-editor-page ${showSidebar ? 'with-sidebar' : ''}`}>
-      {showSidebar && (
-        <Sidebar
-          user={user}
-          showDropdown={showDropdown}
-          setShowDropdown={setShowDropdown}
-          logout={logout}
-          navigate={navigate}
-          location={location}
-          folders={folders}
-          selectedFolder={selectedFolder}
-          activeView="notes"
-          expandedFolders={expandedFolders}
-          setShowNewFolderModal={setShowNewFolderModal}
-          handleFolderClick={handleFolderClick}
-          toggleFolder={toggleFolder}
-          setSidebarContextMenu={setSidebarContextMenu}
-        />
-      )}
-      <div className="notes-editor">
+    <div className={`notes-editor-rebuilt ${isFullscreen ? 'fullscreen' : ''}`}>  
         <div className="notes-header">
-          <div className="notes-title-section">
-            <button 
-              className="sidebar-toggle-btn"
-              onClick={() => setShowSidebar(!showSidebar)}
-              title="Toggle Sidebar"
-            >
-              <FiMenu />
-            </button>
+            <div className="title-section">
             <input
               type="text"
               value={noteTitle}
-              onChange={(e) => setNoteTitle(e.target.value)}
+                onChange={e => setNoteTitle(e.target.value)}
               className="notes-title-input"
               placeholder="Untitled Note"
-            />
-            <div className="notes-status">
-              {isSaving ? (
-                <span className="saving-indicator">Saving...</span>
-              ) : (
-                <span className="last-saved">{formatLastSaved()}</span>
-              )}
-            </div>
-          </div>
-          <div className="notes-actions">
-            <div className="tags-section">
-              {noteTags.map(tag => (
-                <span key={tag} className="tag">
-                  {tag}
-                  <button onClick={() => handleRemoveTag(tag)}>
-                    <FiX />
-                  </button>
-                </span>
-              ))}
-              {showTagInput ? (
+                title={noteTitle}
+              />
+             {noteTags.length > 0 && (
+               <div className="single-tag">
+                 <span className="tag-dot">•</span>
+                 <span className="tag-text">{noteTags[0]}</span>
+                 <button onClick={() => handleRemoveTag(noteTags[0])}><FiX /></button>
+               </div>
+             )}
+             {noteTags.length === 0 && (
+               <button className="add-single-tag-btn" onClick={() => setShowTagInput(true)}>
+                 <FiTag /> Add Tag
+               </button>
+             )}
+             {showTagInput && (
                 <input
                   type="text"
                   value={newTag}
-                  onChange={(e) => setNewTag(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleAddTag(e);
-                    } else if (e.key === 'Escape') {
-                      setShowTagInput(false);
-                      setNewTag('');
-                    }
-                  }}
-                  onBlur={() => {
-                    setShowTagInput(false);
-                    setNewTag('');
-                  }}
-                  className="tag-input"
+                 onChange={e => setNewTag(e.target.value)}
+                 onKeyDown={e => {
+                   if (e.key === 'Enter') handleAddTag();
+                   else if (e.key === 'Escape') { setShowTagInput(false); setNewTag(''); }
+                 }}
+                 onBlur={() => { setShowTagInput(false); setNewTag(''); }}
+                 className="single-tag-input"
                   placeholder="Add tag..."
                   autoFocus
                 />
-              ) : (
-                <button 
-                  className="add-tag-btn"
-                  onClick={() => setShowTagInput(true)}
-                >
-                  <FiTag /> Add Tag
-                </button>
               )}
             </div>
-            <button 
-              className={`publish-btn ${isPublished ? 'published' : ''}`}
-              onClick={handlePublish}
-            >
-              <FiGlobe />
-              {isPublished ? 'Published' : 'Publish'}
+            <div className="notes-actions">
+              <button className={`publish-btn ${isPublished ? 'published' : ''}`} onClick={handlePublish} style={isPublished ? { minWidth: 140, width: 140, maxWidth: 140 } : {}}>
+                <FiGlobe size={22} style={{marginRight: 6}} />{isPublished ? 'Published' : 'Publish'}
             </button>
-            <button className="save-btn" onClick={handleSave}>
-              <FiSave /> Save
+              <button className="save-btn" onClick={() => handleSave()} disabled={isSaving}>
+                <FiSave size={22} style={{marginRight: 6}} />{isSaving ? 'Saving...' : 'Save'}
             </button>
-            <button className="exit-btn" onClick={handleExitNotesMode}>
-              <FiX />
-            </button>
-          </div>
-        </div>
-
-        <div className="notes-content">
-          <div className="blocks-container">
-            {blocks.map((block, index) => (
-              <Block
-                key={block.id}
-                block={block}
-                index={index}
-                blocks={blocks}
-                activeBlockId={activeBlockId}
-                hoveredBlockId={hoveredBlockId}
-                editingContent=""
-                blockTypes={blockTypes}
-                onBlockChange={() => {}}
-                onBlockBlur={() => {}}
-                onBlockKeyDown={handleBlockKeyDown}
-                onBlockMenuClick={handleBlockMenuClick}
-                onMouseEnter={setHoveredBlockId}
-                onMouseLeave={() => setHoveredBlockId(null)}
-                createNewBlock={createNewBlock}
-                deleteBlock={deleteBlock}
-                updateBlockContent={updateBlockContent}
-                setActiveBlockId={setActiveBlockId}
-                setEditingBlockId={() => {}}
-                setEditingContent={() => {}}
-                setHoveredBlockId={setHoveredBlockId}
-                blockRefs={blockRefs}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Block Type Menu */}
-        {showBlockMenu.blockId && (
-          <div
-            ref={blockMenuRef}
-            className="block-type-menu"
-            style={{
-              position: 'absolute',
-              left: showBlockMenu.x,
-              top: showBlockMenu.y,
-              zIndex: 1000,
-              background: '#232323',
-              borderRadius: 8,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-              padding: '8px 0',
-              minWidth: 150
-            }}
-            onKeyDown={handleBlockMenuKeyDown}
-          >
-            {blockTypes.map((blockType, index) => (
-              <button
-                key={blockType.type}
-                className={`block-type-option ${selectedMenuIndex === index ? 'selected' : ''}`}
-                onClick={() => {
-                  updateBlockType(showBlockMenu.blockId, blockType.type);
-                  handleBlockMenuClose();
-                }}
-                onMouseEnter={() => setSelectedMenuIndex(index)}
-              >
-                <span className="block-type-icon">{blockType.icon}</span>
-                <span className="block-type-label">{blockType.label}</span>
+              <button className="exit-btn" onClick={handleExit}>
+                <FiX size={22} />
               </button>
-            ))}
+            </div>
           </div>
-        )}
-
-        {/* Floating Format Bar */}
-        {formatBar.show && (
-          <div
-            ref={formatBarRef}
-            style={{
-              position: 'absolute',
-              left: formatBar.x,
-              top: formatBar.y,
-              zIndex: 2000,
-              background: '#232323',
-              borderRadius: 8,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-              padding: '6px 12px',
-              display: 'flex',
-              gap: 12,
-              alignItems: 'center',
-              border: '1px solid #444',
-            }}
-          >
-            <button 
-              onClick={() => formatSelection('bold')} 
-              style={{
-                fontWeight: 'bold', 
-                background: 'none', 
-                border: 'none', 
-                color: '#fff', 
-                cursor: 'pointer', 
-                fontSize: 18
-              }}
-            >
-              B
-            </button>
-            <button 
-              onClick={() => formatSelection('italic')} 
-              style={{
-                fontStyle: 'italic', 
-                background: 'none', 
-                border: 'none', 
-                color: '#fff', 
-                cursor: 'pointer', 
-                fontSize: 18
-              }}
-            >
-              I
-            </button>
-            <button 
-              onClick={() => formatSelection('hiliteColor', 'rgba(255,250,205,0.5)')} 
-              style={{
-                background: 'rgba(255,250,205,0.5)', 
-                border: 'none', 
-                color: '#232323', 
-                cursor: 'pointer', 
-                fontSize: 18, 
-                borderRadius: 4, 
-                padding: '0 8px'
-              }}
-            >
-              H
+      <div className="notes-formatting-toolbar">
+        <button className="format-btn" onClick={() => formatText('formatBlock', '<h1>')} title="Heading 1"><span>H1</span></button>
+        <button className="format-btn" onClick={() => formatText('formatBlock', '<h2>')} title="Heading 2"><span>H2</span></button>
+        <button className="format-btn" onClick={() => formatText('formatBlock', '<h3>')} title="Heading 3"><span>H3</span></button>
+        <div className="format-divider"></div>
+        <button className="format-btn" onClick={() => formatText('bold')} title="Bold"><span style={{fontWeight:'bold'}}>B</span></button>
+        <button className="format-btn" onClick={() => formatText('italic')} title="Italic"><span style={{fontStyle:'italic'}}>I</span></button>
+        <div className="format-divider"></div>
+        <button className="format-btn" onClick={() => formatText('insertUnorderedList')} title="Bullet List"><FiList size={16} /></button>
+        <button className="format-btn" onClick={() => formatText('insertOrderedList')} title="Numbered List"><FaListOl size={16} /></button>
+        <div className="formatting-toolbar-right">
+          <button className="toolbar-action-btn" onClick={() => {/* TODO: Export handler */}} title="Export">📤 Export</button>
+          <button className="toolbar-action-btn" onClick={() => {/* TODO: PDF handler */}} title="Export as PDF">📄 PDF</button>
+          <button className="toolbar-action-btn" onClick={() => {/* TODO: Markdown handler */}} title="Export as Markdown">📝 Markdown</button>
+          <button className="fullscreen-btn" onClick={() => setIsFullscreen(f => !f)} title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}>
+            {isFullscreen ? <FiMinimize2 size={16} /> : <FiMaximize2 size={16} />}
             </button>
           </div>
+        </div>
+      <div className="notes-content-area" style={{position: 'relative'}}>
+        {!content && !isFocused && (
+          <span className="notes-placeholder">
+            Start typing notes... Use the toolbar above to format your text.
+          </span>
         )}
+        <div
+          ref={contentRef}
+          contentEditable={true}
+          className="notes-content-editable"
+          onInput={e => setContent(e.currentTarget.innerHTML)}
+          onFocus={() => setIsFocused(true)}
+          onBlur={() => setIsFocused(false)}
+          suppressContentEditableWarning={true}
+          style={{ minHeight: 300 }}
+        />
       </div>
-
-      <NewFolderModal
-        showNewFolderModal={showNewFolderModal}
-        newFolderName={newFolderName}
-        setNewFolderName={setNewFolderName}
-        setShowNewFolderModal={setShowNewFolderModal}
-        handleCreateFolder={handleCreateFolder}
-      />
-
-      <ContextMenu
-        sidebarContextMenu={sidebarContextMenu}
-        setSidebarContextMenu={setSidebarContextMenu}
-        handleDeleteFolder={handleDeleteFolder}
-      />
     </div>
   );
 };
