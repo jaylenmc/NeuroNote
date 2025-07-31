@@ -5,12 +5,16 @@ html, body, #root {
   padding: 0;
 }
 
+.main-content {
+  overflow: hidden;
+}
+
 .review-session {
   min-height: 100vh;
   background: var(--background-color);
   color: var(--text-color);
   padding: 2rem;
-  overflow-y: auto;
+  overflow: hidden;
 }
 
 /* Loading State */
@@ -183,7 +187,6 @@ html, body, #root {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.5rem;
   border-radius: 1rem;
   min-height: 80px;
 }
@@ -423,7 +426,6 @@ html, body, #root {
   text-align: center;
   color: var(--text-secondary);
   font-size: 0.9rem;
-  margin-bottom: 2rem;
 }
 
 /* Session Controls */

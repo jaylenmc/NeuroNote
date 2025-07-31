@@ -956,6 +956,7 @@
   min-width: 320px;
   max-width: 600px;
   width: 100%;
+  min-height: 100px;
 }
 .study-room-card::before,
 .study-room-card::after {

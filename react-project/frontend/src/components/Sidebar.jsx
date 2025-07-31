@@ -20,7 +20,7 @@ const Sidebar = ({
     setSidebarContextMenu
 }) => {
     return (
-        <div className="dashboard-sidebar">
+        <div className={`dashboard-sidebar ${activeView === 'dashboard' ? 'dashboard-home-active' : ''}`}>
             <div className="sidebar-top">
                 <div className="workspace-header">
                     <div className="user-profile" onClick={() => setShowDropdown(!showDropdown)}>

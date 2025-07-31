@@ -67,7 +67,7 @@ const FolderView = ({
         }
 
         return (
-            <div className={`folderview-items ${viewMode}`}>
+            <div className="folderview-items">
                 {folder.items.map(item => (
                     <div 
                         key={item.id} 
@@ -93,12 +93,16 @@ const FolderView = ({
                             <h4 className="item-title">
                                 {item.type === 'document' ? item.title : 
                                  item.type === 'deck' ? item.name : item.topic}
+                                {item.type === 'document' && item.tag && (
+                                  <span className="item-tag">{item.tag.title}</span>
+                                )}
+                                {item.type === 'document' && (
+                                  <span className="item-count">
+                                    <span className="count-number">3</span>
+                                    <span className="count-label">cards</span>
+                                  </span>
+                                )}
                             </h4>
-                            {item.type === 'document' && item.tag && (
-                              <div className="item-tags">
-                                <span className="item-tag">{item.tag.title}</span>
-                              </div>
-                            )}
                             {item.type === 'deck' && (
                               <p className="item-subtitle">{`${item.cardCount || 0} cards`}</p>
                             )}
@@ -121,24 +125,11 @@ const FolderView = ({
         <div className="folder-view">
             <div className="folder-header">
                 <div className="folder-info">
-                    <h2>{selectedFolder.name}</h2>
+                    <h2>📂 {selectedFolder.name}</h2>
+                    <span className="folder-separator">•</span>
                     <p>{getFolderItemCount(selectedFolder)} items</p>
                 </div>
                 <div className="folder-actions">
-                    <div className="view-mode-toggle">
-                        <button 
-                            className={`view-mode-btn ${viewMode === 'grid' ? 'active' : ''}`}
-                            onClick={() => setViewMode('grid')}
-                        >
-                            <FiGrid />
-                        </button>
-                        <button 
-                            className={`view-mode-btn ${viewMode === 'list' ? 'active' : ''}`}
-                            onClick={() => setViewMode('list')}
-                        >
-                            <FiList />
-                        </button>
-                    </div>
                     <div className="new-item-container">
                         <button 
                             className="new-item-btn"

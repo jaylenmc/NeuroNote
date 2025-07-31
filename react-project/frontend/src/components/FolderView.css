@@ -20,16 +20,28 @@
   border-bottom: 1px solid #323232;
 }
 
+.folder-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.folder-separator {
+  color: #888;
+  font-size: 1rem;
+  font-weight: 400;
+}
+
 .folder-info h2 {
   font-size: 2rem;
   font-weight: 700;
-  margin: 0 0 8px 0;
+  margin: 0;
   color: #fff;
 }
 
 .folder-info p {
   color: #888;
-  font-size: 1rem;
+  font-size: 1.2rem;
   margin: 0;
 }
 
@@ -37,39 +49,6 @@
   display: flex;
   align-items: center;
   gap: 16px;
-}
-
-/* View Mode Toggle */
-.view-mode-toggle {
-  display: flex;
-  background: rgba(42, 42, 42, 0.7);
-  border-radius: 8px;
-  padding: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.view-mode-btn {
-  background: transparent;
-  border: none;
-  color: #888;
-  padding: 8px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.view-mode-btn:hover {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.1);
-}
-
-.view-mode-btn.active {
-  background: #7c83fd;
-  color: #fff;
-  box-shadow: 0 2px 8px rgba(124, 131, 253, 0.3);
 }
 
 /* New Item Button */
@@ -144,13 +123,6 @@
 /* Folder Items */
 .folderview-items {
   display: grid;
-}
-
-.folderview-items.grid {
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-}
-
-.folderview-items.list {
   grid-template-columns: 1fr;
 }
 
@@ -208,10 +180,14 @@
 
 .item-title {
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 500;
   color: #fff;
   margin: 0 0 2px 0;
   line-height: 1.3;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
 }
 
 .item-subtitle {
@@ -240,7 +216,33 @@
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
-  max-width: 80px;
+  flex-shrink: 0;
+  font-weight: 500;
+}
+
+/* Item Count Indicator */
+.item-count {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.count-number {
+  font-size: 14px;
+  font-weight: 500;
+  color: #888;
+  line-height: 1;
+}
+
+.count-label {
+  font-size: 10px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  line-height: 1;
 }
 
 /* Item Actions */

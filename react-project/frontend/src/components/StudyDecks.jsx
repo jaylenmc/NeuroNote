@@ -11,7 +11,16 @@ import {
     MoreVertical,
     CheckCircle,
     Clock,
-    Calendar
+    Calendar,
+    Brain,
+    Book,
+    GraduationCap,
+    Calculator,
+    Atom,
+    Code,
+    Filter,
+    SortAsc,
+    SortDesc
 } from 'lucide-react';
 import { FiPlus, FiTrash2 } from 'react-icons/fi';
 import './StudyDecks.css';
@@ -44,6 +53,47 @@ const LoadingSpinner = () => (
         bottom: 0
       }}
     />
+  </div>
+);
+
+// Skeleton Loader Component
+const DeckSkeleton = () => (
+  <div className="studydeck-card skeleton-card">
+    <div className="skeleton-icon"></div>
+    <div className="skeleton-title"></div>
+    <div className="skeleton-subject"></div>
+    <div className="skeleton-metrics">
+      <div className="skeleton-metric-row">
+        <div className="skeleton-metric-label"></div>
+        <div className="skeleton-metric-value"></div>
+      </div>
+      <div className="skeleton-metric-row">
+        <div className="skeleton-metric-label"></div>
+        <div className="skeleton-metric-value"></div>
+      </div>
+    </div>
+    <div className="skeleton-progress-label"></div>
+    <div className="skeleton-progress-rail">
+      <div className="skeleton-progress-fill"></div>
+    </div>
+    <div className="skeleton-button"></div>
+  </div>
+);
+
+// Empty State Component
+const EmptyState = () => (
+  <div className="empty-state">
+    <div className="empty-state-icon">
+      <Book size={48} />
+    </div>
+    <h3 className="empty-state-title">No Decks Yet</h3>
+    <p className="empty-state-description">
+      Create your first deck to start studying and track your progress.
+    </p>
+    <button className="empty-state-btn" onClick={handleOpenCreateModal}>
+      <Plus size={20} />
+      Create Your First Deck
+    </button>
   </div>
 );
 
@@ -104,9 +154,14 @@ const StudyDecks = () => {
     const [newDeck, setNewDeck] = useState({ title: '', subject: '' });
     const [showMenu, setShowMenu] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [sortBy, setSortBy] = useState('title');
+    const [sortOrder, setSortOrder] = useState('asc');
+    const [filterSubject, setFilterSubject] = useState('all');
+    const [showSortFilter, setShowSortFilter] = useState(false);
     const navigate = useNavigate();
     const titleInputRef = useRef(null);
     const modalRef = useRef(null);
+    const sortFilterRef = useRef(null);
 
     // Debug modal state
     useEffect(() => {
@@ -181,6 +236,23 @@ const StudyDecks = () => {
         fetchDecks();
     }, []);
 
+    // Handle click outside sort/filter dropdown
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (sortFilterRef.current && !sortFilterRef.current.contains(event.target)) {
+                setShowSortFilter(false);
+            }
+        };
+
+        if (showSortFilter) {
+            document.addEventListener('mousedown', handleClickOutside);
+        }
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside);
+        };
+    }, [showSortFilter]);
+
     const handleDeckClick = (deckId) => {
         navigate(`/study-room/deck/${deckId}`);
     };
@@ -197,22 +269,116 @@ const StudyDecks = () => {
         }
     };
 
-    const getSubjectEmoji = (subject) => {
-        const emojiMap = {
-            'Biology': '🧬',
-            'Chemistry': '🧪',
-            'Computer Science': '💻',
-            'Mathematics': '📐',
-            'Physics': '⚛️',
-            'default': '📚'
+    const getSubjectIcon = (subject) => {
+        const iconMap = {
+            'Biology': Brain,
+            'Chemistry': Atom,
+            'Computer Science': Code,
+            'Mathematics': Calculator,
+            'Physics': GraduationCap,
+            'default': Book
         };
-        return emojiMap[subject] || emojiMap.default;
+        return iconMap[subject] || iconMap.default;
     };
 
     const calculateProgress = (deck) => {
         const totalCards = deck.cards?.length || 0;
         const reviewedCards = deck.cards?.filter(card => card.last_review_date)?.length || 0;
         return totalCards > 0 ? (reviewedCards / totalCards) * 100 : 0;
+    };
+
+    const calculateMasteryProgress = (deck) => {
+        // Use stock data for mastery progress
+        const stockMasteryData = {
+            'Biology': 85,
+            'Chemistry': 62,
+            'Computer Science': 78,
+            'Mathematics': 45,
+            'Physics': 92,
+            'default': 30
+        };
+        
+        return stockMasteryData[deck.subject] || stockMasteryData.default;
+    };
+    
+    const getMasteryColor = (progress) => {
+        if (progress >= 90) return '#ec4899'; // Soft Pink - Mastered (ribbon-dark-pink)
+        if (progress >= 75) return '#8b5cf6'; // Soft Purple - Good (ribbon-muted-purple)
+        if (progress >= 50) return '#f59e42'; // Warm Amber - Needs Improvement (ribbon-warm-amber)
+        return '#f87171'; // Pastel Red - Poor (ribbon-soft-red)
+    };
+
+    const getMasteryClass = (progress) => {
+        if (progress >= 90) return 'mastery-excellent';
+        if (progress >= 75) return 'mastery-good';
+        if (progress >= 50) return 'mastery-improving';
+        return 'mastery-poor';
+    };
+
+    const handleSort = (newSortBy) => {
+        if (sortBy === newSortBy) {
+            setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortBy(newSortBy);
+            setSortOrder('asc');
+        }
+    };
+
+    const handleFilter = (subject) => {
+        setFilterSubject(subject);
+    };
+
+    const getSortedAndFilteredDecks = () => {
+        let filteredDecks = decks;
+        
+        // Apply subject filter
+        if (filterSubject !== 'all') {
+            filteredDecks = decks.filter(deck => deck.subject === filterSubject);
+        }
+        
+        // Apply sorting
+        filteredDecks.sort((a, b) => {
+            let aValue, bValue;
+            
+            switch (sortBy) {
+                case 'title':
+                    aValue = a.title.toLowerCase();
+                    bValue = b.title.toLowerCase();
+                    break;
+                case 'subject':
+                    aValue = a.subject.toLowerCase();
+                    bValue = b.subject.toLowerCase();
+                    break;
+                case 'cards':
+                    aValue = a.cards?.length || 0;
+                    bValue = b.cards?.length || 0;
+                    break;
+                case 'mastery':
+                    aValue = calculateMasteryProgress(a);
+                    bValue = calculateMasteryProgress(b);
+                    break;
+                case 'created':
+                    aValue = new Date(a.created_at || 0);
+                    bValue = new Date(b.created_at || 0);
+                    break;
+                default:
+                    aValue = a.title.toLowerCase();
+                    bValue = b.title.toLowerCase();
+            }
+            
+            if (sortOrder === 'asc') {
+                return aValue > bValue ? 1 : -1;
+            } else {
+                return aValue < bValue ? 1 : -1;
+            }
+        });
+        
+        return filteredDecks;
+    };
+
+    const getUniqueSubjects = () => {
+        const subjects = [...new Set(decks.map(deck => deck.subject))];
+        return subjects.sort();
     };
 
     const formatDate = (dateString) => {
@@ -234,6 +400,76 @@ const StudyDecks = () => {
                 </button>
                 <h2>Your Decks</h2>
                 <div className="header-actions">
+                    <div className="sort-filter-container" ref={sortFilterRef}>
+                        <button 
+                            className="sort-filter-btn"
+                            onClick={() => setShowSortFilter(!showSortFilter)}
+                        >
+                            <Filter size={16} />
+                            {sortOrder === 'asc' ? <SortAsc size={16} /> : <SortDesc size={16} />}
+                        </button>
+                        
+                        {showSortFilter && (
+                            <div className="sort-filter-dropdown">
+                                <div className="dropdown-section">
+                                    <h4>Sort By</h4>
+                                    <div className="sort-options">
+                                        <button 
+                                            className={`sort-option ${sortBy === 'title' ? 'active' : ''}`}
+                                            onClick={() => handleSort('title')}
+                                        >
+                                            Title
+                                        </button>
+                                        <button 
+                                            className={`sort-option ${sortBy === 'subject' ? 'active' : ''}`}
+                                            onClick={() => handleSort('subject')}
+                                        >
+                                            Subject
+                                        </button>
+                                        <button 
+                                            className={`sort-option ${sortBy === 'cards' ? 'active' : ''}`}
+                                            onClick={() => handleSort('cards')}
+                                        >
+                                            Cards
+                                        </button>
+                                        <button 
+                                            className={`sort-option ${sortBy === 'mastery' ? 'active' : ''}`}
+                                            onClick={() => handleSort('mastery')}
+                                        >
+                                            Mastery
+                                        </button>
+                                        <button 
+                                            className={`sort-option ${sortBy === 'created' ? 'active' : ''}`}
+                                            onClick={() => handleSort('created')}
+                                        >
+                                            Created
+                                        </button>
+                                    </div>
+                                </div>
+                                
+                                <div className="dropdown-section">
+                                    <h4>Filter By Subject</h4>
+                                    <div className="filter-options">
+                                        <button 
+                                            className={`filter-option ${filterSubject === 'all' ? 'active' : ''}`}
+                                            onClick={() => handleFilter('all')}
+                                        >
+                                            All Subjects
+                                        </button>
+                                        {getUniqueSubjects().map(subject => (
+                                            <button 
+                                                key={subject}
+                                                className={`filter-option ${filterSubject === subject ? 'active' : ''}`}
+                                                onClick={() => handleFilter(subject)}
+                                            >
+                                                {subject}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
                     <button className="create-deck-button" onClick={handleOpenCreateModal}>
                         <Plus size={20} />
                         Create Deck
@@ -244,30 +480,26 @@ const StudyDecks = () => {
             {error && <div className="error-message">{error}</div>}
             
             {loading ? (
-                <div style={{
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    minHeight: '400px'
-                }}>
-                    <LoadingSpinner />
+                <div className="studydeck-grid">
+                    {[...Array(6)].map((_, index) => (
+                        <DeckSkeleton key={index} />
+                    ))}
                 </div>
             ) : (
                 <div className="studydeck-grid">
-                    {decks.map((deck) => (
+                   {getSortedAndFilteredDecks().length > 0 ? (
+                       getSortedAndFilteredDecks().map((deck) => (
                         <div
                             key={deck.id}
                             className="studydeck-card"
                             data-status={deck.status || 'in-progress'}
                             onClick={() => handleDeckClick(deck.id)}
                         >
-                            {/* Status chip */}
-                            <div className={`studydeck-status-chip ${deck.status || 'in-progress'}`}>
-                                {deck.statusLabel || 'In Progress'}
-                            </div>
                             {/* Icon circle */}
                             <div className="studydeck-icon-circle">
-                                <span className="studydeck-icon">{getSubjectEmoji(deck.subject)}</span>
+                                <span className="studydeck-icon">
+                                    {React.createElement(getSubjectIcon(deck.subject), { size: 32 })}
+                                </span>
                             </div>
                             {/* Title */}
                             <div className="studydeck-title">{deck.title}</div>
@@ -276,19 +508,28 @@ const StudyDecks = () => {
                             {/* Metrics */}
                             <div className="studydeck-metrics">
                                 <div className="studydeck-metric-row">
-                                    <span className="studydeck-metric-label"><BookOpen size={16}/> Cards</span>
+                                    <span className="studydeck-metric-label">
+                                        <BookOpen size={16} style={{ color: '#7c3aed' }}/> Cards
+                                    </span>
                                     <span className="studydeck-metric-value">{deck.cards?.length || 0}</span>
                                 </div>
                                 <div className="studydeck-metric-row">
-                                    <span className="studydeck-metric-label"><CheckCircle size={16}/> Reviewed</span>
+                                    <span className="studydeck-metric-label">
+                                        <CheckCircle size={16} style={{ color: '#f59e42' }}/> Reviewed
+                                    </span>
                                     <span className="studydeck-metric-value">{deck.cards?.filter(c => c.last_review_date)?.length || 0}</span>
                                 </div>
                             </div>
                             {/* Progress bar */}
+                            <div className="studydeck-progress-label">
+                                <span>Mastery Progress ({calculateMasteryProgress(deck)}%)</span>
+                            </div>
                             <div className="studydeck-progress-rail">
                                 <div
-                                    className="studydeck-progress-fill"
-                                    style={{ width: `${calculateProgress(deck)}%` }}
+                                    className={`studydeck-progress-fill ${getMasteryClass(calculateMasteryProgress(deck))}`}
+                                    style={{ 
+                                        width: `${calculateMasteryProgress(deck)}%`
+                                    }}
                                 />
                             </div>
                             {/* Review button */}
@@ -302,7 +543,10 @@ const StudyDecks = () => {
                                 <CheckCircle size={18} style={{marginRight: 8}}/> Review Now
                             </button>
                         </div>
-                    ))}
+                       ))
+                   ) : (
+                       <EmptyState />
+                   )}
                 </div>
             )}
 

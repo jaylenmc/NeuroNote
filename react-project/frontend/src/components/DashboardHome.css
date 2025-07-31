@@ -129,6 +129,21 @@
   overflow-y: auto;
 }
 
+/* Make sidebar darker when DashboardHome is active */
+body:has(.dashboard-home-container) .dashboard-sidebar,
+.dashboard-home-container ~ .dashboard-sidebar,
+.dashboard-home-container .dashboard-sidebar {
+  -webkit-backdrop-filter: blur(15px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.02),
+    inset 0 0 20px rgba(0, 0, 0, 0.1) !important;
+    background: rgba(37, 37, 37, 0.7);
+    backdrop-filter: blur(10px);
+}
+
+
 /* Remove any fixed heights that might be causing scroll issues */
 .dashboard-greeting,
 .dashboard-xp,
