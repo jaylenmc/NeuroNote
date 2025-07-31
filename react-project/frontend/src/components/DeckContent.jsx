@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { FiEdit2, FiTrash2, FiPlus, FiSearch, FiStar, FiClock, FiTag, FiArrowLeft, FiX, FiFilter, FiCheck, FiZap, FiEdit3 } from 'react-icons/fi';
+import { Book } from 'lucide-react';
 import './DeckContent.css';
 import { formatDateForDisplay, formatDateTimeForDisplay, convertLocalDateToBackend } from '../utils/dateUtils';
 import api from '../api/axios';
@@ -568,8 +569,9 @@ export default function DeckContent() {
         </div>
         <div className="deck-header">
           <div className="deck-header-content">
-            <div style={{display: 'flex', flexDirection: 'column', flex: 1}}>
-              <span className="deck-emoji">📘</span>
+            {/* Left Side - Deck Info and Stats */}
+            <div className="deck-info-section">
+              <Book className="deck-emoji" />
               <div className="deck-header-info">
                 <div className="deck-title-section">
                   <h1 className="deck-title">{deck?.title || 'Deck'}</h1>
@@ -588,15 +590,41 @@ export default function DeckContent() {
                     const masteredPct = (mastered / total) * 100;
                     return (
                       <div className="mastery-progress-container">
-                        <div className="mastery-progress-label">Mastery Progress</div>
+                        <div className="mastery-progress-header">
+                          <div className="mastery-progress-label">Mastery Progress</div>
+                          <div className="mastery-progress-percentage">{Math.round(masteredPct)}% Mastered</div>
+                        </div>
                         <div className="mastery-progress-bar">
-                          <div className="mastery-progress-fill" style={{ width: '75%' }} />
+                          <div 
+                            className="mastery-progress-fill" 
+                            style={{ width: `${masteredPct}%` }} 
+                          />
+                        </div>
+                        <div className="mastery-progress-info">
+                          <div className="next-card-due">
+                            <span className="due-icon">⏰</span>
+                            <span>Next card due in 2h 15m</span>
+                          </div>
+                          <div className="mastery-stats">
+                            <div className="mastery-stat">
+                              <span>Mastered:</span>
+                              <span className="mastery-stat-value">{mastered}</span>
+                            </div>
+                            <div className="mastery-stat">
+                              <span>Total:</span>
+                              <span className="mastery-stat-value">{total}</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     );
                   })()}
                 </div>
               </div>
+            </div>
+            
+            {/* Right Side - Actions and Sticky Notes */}
+            <div className="deck-actions-section">
               <div className="deck-header-actions">
                 <button 
                   className="deck-header-btn" 
@@ -616,62 +644,64 @@ export default function DeckContent() {
                   <FiTrash2 />
                 </button>
               </div>
-            </div>
-            {/* Sticky Note Component */}
-            {showStickyNote && (
-              <div className="sticky-note">
-                <div className="sticky-note-pin">📌</div>
-                <div className="sticky-note-header">
-                  {editingStickyNote ? (
-                    <input
-                      type="text"
-                      className="sticky-note-title-input"
-                      value={stickyNoteTitle}
-                      onChange={(e) => setStickyNoteTitle(e.target.value)}
-                      placeholder="Note title..."
-                    />
-                  ) : (
-                    <h4 className="sticky-note-title">{stickyNoteTitle}</h4>
-                  )}
-                  <div className="sticky-note-actions">
-                    <button 
-                      className="sticky-note-btn"
-                      onClick={() => setEditingStickyNote(!editingStickyNote)}
-                      title={editingStickyNote ? "Save" : "Edit"}
-                    >
-                      {editingStickyNote ? <FiCheck size={14} /> : <FiEdit3 size={14} />}
-                    </button>
-                    <button 
-                      className="sticky-note-btn"
-                      onClick={deleteStickyNote}
-                      title="Delete"
-                    >
-                      <FiTrash2 size={14} />
-                    </button>
+              {/* Sticky Note Component */}
+              {showStickyNote && (
+                <div className="sticky-note">
+                  <div className="sticky-note-header">
+                    <div className="sticky-note-title-section">
+                      <div className="sticky-note-icon">📝</div>
+                      {editingStickyNote ? (
+                        <input
+                          type="text"
+                          className="sticky-note-title-input"
+                          value={stickyNoteTitle}
+                          onChange={(e) => setStickyNoteTitle(e.target.value)}
+                          placeholder="Note title..."
+                        />
+                      ) : (
+                        <h4 className="sticky-note-title">{stickyNoteTitle}</h4>
+                      )}
+                    </div>
+                    <div className="sticky-note-actions">
+                      <button 
+                        className="sticky-note-btn"
+                        onClick={() => setEditingStickyNote(!editingStickyNote)}
+                        title={editingStickyNote ? "Save" : "Edit"}
+                      >
+                        {editingStickyNote ? <FiCheck size={14} /> : <FiEdit3 size={14} />}
+                      </button>
+                      <button 
+                        className="sticky-note-btn delete"
+                        onClick={deleteStickyNote}
+                        title="Delete"
+                      >
+                        <FiTrash2 size={14} />
+                      </button>
+                    </div>
                   </div>
-                </div>
-                <div className="sticky-note-content">
-                  {editingStickyNote ? (
-                    <textarea
-                      className="sticky-note-textarea"
-                      value={stickyNote}
-                      onChange={(e) => setStickyNote(e.target.value)}
-                      placeholder="Write your notes here..."
-                      onBlur={saveStickyNote}
-                    />
-                  ) : (
-                    <div className="sticky-note-text">
-                      {stickyNote || "Click edit to add your notes..."}
+                  <div className="sticky-note-content">
+                    {editingStickyNote ? (
+                      <textarea
+                        className="sticky-note-textarea"
+                        value={stickyNote}
+                        onChange={(e) => setStickyNote(e.target.value)}
+                        placeholder="Write your notes here..."
+                        onBlur={saveStickyNote}
+                      />
+                    ) : (
+                      <div className="sticky-note-text">
+                        {stickyNote || "Click edit to add your notes..."}
+                      </div>
+                    )}
+                  </div>
+                  {lastUpdated && (
+                    <div className="sticky-note-timestamp">
+                      Updated {formatDateTimeForDisplay(lastUpdated)}
                     </div>
                   )}
                 </div>
-                {lastUpdated && (
-                  <div className="sticky-note-timestamp">
-                    Updated {formatDateTimeForDisplay(lastUpdated)}
-                  </div>
-                )}
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
         <div className="deck-search-filter">
