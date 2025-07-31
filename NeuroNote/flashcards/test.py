@@ -56,6 +56,12 @@ class CardTestCase(APITestCase):
 
         self.client.force_authenticate(user=self.user)
 
+    def test_get_decks(self):
+        url = reverse('get-decks')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK, f'Status code error: {response.data}')
+        print(response.data)
+
     def test_update_deck(self):
         url = reverse('delete-update-cards', args=[self.deck[1].pk])
         data = {

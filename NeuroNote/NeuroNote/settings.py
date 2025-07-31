@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'documents',
     'chat',
     'studyroom',
+    'resources'
 ]
 
 REST_FRAMEWORK = {
@@ -185,3 +186,5 @@ CHANNEL_LAYERS = {
         },
     },
 }
+
+MEDIA_ROOT =  BASE_DIR / 'media'

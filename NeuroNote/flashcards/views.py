@@ -18,6 +18,7 @@ class DeckCollection(APIView):
 
     def get(self, request):
         decks = Deck.objects.filter(user=request.user)
+        print(decks)
         for deck in decks:
             deck.num_of_cards = num_of_cards(deck)
             deck.save()
