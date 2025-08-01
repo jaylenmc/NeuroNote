@@ -8,9 +8,10 @@ class Resource(models.Model):
         PDF = "pdf", "PDF"
         LINK = "link", "Link"
 
-    file = models.FileField(max_length=255, choices=FileTypes.choices)
+    def user_directory_path(instance, filename):
+        return f"user_{instance.user.id}/{filename.split('.')[1]}/{filename}"
 
-    # def upload_type(instance, filedata):
-    #     return f'{filedata['user']}/{filedata['filetype']}'
-
-    uploaded_at = models.DateTimeField()
+    user = models.ForeignKey(AuthUser, on_delete=models.CASCADE)
+    file_upload = models.FileField(upload_to=user_directory_path)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    file_name = models.CharField(max_length=255, default='Untitled')
