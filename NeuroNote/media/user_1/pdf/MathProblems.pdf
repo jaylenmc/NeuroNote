@@ -1,1 +1,0 @@
-Question 1: How many days are in a week?

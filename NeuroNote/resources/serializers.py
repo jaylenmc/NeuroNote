@@ -21,19 +21,13 @@ class ResourceInputSerializer(serializers.Serializer):
     def create(self, validated_data):
         user = AuthUser.objects.get(email=validated_data['user'])
         file = Resource.objects.create(
-            file_name=validated_data['file_upload'].name.split('.')[0], 
+            file_name=validated_data['file_upload'].name.split('.')[0],
             user=user,
-            file_upload = validated_data['file_upload']
+            file_upload=validated_data['file_upload']
             )
         return file
         
 class ResourceOutputSerializer(serializers.ModelSerializer):
-    user = UserSerializer()
-    class Meta:
-        model = Resource
-        fields = ['file_name', 'uploaded_at', 'id', 'user']
-
-class GetResourceOutputSerializer(serializers.ModelSerializer):
     user = UserSerializer()
     file_upload = serializers.SerializerMethodField()
     class Meta:
@@ -42,6 +36,6 @@ class GetResourceOutputSerializer(serializers.ModelSerializer):
 
     def get_file_upload(self, obj):
         if self.context['request']:
-            url = self.context['request'].build_absolute_uri(obj.file_upload.url)
-            return url
-        return obj.file_upload
+            return self.context['request'].build_absolute_uri(obj.file_upload.url)
+        return obj.file_upload.url
+            
