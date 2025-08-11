@@ -23,7 +23,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='resource',
             name='file_upload',
-            field=models.FileField(default='defaults/defaultuser/default.pdf', upload_to=resources.models.Resource.user_directory_path),
+            field=models.FileField(default='defaults/defaultuser/default.pdf', upload_to=resources.models.FileUpload.user_directory_path),
             preserve_default=False,
         ),
         migrations.AlterField(

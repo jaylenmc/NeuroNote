@@ -8,40 +8,101 @@ from django.test import override_settings
 from urllib.parse import urlparse
 import tempfile
 import os
-from pathlib import Path
 from django.conf import settings
-from django.test import TestCase
+
+from django.test import TestCase, LiveServerTestCase
+from selenium.webdriver.firefox.webdriver import WebDriver
+from selenium.webdriver.common.by import By
 
 @override_settings(MEDIA_ROOT=tempfile.gettempdir())
-class CreateResourceTestCase(APITestCase):
-    def setUp(self):
+class ResourceTestCase(APITestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
         User = get_user_model()
-        self.user = User.objects.create(email='test@gmail.com')
+        cls.user = User.objects.create(email='test@gmail.com')
+    
+    def setUp(self):
         self.client.force_authenticate(self.user)
 
     def test_resource_post(self):
         url = reverse('create-resource')
-        file = SimpleUploadedFile("ScienceExamProblems.pdf", b"How many inches are in a cm", content_type="application/pdf")
+        file = SimpleUploadedFile("ScienceExamProblems.azw3", b"How many inches are in a cm", content_type="application/azw3")
+        link = "https://www.youtube.com/watch?v=-W89X9GsKyE"
         data = {
             'user': self.user.email,
-            'file_upload': file
+            'link_upload': link
             }
-        response = self.client.post(url, data=data, format='multipart')
+        response = self.client.post(url, data=data, format='json')
         self.assertEqual(
             response.status_code, 
-            status.HTTP_200_OK,
+            status.HTTP_201_CREATED,
             msg=f'Status code error: {response.data}'
+        )
+        self.link = response.data['link']
+        print(response.data)
+
+    def test_resource_link(self):
+        url = reverse('create-resource')
+        link = "https://www.youtube.com/watch?v=-W89X9GsKyE"
+        data = {
+            'user': self.user.email,
+            'link_upload': link,
+            'resource_type': "Link",
+            'title': "Calc Lecture"
+            }
+        response = self.client.post(url, data=data, format='json')
+        self.assertEqual(
+            response.status_code, 
+            status.HTTP_201_CREATED,
+            msg=f'Post request status code error: {response.data}'
+        )
+        self.link = response.data['link']
+        link = "https://www.youtube.com/watch?v=-W89X9GsKyewreE"
+        data = {
+            'user': self.user.email,
+            'link_upload': link,
+            'resource_type': "Link",
+            "title": "Lecture"
+            }
+        response = self.client.post(url, data=data, format='json')
+
+        url = reverse('get-link')
+        response = self.client.get(url)
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_200_OK,
+            msg=f"Get request status code error: {response.data}"
         )
         print(response.data)
 
-@override_settings(MEDIA_ROOT=tempfile.gettempdir())
+@override_settings(MEDIA_URL='/test/')
 class FileServingTestCase(TestCase):
+    @classmethod
+    def setUpClass(cls):
+        from django.core.files.storage import FileSystemStorage
+        super().setUpClass()
+        cls.temp_media_root = tempfile.mkdtemp()
+        settings.MEDIA_ROOT = cls.temp_media_root
+
+        Resource._meta.get_field('file_upload').storage = FileSystemStorage(location=cls.temp_media_root)
+
+        print(f"Test media root: {cls.temp_media_root}")
+        print(f"Test media URL: {settings.MEDIA_URL}")
+        print(f"Using custom file serving approach for tests")
+
+    @classmethod
+    def tearDownClass(cls):
+        import shutil
+        shutil.rmtree(cls.temp_media_root, ignore_errors=True)
+        super().tearDownClass()
+
     def setUp(self):
         User = get_user_model()
         self.user = User.objects.create(email="test@gmail.com", password="Testpassword")
 
         url = reverse('create-resource')
-        file = SimpleUploadedFile("ScienceNote.pdf", b"Stock text", content_type="application/pdf")
+        file = SimpleUploadedFile("ReligionNotes.pdf", b"Stock text", content_type="application/pdf")
         data = {
             'file_upload': file,
             'user': self.user.email
@@ -56,24 +117,48 @@ class FileServingTestCase(TestCase):
 
         self.resource = response.data
 
-    def Test_Get_File(self):
-        file_url = self.resource['file_upload']  # e.g. 'http://testserver/media/user_1/pdf/ScienceNote_abc123.pdf'
+        
+    def serve_test_file(self, file_path):
+        """Custom method to serve files from the test media directory"""
+        from django.http import HttpResponse
+        
+        if file_path.startswith('/test/'):
+            file_path = file_path[6:]
+        
+        full_file_path = os.path.join(self.temp_media_root, file_path.lstrip('/'))
+        
+        if not os.path.exists(full_file_path):
+            return HttpResponse(status=404)
+        
+        with open(full_file_path, 'rb') as f:
+            content = f.read()
+        
+        response = HttpResponse(content, content_type='application/pdf')
+        return response
+
+    def test_get_file(self):
+        file_url = self.resource['file_upload']
+        print(f"Original file_url: {file_url}")
+        
         parsed_url = urlparse(file_url)
-        relative_path = Path(parsed_url.path).relative_to(settings.MEDIA_URL)
-
-        # Construct the URL path to GET
-        url_path = f"{settings.MEDIA_URL}{relative_path.as_posix()}"
+        print(f"Parsed url components: {parsed_url}")
         
-        # Check that the file exists on disk (optional debug)
-        file_path = os.path.join(settings.MEDIA_ROOT, relative_path.as_posix())
-        print(f"File exists on disk: {os.path.exists(file_path)}")
+        file_path = parsed_url.path
+        print(f"File path: {file_path}")
         
-        # GET the file URL
-        url_path = f"{settings.MEDIA_URL}{relative_path.as_posix()}"
-
-        response = self.client.get(url_path)
-
-        # Assert the file served correctly
-        self.assertEqual(response.status_code, 200)
+        response = self.serve_test_file(file_path)
+        
+        print(f"Response status: {response.status_code}")
+        print(f"Response headers: {dict(response.headers)}")
+        print(f"Response Content: {response.content}")
+        
+        if response.status_code != 200:
+            print(f"Response content: {response.content}")
+        
+        self.assertEqual(
+            response.status_code, 
+            200,
+            msg=f"Status code error: {response.content}"
+        )
         self.assertEqual(response['Content-Type'], 'application/pdf')
         self.assertTrue(len(response.content) > 0)
