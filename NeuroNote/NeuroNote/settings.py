@@ -54,7 +54,8 @@ INSTALLED_APPS = [
     'documents',
     'chat',
     'studyroom',
-    'resources'
+    'resources',
+    'solostudyroom'
 ]
 
 REST_FRAMEWORK = {

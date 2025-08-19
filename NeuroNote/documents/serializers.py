@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Document, Tag
+from .models import Document
 from django.db import models
 from folders.models import Folder
 from django.utils import timezone
@@ -10,11 +10,6 @@ class DocumentInputSerializer(serializers.Serializer):
     folder_id = serializers.IntegerField(required=True)
     is_published = serializers.BooleanField()
     tag = serializers.CharField(allow_blank=True)
-    
-    def validate_tags(self, tag):
-        if Tag.objects.filter(title__iexact=tag, document=self.context['doc_id']).exists():
-            raise serializers.ValidationError("Tag already exists")
-        return tag
         
     def validate(self, data):
         if data['is_published'] and not data['notes']:
@@ -31,8 +26,8 @@ class DocumentInputSerializer(serializers.Serializer):
                 notes=data['notes'],
                 folder=folder,
                 published=data['is_published'],
+                tag=data['tag']
             )
-            Tag.objects.create(title=data['tag'], document=document)
             return document
         return document
     
@@ -42,26 +37,18 @@ class DocumentInputSerializer(serializers.Serializer):
             document = Document.objects.get(folder=folder, id=self.context['doc_id'])
             document.title=data['title']
             document.notes=data['notes']
-            document.saved=timezone.now().isoformat()
             document.folder=folder
             document.published=data['is_published']
-            tag = getattr(document, 'tag', None)
-            if tag:
-                tag.title = data['tag']
-                tag.save()
-            else:
-                Tag.objects.create(title=data['tag'], document=document)
-            document.save()
+            document.tag=data['tag']
             return document
         return document
     
-class TagsSerializer(serializers.ModelSerializer):
-    class Meta:
-        fields = ['id', 'title']
-        model = Tag
-    
 class DocumentOutputSerializer(serializers.ModelSerializer):
-    tag = TagsSerializer()
     class Meta:
-        fields = ['tag', 'title', 'notes', 'folder', 'published', 'id', 'saved']
+        fields = ['tag', 'title', 'notes', 'folder', 'published', 'id', 'saved', 'resource_type']
         model = Document
+    
+class PinnedDocumentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Document
+        fields = ['id', 'title', 'resource_type']
