@@ -59,13 +59,13 @@ class PinnedResourceTestCase(APITestCase):
             file_upload=file
         )
 
-        # self.pinned_resources = PinnedResourcesDashboard.objects.create(
-        #     user=self.user, 
-        # )
-        # self.pinned_resources.document.add(self.document)
-        # self.pinned_resources.link.add(self.link)
-        # self.pinned_resources.link.add(link)
-        # self.pinned_resources.file.add(self.file)
+        self.pinned_resources = PinnedResourcesDashboard.objects.create(
+            user=self.user, 
+        )
+        self.pinned_resources.document.add(self.document)
+        self.pinned_resources.link.add(self.link)
+        self.pinned_resources.link.add(link)
+        self.pinned_resources.file.add(self.file)
 
         self.client.force_authenticate(user=self.user)
 
@@ -83,9 +83,9 @@ class PinnedResourceTestCase(APITestCase):
     def test_post_pinned_resources(self):
         url = reverse('create-pinned-resource')
         data = {
-            'document': [self.document.pk],
-            'file': [self.file.pk],
-            'link': [self.link.pk]
+            'resource_type': 'link',
+            'link': 'https://www.youtube.com/watch?v=-W89X9GsyE',
+            'title': 'Science lab lecture'
         }
 
         response = self.client.post(url, data=data, format='json')

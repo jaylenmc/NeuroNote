@@ -21,10 +21,11 @@ class PinnedResourceClass(APIView):
         return Response(serialized.data, status=status.HTTP_200_OK)
     
     def post(self, request):
+        print(f"Request data: {request.data}")
         request_data = PinnedResourcesSerializer(data=request.data, context={"user": request.user})
         if request_data.is_valid():
-            request_data.save()
-            serialized = PinnedResourcesOutputSerializer(request_data.validated_data)
+            saved_instance = request_data.save()
+            serialized = PinnedResourcesOutputSerializer(saved_instance)
             return Response(serialized.data, status=status.HTTP_201_CREATED)
         return Response({"Error": request_data.errors}, status=status.HTTP_400_BAD_REQUEST)
     

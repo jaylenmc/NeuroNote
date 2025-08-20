@@ -51,4 +51,4 @@ class DocumentOutputSerializer(serializers.ModelSerializer):
 class PinnedDocumentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Document
-        fields = ['id', 'title', 'resource_type']
+        fields = ['id', 'title', 'resource_type', 'folder_id']

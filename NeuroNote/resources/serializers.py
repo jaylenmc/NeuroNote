@@ -4,7 +4,10 @@ from authentication.serializers import UserSerializer
 from authentication.models import AuthUser
 
 class ResourceInputSerializer(serializers.Serializer):
-    user = serializers.EmailField()
+    user = serializers.PrimaryKeyRelatedField(
+        required=True,
+        queryset=AuthUser.objects.all()
+    )
     file_upload = serializers.FileField(required=False)
     link_upload = serializers.URLField(required=False)
     resource_type = serializers.CharField(max_length=8)
@@ -23,11 +26,10 @@ class ResourceInputSerializer(serializers.Serializer):
                 raise serializers.ValidationError("File type not allowed")
             if content_type not in FileUpload.FileTypes.values or content_type != value.name.split('.')[1]:
                 raise serializers.ValidationError(f"Invalid content type or doesn't match file suffix, content type: {content_type}")
-            
             return value
         
     def validate_resource_type(self, value):
-        if value not in ResourceTypes.labels:
+        if value.lower() not in ResourceTypes.values:
             raise serializers.ValidationError(f"Invalid resource type: {value}")
         return value
 
@@ -42,23 +44,22 @@ class ResourceInputSerializer(serializers.Serializer):
         if "file_upload" in value:
             if value['file_upload'] and value['resource_type'] == ResourceTypes.LINK.label:
                 raise serializers.ValidationError("Resource type need to be Textbook or File with file upload")
-        
+            
         return value
 
     def create(self, validated_data):
-        user = AuthUser.objects.get(email=validated_data['user'])
         if 'file_upload' in validated_data:
             file = FileUpload.objects.create(
                 file_name=validated_data['file_upload'].name.split('.')[0],
                 file_upload=validated_data['file_upload'],
-                user=user,
+                user=validated_data['user'],
                 resource_type=validated_data['resource_type']
                 )
             return file
         
         if 'link_upload' in validated_data:
             link = LinkUpload.objects.create(
-                user=user,
+                user=validated_data['user'],
                 link=validated_data['link_upload'],
                 title=validated_data['title'],
                 resource_type=validated_data['resource_type']

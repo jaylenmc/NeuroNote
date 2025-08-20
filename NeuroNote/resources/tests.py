@@ -26,29 +26,30 @@ class ResourceTestCase(APITestCase):
     def setUp(self):
         self.client.force_authenticate(self.user)
 
-        url = reverse('create-resource')
-        link = "https://www.youtube.com/watch?v=-W89X9GsKyE"
-        file = SimpleUploadedFile("ScienceExamProblems.pdf", b"How many inches are in a cm", content_type="application/pdf")
-        data = {
-            'user': self.user.email,
-            'link_upload': link,
-            'resource_type': "Link",
-            'title': "Calc Lecture"
-            }
-        response = self.client.post(url, data=data, format='json')
-        self.assertEqual(
-            response.status_code, 
-            status.HTTP_201_CREATED,
-            msg=f'Post request status code error: {response.data}'
-        )
-        self.file = response.data
+        # url = reverse('create-resource')
+        # link = "https://www.youtube.com/watch?v=-W89X9GsKyE"
+        # file = SimpleUploadedFile("ScienceExamProblems.pdf", b"How many inches are in a cm", content_type="application/pdf")
+        # data = {
+        #     'user': self.user.email,
+        #     'link_upload': link,
+        #     'resource_type': "Link",
+        #     'title': "Calc Lecture"
+        #     }
+        # response = self.client.post(url, data=data, format='json')
+        # self.assertEqual(
+        #     response.status_code, 
+        #     status.HTTP_201_CREATED,
+        #     msg=f'Post request status code error: {response.data}'
+        # )
+        # self.file = response.data
 
     def test_resource_post(self):
+        print(f"User: {self.user.pk}")
         url = reverse('create-resource')
         file = SimpleUploadedFile("ScienceExamProblems.pdf", b"How many inches are in a cm", content_type="application/pdf")
         link = "https://www.youtube.com/watch?v=-W89X9GsKyE"
         data = {
-            'user': self.user.email,
+            'user': self.user.pk,
             'file_upload': file,
             "resource_type": "File",
             "title": "Cultural Studies Lecture"

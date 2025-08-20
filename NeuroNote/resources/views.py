@@ -21,6 +21,7 @@ class ImportResource(APIView):
         return Response({"Error": "User has no links"}, status=status.HTTP_404_NOT_FOUND)
 
     def post(self, request):
+        print(f"Request data in resources: {request.data}")
         serializer = ResourceInputSerializer(
             data=request.data, 
             context={'method': request.method}
@@ -28,11 +29,11 @@ class ImportResource(APIView):
         if serializer.is_valid():
             resource = serializer.save()
 
-            if resource.resource_type != ResourceTypes.LINK.label:
+            if resource.resource_type.lower() == ResourceTypes.FILE.value:
                 serialized = FileUploadSerializer(resource, context={'request': request})
                 return Response(serialized.data, status=status.HTTP_201_CREATED)
             
-            if resource.resource_type == ResourceTypes.LINK.label:
+            if resource.resource_type.lower() == ResourceTypes.LINK.value:
                 serialized = LinkUploadSerializer(resource, context={"request": request})
                 return Response(serialized.data, status=status.HTTP_201_CREATED)
             

@@ -20,7 +20,7 @@ class DocumentView(APIView):
 
         documents = Document.objects.filter(folder__user=request.user, folder__id=folder_id)
         serializer = DocumentOutputSerializer(documents, many=True)
-        print(serializer.data)
+        print(f"Serializer data: {serializer.data}")
         return Response(serializer.data, status=status.HTTP_200_OK)
     
     def post(self, request):        

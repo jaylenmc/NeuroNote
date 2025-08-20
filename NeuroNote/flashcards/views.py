@@ -18,7 +18,6 @@ class DeckCollection(APIView):
 
     def get(self, request):
         decks = Deck.objects.filter(user=request.user)
-        print(decks)
         for deck in decks:
             deck.num_of_cards = num_of_cards(deck)
             deck.save()
@@ -93,7 +92,6 @@ class CardCollection(APIView):
 
         return Response(serialized.data, status=status.HTTP_200_OK)
 
-    # Test this
     def post(self, request):
         question = request.data.get('question')
         answer = request.data.get('answer')
