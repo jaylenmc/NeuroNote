@@ -4,7 +4,7 @@ from django.contrib.auth import get_user_model
 from documents.models import Document
 from resources.models import FileUpload, LinkUpload
 from folders.models import Folder
-from solostudyroom.models import PinnedResources
+from solostudyroom.models import PinnedResourcesDashboard
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.urls import reverse
 from rest_framework import status
@@ -59,24 +59,50 @@ class PinnedResourceTestCase(APITestCase):
             file_upload=file
         )
 
-        self.pinned_resources = PinnedResources.objects.create(
-            user=self.user, 
-        )
-        self.pinned_resources.document.add(self.document)
-        self.pinned_resources.link.add(self.link)
-        self.pinned_resources.link.add(link)
-        self.pinned_resources.file.add(self.file)
+        # self.pinned_resources = PinnedResourcesDashboard.objects.create(
+        #     user=self.user, 
+        # )
+        # self.pinned_resources.document.add(self.document)
+        # self.pinned_resources.link.add(self.link)
+        # self.pinned_resources.link.add(link)
+        # self.pinned_resources.file.add(self.file)
 
         self.client.force_authenticate(user=self.user)
 
     def test_get_pinned_resources(self):
+        print("================ GET TEST ================")
         url = reverse('pinned-resources')
         response = self.client.get(url)
         self.assertEqual(
             response.status_code,
             status.HTTP_200_OK,
-            msg=f"Status code error: {response.status_code}"
+            msg=f"Status code error: {response.data}"
         )
+        print(response.data)
+    
+    def test_post_pinned_resources(self):
+        url = reverse('create-pinned-resource')
+        data = {
+            'document': [self.document.pk],
+            'file': [self.file.pk],
+            'link': [self.link.pk]
+        }
+
+        response = self.client.post(url, data=data, format='json')
+        self.assertEqual(
+            response.status_code,
+            status.HTTP_201_CREATED,
+            msg=f"Status code error: {response.data}"
+        )
+
+        pinned_resource = PinnedResourcesDashboard.objects.filter(
+            user=self.user).values_list("document", 'file', 'link')
+        
+        self.assertTrue(
+            pinned_resource.count() > 0,
+            msg=f"Pinned resource objects not created: {response.data}"
+        )
+        print("================ POST TEST ================")
         print(response.data)
 
     def test_delete_pinned_resources(self):
@@ -92,12 +118,12 @@ class PinnedResourceTestCase(APITestCase):
                 url = reverse("delete-resource", args=[pk])
                 url = f"{url}?resource_type=link"
 
-                link_before = PinnedResources.objects.get(user=self.user)
-                print(f"Before call: {link_before.link.all()}")
+                link_before = PinnedResourcesDashboard.objects.get(user=self.user)
+                print(f"- Before call: {link_before.link.all()}")
 
                 response = self.client.delete(url, format='json')
-                resources = PinnedResources.objects.get(user=self.user)
-                print(f"After call: {resources.link.all()}")
+                resources = PinnedResourcesDashboard.objects.get(user=self.user)
+                print(f"- After call: {resources.link.all()}")
 
                 self.assertEqual(
                     response.status_code,
@@ -116,12 +142,12 @@ class PinnedResourceTestCase(APITestCase):
                 url = reverse("delete-resource", args=[pk])
                 url = f"{url}?resource_type=file"
 
-                link_before = PinnedResources.objects.get(user=self.user)
-                print(f"Before call: {link_before.file.all()}")
+                link_before = PinnedResourcesDashboard.objects.get(user=self.user)
+                print(f"- Before call: {link_before.file.all()}")
 
                 response = self.client.delete(url, format='json')
-                resources = PinnedResources.objects.get(user=self.user)
-                print(f"After call: {resources.file.all()}")
+                resources = PinnedResourcesDashboard.objects.get(user=self.user)
+                print(f"- After call: {resources.file.all()}")
 
                 self.assertEqual(
                     response.status_code,
@@ -140,12 +166,12 @@ class PinnedResourceTestCase(APITestCase):
                 url = reverse("delete-resource", args=[pk])
                 url = f"{url}?resource_type=document"
 
-                link_before = PinnedResources.objects.get(user=self.user)
-                print(f"Before call: {link_before.document.all()}")
+                link_before = PinnedResourcesDashboard.objects.get(user=self.user)
+                print(f"- Before call: {link_before.document.all()}")
 
                 response = self.client.delete(url, format='json')
-                resources = PinnedResources.objects.get(user=self.user)
-                print(f"After call: {resources.document.all()}")
+                resources = PinnedResourcesDashboard.objects.get(user=self.user)
+                print(f"- After call: {resources.document.all()}")
 
                 self.assertEqual(
                     response.status_code,

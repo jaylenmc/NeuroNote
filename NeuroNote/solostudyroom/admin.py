@@ -1,4 +1,4 @@
 from django.contrib import admin
-from .models import PinnedResources
+from .models import PinnedResourcesDashboard
 
-admin.site.register(PinnedResources)
+admin.site.register(PinnedResourcesDashboard)

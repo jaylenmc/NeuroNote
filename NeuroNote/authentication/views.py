@@ -14,6 +14,7 @@ from achievements.models import UserAchievements, Achievements
 from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
+from solostudyroom.models import PinnedResourcesDashboard
 
 @api_view(['POST'])
 def googleApi(request):
@@ -72,6 +73,7 @@ def googleApi(request):
             access_token_expires_at=user_expires_in,
             google_refresh_token=user_refresh_token,
             )
+        
     else:
         user.email = email
         user.google_access_token = user_access_token
@@ -80,6 +82,11 @@ def googleApi(request):
         if user_refresh_token:
             user.google_refresh_token = user_refresh_token
         user.save()
+
+    # Create pinned resources for user if it doesn't exists
+    pinned_resources = PinnedResourcesDashboard.objects.filter(user=user).first()
+    if not pinned_resources:
+        PinnedResourcesDashboard.objects.create(user=user)
 
     refresh = RefreshToken.for_user(user)
     refresh['email'] = user.email
