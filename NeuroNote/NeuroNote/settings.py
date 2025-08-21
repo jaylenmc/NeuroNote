@@ -22,8 +22,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-+fb6b9kj@%w-+f7_u*qtp3gqmsk=6twjc1hun&ma_q+8!r$k!$'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -172,8 +170,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'authentication.AuthUser'
 
-GOOGLE_CLIENT_ID = '708025289440-pnb51jsd3pnbjdpv302lmjs03rt4v0i2.apps.googleusercontent.com'
-GOOGLE_CLIENT_SECRET = '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'
 REDIRECT_URI = 'http://localhost:5173/auth/callback/'
 
 LOGIN_URL = '/'
@@ -190,3 +186,18 @@ CHANNEL_LAYERS = {
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT =  BASE_DIR / 'media'
+
+import os
+import environ
+
+env = environ.Env(
+    DEBUG=(bool, False)
+)
+
+environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
+
+DEBUG = env('DEBUG')
+SECRET_KEY = env('SECRET_KEY')
+
+GOOGLE_CLIENT_ID = env('GOOGLE_CLIENT_ID')
+GOOGLE_CLIENT_SECRET = env('GOOGLE_CLIENT_SECRET')

@@ -11,8 +11,6 @@ from freezegun import freeze_time
 
 
 class CardTestCase(APITestCase):
-    # fixtures = ['initial_data.json']
-
     def setUp(self):
         User = get_user_model()
         self.user = User.objects.create_user(email='bob@gmail.com', password='12345')
