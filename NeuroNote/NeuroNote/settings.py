@@ -171,8 +171,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 AUTH_USER_MODEL = 'authentication.AuthUser'
 
-GOOGLE_CLIENT_ID = 'REDACTED'
-GOOGLE_CLIENT_SECRET = 'REDACTED'
 REDIRECT_URI = 'http://localhost:5173/auth/callback/'
 
 LOGIN_URL = '/'
@@ -189,3 +187,12 @@ CHANNEL_LAYERS = {
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT =  BASE_DIR / 'media'
+
+import os, environ
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+env = environ.Env()
+environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
+
+ANTHROPIC_API_KEY = env('ANTHROPIC_API_KEY')
+GOOGLE_CLIENT_ID = env('GOOGLE_CLIENT_ID')
+GOOGLE_CLIENT_SECRET = env('GOOGLE_CLIENT_SECRET')
