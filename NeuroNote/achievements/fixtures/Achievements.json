@@ -1,0 +1,212 @@
+[
+{
+  "model": "achievements.achievements",
+  "pk": 1,
+  "fields": {
+    "name": "The Journey Begins",
+    "description": "You’ve entered a world of possibilities—forge your path.",
+    "tier": "General",
+    "family": null
+  }
+},
+{
+  "model": "achievements.achievements",
+  "pk": 2,
+  "fields": {
+    "name": "Memory Architect",
+    "description": "Mastered a card.",
+    "tier": "General",
+    "family": null
+  }
+},
+{
+  "model": "achievements.achievements",
+  "pk": 3,
+  "fields": {
+    "name": "Knowledge Engineer",
+    "description": "Master a full deck of 10+ cards.",
+    "tier": "General",
+    "family": null
+  }
+},
+{
+  "model": "achievements.achievements",
+  "pk": 4,
+  "fields": {
+    "name": "Cognitive Kickoff",
+    "description": "Jump started your journey! First test completed.",
+    "tier": "General",
+    "family": null
+  }
+},
+{
+  "model": "achievements.achievements",
+  "pk": 5,
+  "fields": {
+    "name": "Comback Kid",
+    "description": "Bounced back after missing a review day (Implement in frontend)",
+    "tier": "General",
+    "family": null
+  }
+},
+{
+  "model": "achievements.achievements",
+  "pk": 6,
+  "fields": {
+    "name": "Sage Mode",
+    "description": "Mastered all cards in deck.",
+    "tier": "General",
+    "family": null
+  }
+},
+{
+  "model": "achievements.achievements",
+  "pk": 7,
+  "fields": {
+    "name": "Midnight Scholar",
+    "description": "Studied after midnight.",
+    "tier": "General",
+    "family": null
+  }
+},
+{
+  "model": "achievements.achievements",
+  "pk": 8,
+  "fields": {
+    "name": "Coffee Powered",
+    "description": "Ready for a late session.",
+    "tier": "General",
+    "family": null
+  }
+},
+{
+  "model": "achievements.achievements",
+  "pk": 9,
+  "fields": {
+    "name": "Underdog Victory",
+    "description": "Aced a hard deck after multiple failures.",
+    "tier": "General",
+    "family": null
+  }
+},
+{
+  "model": "achievements.achievements",
+  "pk": 10,
+  "fields": {
+    "name": "Spark Starter",
+    "description": "3 Day study streak",
+    "tier": "Bronze",
+    "family": "Study Streak"
+  }
+},
+{
+  "model": "achievements.achievements",
+  "pk": 11,
+  "fields": {
+    "name": "Momentum Builder",
+    "description": "7 Day study streak",
+    "tier": "Silver",
+    "family": "Study Streak"
+  }
+},
+{
+  "model": "achievements.achievements",
+  "pk": 12,
+  "fields": {
+    "name": "Unstoppable Force",
+    "description": "30 Day study streak",
+    "tier": "Gold",
+    "family": "Study Streak"
+  }
+},
+{
+  "model": "achievements.achievements",
+  "pk": 13,
+  "fields": {
+    "name": "Legend Learner",
+    "description": "100 Day study streak",
+    "tier": "Legend",
+    "family": "Study Streak"
+  }
+},
+{
+  "model": "achievements.achievements",
+  "pk": 14,
+  "fields": {
+    "name": "Memory Apprentice",
+    "description": "Scored 70%+ on recall quiz",
+    "tier": "Bronze",
+    "family": "Recall Quiz"
+  }
+},
+{
+  "model": "achievements.achievements",
+  "pk": 15,
+  "fields": {
+    "name": "Recall Expert",
+    "description": "Scored 85%+ on recall quiz",
+    "tier": "Silver",
+    "family": "Recall Quiz"
+  }
+},
+{
+  "model": "achievements.achievements",
+  "pk": 16,
+  "fields": {
+    "name": "Recall Champion",
+    "description": "Scored 95%+ on recall quiz",
+    "tier": "Gold",
+    "family": "Recall Quiz"
+  }
+},
+{
+  "model": "achievements.achievements",
+  "pk": 17,
+  "fields": {
+    "name": "Recall Legend",
+    "description": "Maintained 95%+ on recall quizzes for a week",
+    "tier": "Legend",
+    "family": "Recall Quiz"
+  }
+},
+{
+  "model": "achievements.achievements",
+  "pk": 18,
+  "fields": {
+    "name": "Deck Explorer",
+    "description": "Completed 5 decks",
+    "tier": "Bronze",
+    "family": "Deck Mastery"
+  }
+},
+{
+  "model": "achievements.achievements",
+  "pk": 19,
+  "fields": {
+    "name": "Deck Conqueror",
+    "description": "Completed 15 decks",
+    "tier": "Silver",
+    "family": "Deck Mastery"
+  }
+},
+{
+  "model": "achievements.achievements",
+  "pk": 20,
+  "fields": {
+    "name": "Deck Dominator",
+    "description": "Completed 30 decks",
+    "tier": "Gold",
+    "family": "Deck Mastery"
+  }
+},
+{
+  "model": "achievements.achievements",
+  "pk": 21,
+  "fields": {
+    "name": "Deck Legend",
+    "description": "Completed 50+ decks",
+    "tier": "Legend",
+    "family": "Deck Mastery"
+  }
+}
+]

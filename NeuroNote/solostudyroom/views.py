@@ -21,7 +21,6 @@ class PinnedResourceClass(APIView):
         return Response(serialized.data, status=status.HTTP_200_OK)
     
     def post(self, request):
-        print(f"Request data: {request.data}")
         request_data = PinnedResourcesSerializer(data=request.data, context={"user": request.user})
         if request_data.is_valid():
             saved_instance = request_data.save()
@@ -30,6 +29,7 @@ class PinnedResourceClass(APIView):
         return Response({"Error": request_data.errors}, status=status.HTTP_400_BAD_REQUEST)
     
     def delete(self, request, obj_id):
+        # Add resource_type error handling
         resource_type = request.query_params.get('resource_type')
 
         if resource_type.lower() not in ResourceTypes.values and resource_type.lower() != Document.ResourceType.DOCUMENT_TYPE:
