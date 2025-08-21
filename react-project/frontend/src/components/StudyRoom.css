@@ -1150,9 +1150,8 @@
 /* Debug and ensure pinned resource styles work */
 .pinned-resources-section .pinned-resources-grid .pinned-resource-card {
   background: #23272f !important;
-  border-radius: 16px !important;
+  border-radius: 12px !important;
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15) !important;
   padding: 20px !important;
   display: flex !important;
   flex-direction: column !important;
@@ -1224,7 +1223,6 @@
   min-width: 32px;
   height: 32px;
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.05);
   backdrop-filter: blur(4px);
   flex-shrink: 0;
 }
