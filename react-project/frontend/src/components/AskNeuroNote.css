@@ -1,0 +1,96 @@
+.ask-neuronote {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 600px;
+    margin: 1rem auto;
+}
+
+.ask-neuronote-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.ask-neuronote-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.ask-neuronote-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.response-container {
+    background: rgba(255, 255, 255, 0.05);
+    padding: 1rem;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.response-container p {
+    margin: 0;
+    line-height: 1.6;
+    color: var(--text-primary);
+}
+
+.question-form {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.question-form input {
+    flex: 1;
+    padding: 0.75rem 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+    font-size: 1rem;
+}
+
+.question-form input:focus {
+    outline: none;
+    border-color: var(--primary-color);
+}
+
+.question-form button {
+    padding: 0.75rem;
+    border: none;
+    border-radius: 8px;
+    background: var(--primary-color);
+    color: white;
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.question-form button:hover {
+    background: var(--primary-color-dark);
+}
+
+.question-form button:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+/* Dark mode adjustments */
+.dark-mode .ask-neuronote {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.dark-mode .response-container {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.dark-mode .question-form input {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+} 

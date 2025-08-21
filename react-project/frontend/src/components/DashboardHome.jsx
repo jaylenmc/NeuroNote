@@ -1,0 +1,331 @@
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '../auth/AuthContext';
+import { 
+  Trophy, Brain, Users, MessageSquare, Crown, Medal, Sparkles, 
+  Flame, Target, Star, CheckCircle, Clock, ChevronRight, Plus,
+  Zap, BookOpen, TrendingUp, Award, Rocket, Coffee
+} from 'lucide-react';
+import './DashboardHome.css';
+import { useNavigate } from 'react-router-dom';
+import { makeAuthenticatedRequest } from '../utils/api';
+
+const DashboardHome = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [stats, setStats] = useState({
+    studyStreak: 7,
+    xpPoints: 2450,
+    level: 5,
+    nextLevelXp: 500,
+    bonusXp: 50
+  });
+
+  // State for achievements
+  const [achievements, setAchievements] = useState([]);
+  const [achievementsLoading, setAchievementsLoading] = useState(true);
+  const [achievementsError, setAchievementsError] = useState(null);
+
+  // Fetch achievements from API
+  useEffect(() => {
+    const fetchAchievements = async () => {
+      setAchievementsLoading(true);
+      setAchievementsError(null);
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/';
+        const response = await makeAuthenticatedRequest(`${apiUrl}achievements/user/`);
+        if (!response) throw new Error('No response from server');
+        if (response.status !== 200) throw new Error(response.data?.message || 'Failed to fetch achievements');
+        setAchievements(response.data);
+      } catch (err) {
+        setAchievementsError(err.message || 'Failed to fetch achievements');
+        // Fallback to empty array if API fails
+        setAchievements([]);
+      } finally {
+        setAchievementsLoading(false);
+      }
+    };
+    fetchAchievements();
+  }, []);
+
+  const stockCollaborations = [
+    {
+      name: "Advanced Math Study Group",
+      description: "Working on calculus and linear algebra",
+      members: [
+        { name: "Alex", color: "#FF6B6B" },
+        { name: "Sam", color: "#4ECDC4" },
+        { name: "Jordan", color: "#45B7AF" }
+      ],
+      isLive: true
+    },
+    {
+      name: "Computer Science Club",
+      description: "Data structures and algorithms",
+      members: [
+        { name: "Taylor", color: "#FFD93D" },
+        { name: "Casey", color: "#6C5CE7" }
+      ],
+      isLive: false
+    }
+  ];
+
+  const stockLeaderboard = [
+    { name: "Alex", points: 5000, color: "#FFD700" },
+    { name: "Sam", points: 4800, color: "#C0C0C0" },
+    { name: "Jordan", points: 4500, color: "#CD7F32" },
+    { name: "Taylor", points: 4200, color: "#4ECDC4" }
+  ];
+
+  const stockChats = [
+    {
+      name: "Math Help",
+      lastMessage: "Can someone explain derivatives?",
+      unread: 3,
+      activeMembers: 12
+    },
+    {
+      name: "CS Study Group",
+      lastMessage: "Let's review sorting algorithms",
+      unread: 1,
+      activeMembers: 8
+    }
+  ];
+
+  const stockActivity = [
+    {
+      message: "Alex earned the 'Knowledge Explorer' badge",
+      time: "2m ago",
+      color: "#FFD700",
+      icon: <Trophy size={20} />
+    },
+    {
+      message: "Sam completed a 2-hour study session",
+      time: "15m ago",
+      color: "#4ECDC4",
+      icon: <Clock size={20} />
+    },
+    {
+      message: "New study group 'Physics Club' created",
+      time: "1h ago",
+      color: "#6C5CE7",
+      icon: <Users size={20} />
+    }
+  ];
+
+  const [collaborations] = useState(stockCollaborations);
+  const [leaderboard] = useState(stockLeaderboard);
+  const [studyChats] = useState(stockChats);
+  const [recentActivity] = useState(stockActivity);
+
+  const getUsername = () => {
+    if (!user?.email) return 'User';
+    return user.email.split('@')[0];
+  };
+
+  const getAchievementIcon = (type) => {
+    switch (type) {
+      case 'knowledge': return <Brain size={24} />;
+      case 'streak': return <Flame size={24} />;
+      case 'mastery': return <Target size={24} />;
+      case 'social': return <Users size={24} />;
+      default: return <Trophy size={24} />;
+    }
+  };
+
+  const getAchievementTier = (tier) => {
+    switch (tier) {
+      case 'bronze': return '#cd7f32';
+      case 'silver': return '#c0c0c0';
+      case 'gold': return '#ffd700';
+      default: return '#4ecdc4';
+    }
+  };
+
+  // Helper function to determine achievement type from family
+  const getAchievementType = (family) => {
+    if (!family) return 'general';
+    const familyLower = family.toLowerCase();
+    if (familyLower.includes('flashcard') || familyLower.includes('study')) return 'knowledge';
+    if (familyLower.includes('streak') || familyLower.includes('consistency')) return 'streak';
+    if (familyLower.includes('social') || familyLower.includes('group')) return 'social';
+    if (familyLower.includes('mastery') || familyLower.includes('quiz')) return 'mastery';
+    return 'general';
+  };
+
+  // Get display achievements (limit to 3 for dashboard)
+  const getDisplayAchievements = () => {
+    if (achievementsLoading) {
+      return [
+        { name: "Loading...", description: "Fetching achievements", type: "general", tier: "general", progress: 0, isNew: false }
+      ];
+    }
+    
+    if (achievementsError || achievements.length === 0) {
+      return [
+        { name: "No Achievements", description: "Complete tasks to earn achievements", type: "general", tier: "general", progress: 0, isNew: false }
+      ];
+    }
+
+    // Take first 3 achievements and format them for display
+    return achievements.slice(0, 3).map(achievement => ({
+      name: achievement.name || "Achievement",
+      description: achievement.description || "Complete this achievement",
+      type: getAchievementType(achievement.family),
+      tier: achievement.tier || "general",
+      progress: 100, // All achievements from backend are considered completed
+      isNew: false // You could add logic to determine if achievement is new
+    }));
+  };
+
+  const xpForLevel = (level) => Math.floor(100 * Math.pow(1.5, level - 1));
+  const xp = user?.xp || 0;
+  const level = user?.level || 1;
+  const nextLevelXp = xpForLevel(level);
+  const progress = Math.min((xp / nextLevelXp) * 100, 100);
+
+  return (
+    <div className="dashboard-home-container">
+      {/* Background Elements */}
+      <div className="background-blobs">
+        <div className="blob blob-1"></div>
+        <div className="blob blob-2"></div>
+        <div className="blob blob-3"></div>
+      </div>
+
+      {/* Welcome Section */}
+      <div className="dashboard-greeting">
+        <div className="avatar-area">
+          <div className="avatar-circle">
+            {user?.profile_picture ? (
+              <img src={user.profile_picture} alt="Profile" />
+            ) : (
+              <Brain size={32} className="avatar-icon" />
+            )}
+            <div className="avatar-glow"></div>
+          </div>
+        </div>
+        <div className="greeting-area">
+          <h1 className="greeting-title">
+            Welcome back, {getUsername()} 👋
+          </h1>
+          <p className="greeting-subtitle">Ready to crush your goals today?</p>
+          <div className="streak-area">
+            <Flame size={20} className="streak-icon" />
+            <span className="streak-count">{stats.studyStreak} day streak</span>
+            {stats.studyStreak >= 3 && (
+              <span className="bonus-badge">
+                +{stats.bonusXp} XP Bonus
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* XP Progress */}
+      <div className="dashboard-xp">
+        <div className="section-header">
+          <h2><Zap size={24} /> XP Progress</h2>
+          <p>Level up your learning journey</p>
+        </div>
+        <div className="xp-container">
+          <div className="xp-ring">
+            <svg viewBox="0 0 100 100">
+              <circle className="xp-ring-bg" cx="50" cy="50" r="45" />
+              <circle 
+                className="xp-ring-progress" 
+                cx="50" 
+                cy="50" 
+                r="45"
+                style={{
+                  strokeDasharray: `${(progress / 100) * 283} 283`
+                }}
+              />
+            </svg>
+            <div className="xp-center">
+              <span className="xp-level">Level {level}</span>
+              <span className="xp-points">{xp} / {nextLevelXp} XP</span>
+            </div>
+          </div>
+          <div className="xp-next">
+            <span>{nextLevelXp - xp} XP to Level {level + 1}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Leaderboard Section */}
+      <div className="dashboard-leaderboard">
+        <div className="section-header">
+          <h2><Crown size={24} /> Leaderboard</h2>
+          <p>Top performers this week</p>
+        </div>
+        <div className="leaderboard-list">
+          {leaderboard.map((entry, index) => (
+            <div key={index} className="leaderboard-item">
+              <div className="rank-badge" style={{ background: index < 3 ? getAchievementTier(['gold', 'silver', 'bronze'][index]) : '#4ecdc4' }}>
+                {index + 1}
+              </div>
+              <div className="user-avatar" style={{ background: entry.color }}>
+                {entry.name[0]}
+              </div>
+              <div className="user-info">
+                <h4>{entry.name}</h4>
+                <p>{entry.points} points</p>
+              </div>
+              {index < 3 && <Medal size={20} color={getAchievementTier(['gold', 'silver', 'bronze'][index])} />}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Study Chat Rooms Section */}
+      <div className="dashboard-chats">
+        <div className="section-header">
+          <h2><MessageSquare size={24} /> Study Chat Rooms</h2>
+          <p>Join active study groups and discussions</p>
+        </div>
+        <div className="chats-grid">
+          {studyChats.map((chat, index) => (
+            <div key={index} className="chat-card">
+              <div className="chat-header">
+                <h3>{chat.name}</h3>
+                {chat.unread > 0 && (
+                  <span className="unread-badge">{chat.unread} new</span>
+                )}
+              </div>
+              <p className="last-message">{chat.lastMessage}</p>
+              <div className="chat-meta">
+                <span>{chat.activeMembers} active</span>
+                <button className="join-chat-btn">
+                  <MessageSquare size={16} /> Join Chat
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Recent Activity Feed */}
+      <div className="dashboard-activity">
+        <div className="section-header">
+          <h2><Clock size={24} /> Recent Activity</h2>
+          <p>Latest updates from your network</p>
+        </div>
+        <div className="activity-feed">
+          {recentActivity.map((activity, index) => (
+            <div key={index} className="activity-item">
+              <div className="activity-icon" style={{ background: activity.color }}>
+                {activity.icon}
+              </div>
+              <div className="activity-content">
+                <p>{activity.message}</p>
+                <span className="activity-time">{activity.time}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default DashboardHome; 

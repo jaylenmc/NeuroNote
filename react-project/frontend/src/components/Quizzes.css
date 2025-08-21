@@ -1,0 +1,135 @@
+.quizzes-container {
+    padding: 20px;
+    background: rgba(40, 40, 40, 0.5);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.quizzes-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.quizzes-header h2 {
+    color: #FDFFFC;
+    margin: 0;
+}
+
+.create-quiz-btn {
+    background: #0CBABA;
+    color: #1A1A1A;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s;
+}
+
+.create-quiz-btn:hover {
+    background: #0AA8A8;
+}
+
+.create-quiz-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding: 16px;
+    background: rgba(26, 26, 26, 0.5);
+    border-radius: 6px;
+}
+
+.create-quiz-form input,
+.create-quiz-form textarea {
+    padding: 8px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    background: rgba(40, 40, 40, 0.5);
+    color: #FDFFFC;
+    font-size: 0.95rem;
+}
+
+.create-quiz-form textarea {
+    min-height: 80px;
+    resize: vertical;
+}
+
+.submit-quiz-btn {
+    background: #0CBABA;
+    color: #1A1A1A;
+    border: none;
+    padding: 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background 0.2s;
+}
+
+.submit-quiz-btn:hover {
+    background: #0AA8A8;
+}
+
+.quizzes-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 16px;
+}
+
+.quiz-card {
+    background: rgba(26, 26, 26, 0.5);
+    border-radius: 6px;
+    padding: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.quiz-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.quiz-header h3 {
+    color: #0CBABA;
+    margin: 0;
+    font-size: 1.1rem;
+}
+
+.delete-quiz-btn {
+    background: rgba(255, 59, 48, 0.1);
+    color: #FF3B30;
+    border: 1px solid rgba(255, 59, 48, 0.2);
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.delete-quiz-btn:hover {
+    background: rgba(255, 59, 48, 0.2);
+}
+
+.quiz-content {
+    color: #FDFFFC;
+}
+
+.quiz-question {
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.quiz-answer {
+    color: rgba(253, 255, 252, 0.8);
+    font-size: 0.95rem;
+}
+
+.no-quizzes {
+    color: rgba(253, 255, 252, 0.6);
+    text-align: center;
+    grid-column: 1 / -1;
+    padding: 20px;
+} 
