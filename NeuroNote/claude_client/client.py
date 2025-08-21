@@ -13,7 +13,7 @@ import json
 import tiktoken
 
 client = anthropic.Anthropic(
-    api_key='REDACTED'
+    api_key='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'
 ) 
 
 def thinker_ai(prompt: str, user: object):

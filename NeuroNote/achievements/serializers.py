@@ -5,3 +5,9 @@ class AchievementsSerializer(serializers.ModelSerializer):
     class Meta:
         model = Achievements
         fields = ['name', 'description', 'tier', 'family']
+
+class UserAcheivementsSerializer(serializers.Serializer):
+    achievements = AchievementsSerializer(many=True)
+    class Meta:
+        model = UserAchievements
+        fields = ['acheivements', 'badges']

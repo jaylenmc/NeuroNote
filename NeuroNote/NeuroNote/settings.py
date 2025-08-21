@@ -22,8 +22,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'REDACTED'
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -54,7 +52,8 @@ INSTALLED_APPS = [
     'documents',
     'chat',
     'studyroom',
-    'resources'
+    'resources',
+    'solostudyroom'
 ]
 
 REST_FRAMEWORK = {
@@ -188,11 +187,17 @@ CHANNEL_LAYERS = {
 MEDIA_URL = '/media/'
 MEDIA_ROOT =  BASE_DIR / 'media'
 
-import os, environ
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-env = environ.Env()
+import os
+import environ
+
+env = environ.Env(
+    DEBUG=(bool, False)
+)
+
 environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
-ANTHROPIC_API_KEY = env('ANTHROPIC_API_KEY')
+DEBUG = env('DEBUG')
+SECRET_KEY = env('SECRET_KEY')
+
 GOOGLE_CLIENT_ID = env('GOOGLE_CLIENT_ID')
 GOOGLE_CLIENT_SECRET = env('GOOGLE_CLIENT_SECRET')

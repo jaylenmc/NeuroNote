@@ -3,7 +3,7 @@ from django.contrib.auth import get_user_model
 from folders.models import Folder
 from django.urls import reverse
 from rest_framework import status
-from .models import Document, Tag
+from .models import Document
 
 class DocumentTestCase(APITestCase):
     def setUp(self):
@@ -20,7 +20,6 @@ class DocumentTestCase(APITestCase):
             folder = self.folder,
             published = False
         )
-        self.tag = Tag.objects.create(title='Tuesday Exam Prep', document=self.document)
         self.client.force_authenticate(user=self.user)
 
     def test_document_create(self):
@@ -35,7 +34,6 @@ class DocumentTestCase(APITestCase):
         response = self.client.post(url, data=data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK, msg=f"Status code error: {response.data}")
         self.assertTrue(Document.objects.filter(folder__user=self.user), msg=f"Document not created: {response.data}")
-        self.assertTrue(Tag.objects.filter(title='Difficult Subject', document=response.data['id']), msg=f"Tag not created: {response.data}")
         print(response.data)
 
     def test_document_get(self):

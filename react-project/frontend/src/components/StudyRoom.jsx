@@ -50,12 +50,21 @@ const StudyRoom = () => {
   const [selectedType, setSelectedType] = useState(null);
   const [importValue, setImportValue] = useState('');
   const [importFile, setImportFile] = useState(null);
+  const [importLinkTitle, setImportLinkTitle] = useState('');
   const [userDocuments, setUserDocuments] = useState([]);
   const [selectedDocument, setSelectedDocument] = useState(null);
   const [isLoadingDocuments, setIsLoadingDocuments] = useState(false);
   const [userFolders, setUserFolders] = useState([]);
   const [selectedFolder, setSelectedFolder] = useState(null);
   const [isLoadingFolders, setIsLoadingFolders] = useState(false);
+  const [importSuccess, setImportSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [pinnedResources, setPinnedResources] = useState({ file: [], link: [], document: [] });
+  const [isLoadingPinnedResources, setIsLoadingPinnedResources] = useState(false);
+  const [showOverlay, setShowOverlay] = useState(false);
+  const [overlayContent, setOverlayContent] = useState(null);
+  const [overlayType, setOverlayType] = useState(null);
+  const [isLoadingOverlay, setIsLoadingOverlay] = useState(false);
 
   // Pomodoro timer state
   const [phase, setPhase] = useState('pomodoro');
@@ -85,6 +94,27 @@ const StudyRoom = () => {
     const interval = setInterval(() => setTimeLeft(t => t - 1), 1000);
     return () => clearInterval(interval);
   }, [isRunning, timeLeft]);
+
+  // Fetch pinned resources on component mount
+  useEffect(() => {
+    fetchPinnedResources();
+  }, []);
+
+  const fetchPinnedResources = async () => {
+    try {
+      setIsLoadingPinnedResources(true);
+      const response = await api.get('/solostudyroom/pinned/');
+      if (response.status === 200) {
+        setPinnedResources(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching pinned resources:', error);
+      // Set empty pinned resources if there's an error
+      setPinnedResources({ file: [], link: [], document: [] });
+    } finally {
+      setIsLoadingPinnedResources(false);
+    }
+  };
 
   const handleTimerComplete = () => {
     if (phase === 'pomodoro') {
@@ -141,9 +171,9 @@ const StudyRoom = () => {
   const resourceTypes = [
     { key: 'note', label: 'Note', icon: <BookOpen color="#7c83fd" size={22} /> },
     { key: 'pdf', label: 'PDF', icon: <FileText color="#f56565" size={22} /> },
-    { key: 'doc', label: 'Doc', icon: <FileText color="#ffd93d" size={22} /> },
-    { key: 'link', label: 'Link', icon: <MessageCircle color="#4ecdc4" size={22} /> },
     { key: 'textbook', label: 'Textbook', icon: <BookOpen color="#22c55e" size={22} /> },
+    { key: 'document', label: 'Document', icon: <BookOpen color="#7c83fd" size={22} /> },
+    { key: 'link', label: 'Link', icon: <MessageCircle color="#4ecdc4" size={22} /> },
   ];
 
   const fetchUserDocuments = async () => {
@@ -200,28 +230,225 @@ const StudyRoom = () => {
     setImportStep('documents');
   };
 
-  const handleDocumentSelect = (document) => {
-    setSelectedDocument(document);
-    // Add the selected document as a resource
-    const newResource = {
-      id: Date.now(),
-      type: 'doc',
-      title: document.title,
-      pinned: false
-    };
-    setResources(prev => [...prev, newResource]);
-    handleImportResource();
+  const handleDocumentSelect = async (document) => {
+    try {
+      // Pin the selected document to the dashboard
+      const pinResponse = await api.post('/solostudyroom/pinned/', {
+        document: [document.id]
+      });
+      
+      if (pinResponse.status === 201) {
+        // Update pinned resources with the new data
+        setPinnedResources(pinResponse.data);
+        setSuccessMessage('Document pinned successfully!');
+        setImportSuccess(true);
+        setTimeout(() => setImportSuccess(false), 3000);
+        
+        // Close modal and reset
+        setShowImportModal(false);
+        setImportStep('select');
+        setSelectedType(null);
+        setSelectedDocument(null);
+        setSelectedFolder(null);
+      }
+    } catch (error) {
+      console.error('Error pinning document:', error);
+      alert('Error pinning document: ' + (error.response?.data?.message || error.message));
+    }
   };
 
-  const handleImportResource = (e) => {
-    // For now, just close modal and reset
-    setShowImportModal(false);
-    setImportStep('select');
-    setSelectedType(null);
-    setImportValue('');
-    setImportFile(null);
-    setSelectedDocument(null);
-    setSelectedFolder(null);
+  const handleImportResource = async () => {
+    try {
+      let resourceData = {};
+      
+      if (selectedType === 'pdf' || selectedType === 'textbook') {
+        if (!importFile) {
+          alert('Please select a file to upload');
+          return;
+        }
+        
+        // Create FormData for file upload to resources module
+        const formData = new FormData();
+        formData.append('file_upload', importFile);
+        
+        // Get current user email from session storage
+        const user = JSON.parse(sessionStorage.getItem('user') || '{}');
+        if (!user.id) {
+          alert('User not authenticated');
+          return;
+        }
+        formData.append('user', user.id);
+        
+        // Set resource type based on selected type
+        const resourceType = selectedType === 'pdf' ? 'file' : 'textbook';
+        formData.append('resource_type', resourceType);
+        
+        // Debug: Log what we're sending
+        console.log('Uploading file:', {
+          fileName: importFile.name,
+          fileSize: importFile.size,
+          fileType: importFile.type,
+          resourceType: resourceType,
+          userEmail: user.email
+        });
+        
+        // First, create the file via resources/create/ endpoint
+        const response = await api.post('/resources/create/', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+        
+        if (response.status === 201) {
+          console.log('File created successfully:', response.data);
+          
+          // Now pin the created file to the dashboard via solostudyroom/pinned/
+          const pinResponse = await api.post('/solostudyroom/pinned/', {
+            file: [response.data.id]
+          });
+          
+          if (pinResponse.status === 201) {
+            console.log('File pinned successfully:', pinResponse.data);
+            // Update pinned resources with the new data
+            setPinnedResources(pinResponse.data);
+            setSuccessMessage(`${selectedType.charAt(0).toUpperCase() + selectedType.slice(1)} imported and pinned successfully!`);
+            setImportSuccess(true);
+            setTimeout(() => setImportSuccess(false), 3000);
+          } else {
+            console.error('Failed to pin file:', pinResponse);
+            alert('File uploaded but failed to pin. Please try again.');
+          }
+        } else {
+          console.error('Failed to create file:', response);
+          alert('Failed to upload file. Please check the file type and try again.');
+        }
+      } else if (selectedType === 'link') {
+        if (!importValue.trim()) {
+          alert('Please enter a valid link');
+          return;
+        }
+        
+        if (!importLinkTitle.trim()) {
+          alert('Please enter a title for the link');
+          return;
+        }
+        
+        // Pin the link to the dashboard
+        const pinResponse = await api.post('/solostudyroom/pinned/', {
+          link: importValue.trim(),
+          title: importLinkTitle.trim(),
+          resource_type: 'link'
+        });
+        
+        if (pinResponse.status === 201) {
+          // Update pinned resources with the new data
+          setPinnedResources(pinResponse.data);
+          setSuccessMessage('Link pinned successfully!');
+          setImportSuccess(true);
+          setTimeout(() => setImportSuccess(false), 3000);
+        }
+      } else if (selectedType === 'note') {
+        if (!importValue.trim()) {
+          alert('Please enter note content');
+          return;
+        }
+        
+        // For notes, we'll create a local resource since backend doesn't handle notes yet
+        const newResource = {
+          id: Date.now(),
+          type: 'note',
+          title: importValue.substring(0, 50) + (importValue.length > 50 ? '...' : ''),
+          content: importValue.trim(),
+          pinned: false,
+          uploaded_at: new Date().toISOString()
+        };
+        setResources(prev => [...prev, newResource]);
+        alert('Note resource added successfully!');
+        setImportSuccess(true);
+        setTimeout(() => setImportSuccess(false), 3000);
+      }
+      
+      // Close modal and reset
+      setShowImportModal(false);
+      setImportStep('select');
+      setSelectedType(null);
+      setImportValue('');
+      setImportFile(null);
+      setImportLinkTitle('');
+      setSelectedDocument(null);
+      setSelectedFolder(null);
+      
+    } catch (error) {
+      console.error('Error importing resource:', error);
+      alert('Error importing resource: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  const handleUnpinResource = async (resourceId, resourceType) => {
+    try {
+      const response = await api.delete(`/solostudyroom/delete/${resourceId}/?resource_type=${resourceType}`);
+      if (response.status === 200) {
+        setPinnedResources(prev => {
+          const newPinned = { ...prev };
+          if (resourceType === 'file') {
+            newPinned.file = newPinned.file.filter(f => f.id !== resourceId);
+          } else if (resourceType === 'link') {
+            newPinned.link = newPinned.link.filter(l => l.id !== resourceId);
+          } else if (resourceType === 'document') {
+            newPinned.document = newPinned.document.filter(d => d.id !== resourceId);
+          }
+          return newPinned;
+        });
+        setSuccessMessage(`Resource unpinned successfully!`);
+        setImportSuccess(true);
+        setTimeout(() => setImportSuccess(false), 3000);
+      }
+    } catch (error) {
+      console.error('Error unpinning resource:', error);
+      alert('Error unpinning resource: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  const handleResourceClick = async (resource, resourceType) => {
+    try {
+      setIsLoadingOverlay(true);
+      setOverlayType(resourceType);
+      
+      if (resourceType === 'document') {
+        // Fetch document content from documents module
+        const response = await api.get(`/documents/notes/${resource.folder_id}/${resource.id}/`);
+        if (response.status === 200) {
+          console.log('Document API response:', response.data);
+          setOverlayContent(response.data);
+          setShowOverlay(true);
+        }
+      } else if (resourceType === 'link') {
+        // Fetch link details from resources module
+        const response = await api.get(`/resources/link/${resource.id}/`);
+        if (response.status === 200) {
+          setOverlayContent(response.data);
+          setShowOverlay(true);
+        }
+      } else if (resourceType === 'file') {
+        // For files, we'll use the file_upload URL directly
+        setOverlayContent({
+          ...resource,
+          file_url: resource.file_upload || `/media/${resource.file_upload}`
+        });
+        setShowOverlay(true);
+      }
+    } catch (error) {
+      console.error('Error fetching resource content:', error);
+      alert('Error loading resource: ' + (error.response?.data?.message || error.message));
+    } finally {
+      setIsLoadingOverlay(false);
+    }
+  };
+
+  const closeOverlay = () => {
+    setShowOverlay(false);
+    setOverlayContent(null);
+    setOverlayType(null);
   };
 
     return (
@@ -256,6 +483,25 @@ const StudyRoom = () => {
       <div className="study-room-subtitle">
         Get started by choosing what study tool you'd like to work with today.
       </div>
+      
+      {/* Success Message */}
+      {importSuccess && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          background: '#10b981',
+          color: 'white',
+          padding: '12px 20px',
+          borderRadius: '8px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          zIndex: 3000,
+          animation: 'slideInRight 0.3s ease'
+        }}>
+          {successMessage}
+        </div>
+      )}
+      
       <div className="study-room-grid">
                 {tools.map((tool, index) => (
           <div key={index} className="study-room-card" onClick={() => navigate(tool.route)} style={{ cursor: 'pointer' }}>
@@ -286,29 +532,91 @@ const StudyRoom = () => {
           </button>
         </div>
         <div className="pinned-resources-grid">
-          {resources.length === 0 ? (
+          {isLoadingPinnedResources ? (
+            <div style={{ textAlign: 'center', padding: '20px 0', color: '#a0aec0' }}>
+              Loading pinned resources...
+            </div>
+          ) : pinnedResources.file.length === 0 && pinnedResources.link.length === 0 && pinnedResources.document.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '20px 0', color: '#a0aec0' }}>
               No pinned resources yet. Add some to keep them handy!
             </div>
           ) : (
-            resources.map(resource => (
-              <div key={resource.id} className={`pinned-resource-card${resource.pinned ? ' pinned' : ''}`}>
-                <div className="pinned-resource-title">
-                  <span style={{ fontSize: 20 }}>
-                    {resource.type === 'note' && <BookOpen color="#7c83fd" size={20} />}
-                    {resource.type === 'pdf' && <FileText color="#f56565" size={20} />}
-                    {resource.type === 'link' && <MessageCircle color="#4ecdc4" size={20} />}
-                  </span>
-                  {resource.title}
+            <>
+              {/* Display pinned files */}
+              {pinnedResources.file.map(file => (
+                <div key={`file-${file.id}`} className="pinned-resource-card pinned" onClick={() => handleResourceClick(file, 'file')}>
+                  <div className="pinned-resource-title">
+                    <span className="icon-span" style={{ fontSize: 28, color: '#3b82f6' }}>
+                      <FileText size={28} />
+                    </span>
+                    <span className="title-text" title={file.file_name || file.name || 'Untitled File'}>
+                      {file.file_name || file.name || 'Untitled File'}
+                    </span>
+                  </div>
+                  <div className="pinned-resource-actions">
+                    <button
+                      className="pinned-resource-pin-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleUnpinResource(file.id, 'file');
+                      }}
+                    >
+                      Unpin
+                    </button>
+                  </div>
                 </div>
-                <button
-                  className="pinned-resource-pin-btn"
-                  onClick={() => handlePinToggle(resource.id)}
-                >
-                  {resource.pinned ? 'Unpin' : 'Pin'}
-                </button>
-              </div>
-            ))
+              ))}
+              
+              {/* Display pinned links */}
+              {pinnedResources.link.map(link => (
+                <div key={`link-${link.id}`} className="pinned-resource-card pinned" onClick={() => handleResourceClick(link, 'link')}>
+                  <div className="pinned-resource-title">
+                    <span className="icon-span" style={{ fontSize: 28, color: '#10b981' }}>
+                      <MessageCircle size={28} />
+                    </span>
+                    <span className="title-text" title={link.title || 'Untitled Link'}>
+                      {link.title || 'Untitled Link'}
+                    </span>
+                  </div>
+                  <div className="pinned-resource-actions">
+                    <button
+                      className="pinned-resource-pin-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleUnpinResource(link.id, 'link');
+                      }}
+                    >
+                      Unpin
+                    </button>
+                  </div>
+                </div>
+              ))}
+              
+              {/* Display pinned documents */}
+              {pinnedResources.document.map(doc => (
+                <div key={`doc-${doc.id}`} className="pinned-resource-card pinned" onClick={() => handleResourceClick(doc, 'document')}>
+                  <div className="pinned-resource-title">
+                    <span className="icon-span" style={{ fontSize: 28, color: '#8b5cf6' }}>
+                      <BookOpen size={28} />
+                    </span>
+                    <span className="title-text" title={doc.title || 'Untitled Document'}>
+                      {doc.title || 'Untitled Document'}
+                    </span>
+                  </div>
+                  <div className="pinned-resource-actions">
+                    <button
+                      className="pinned-resource-pin-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleUnpinResource(doc.id, 'document');
+                      }}
+                    >
+                      Unpin
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </>
           )}
         </div>
                         </div>
@@ -339,7 +647,7 @@ const StudyRoom = () => {
                       style={{ minWidth: 90, minHeight: 70, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, fontSize: 15, borderColor: selectedType === rt.key ? '#7c83fd' : '#2d3748', background: selectedType === rt.key ? '#18181b' : 'transparent', fontWeight: 500, cursor: 'pointer' }}
                       onClick={() => { 
                         setSelectedType(rt.key); 
-                        if (rt.key === 'doc') {
+                        if (rt.key === 'document') {
                           fetchUserFolders();
                           setImportStep('folders');
                         } else {
@@ -352,13 +660,13 @@ const StudyRoom = () => {
                     </button>
                   ))}
                 </div>
-                <button className="btn-ghost" style={{ marginTop: 8 }} onClick={handleImportResource}>Cancel</button>
+                <button className="btn-ghost" style={{ marginTop: 8 }} onClick={() => setShowImportModal(false)}>Cancel</button>
               </>
             )}
             {importStep === 'input' && selectedType && (
               <>
-                <button className="btn-ghost" style={{ position: 'absolute', top: 18, right: 18, fontSize: 22 }} onClick={handleImportResource}>×</button>
-                <button className="btn-ghost" style={{ marginBottom: 18 }} onClick={() => { setImportStep('select'); setSelectedType(null); setImportValue(''); setImportFile(null); }}>← Back</button>
+                <button className="btn-ghost" style={{ position: 'absolute', top: 18, right: 18, fontSize: 22 }} onClick={() => setShowImportModal(false)}>×</button>
+                <button className="btn-ghost" style={{ marginBottom: 18 }} onClick={() => { setImportStep('select'); setSelectedType(null); setImportValue(''); setImportFile(null); setImportLinkTitle(''); }}>← Back</button>
                 <div style={{ marginBottom: 18 }}>
                   <strong style={{ fontSize: 16 }}>{resourceTypes.find(rt => rt.key === selectedType)?.label}</strong>
                 </div>
@@ -370,22 +678,46 @@ const StudyRoom = () => {
                     style={{ width: '100%', minHeight: 80, borderRadius: 8, border: '1px solid #2d3748', background: '#18181b', color: '#fff', padding: 12, marginBottom: 18 }}
                   />
                 )}
-                {(selectedType === 'pdf' || selectedType === 'doc') && (
-                  <input
-                    type="file"
-                    accept={selectedType === 'pdf' ? '.pdf' : '.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document'}
-                    onChange={e => setImportFile(e.target.files[0])}
-                    style={{ marginBottom: 18, color: '#fff' }}
-                  />
+                {(selectedType === 'pdf' || selectedType === 'textbook') && (
+                  <div>
+                    <input
+                      type="file"
+                      accept={selectedType === 'pdf' ? '.pdf' : '.pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document'}
+                      onChange={e => setImportFile(e.target.files[0])}
+                      style={{ marginBottom: 18, color: '#fff' }}
+                    />
+                    {importFile && (
+                      <div style={{ 
+                        fontSize: '12px', 
+                        color: '#a0aec0', 
+                        marginTop: '4px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px'
+                      }}>
+                        <FileText size={14} />
+                        {importFile.name} ({(importFile.size / 1024 / 1024).toFixed(2)} MB)
+                      </div>
+                    )}
+                  </div>
                 )}
                 {selectedType === 'link' && (
-                <input
-                    type="url"
-                    placeholder="Paste a link (https://...)"
-                    value={importValue}
-                    onChange={e => setImportValue(e.target.value)}
-                    style={{ width: '100%', borderRadius: 8, border: '1px solid #2d3748', background: '#18181b', color: '#fff', padding: 12, marginBottom: 18 }}
-                  />
+                  <div>
+                    <input
+                      type="text"
+                      placeholder="Enter link title (e.g., 'Neuroscience Basics')"
+                      value={importLinkTitle}
+                      onChange={e => setImportLinkTitle(e.target.value)}
+                      style={{ width: '100%', borderRadius: 8, border: '1px solid #2d3748', background: '#18181b', color: '#fff', padding: 12, marginBottom: 18 }}
+                    />
+                    <input
+                      type="url"
+                      placeholder="Paste a link (https://...)"
+                      value={importValue}
+                      onChange={e => setImportValue(e.target.value)}
+                      style={{ width: '100%', borderRadius: 8, border: '1px solid #2d3748', background: '#18181b', color: '#fff', padding: 12, marginBottom: 18 }}
+                    />
+                  </div>
                 )}
                 {selectedType === 'textbook' && (
                   <input
@@ -399,9 +731,9 @@ const StudyRoom = () => {
                 <button className="btn-ghost" style={{ marginTop: 8, width: '100%' }} onClick={handleImportResource}>Import</button>
               </>
             )}
-            {importStep === 'folders' && selectedType === 'doc' && (
+            {importStep === 'folders' && selectedType === 'document' && (
               <>
-                <button className="btn-ghost" style={{ position: 'absolute', top: 18, right: 18, fontSize: 22 }} onClick={handleImportResource}>×</button>
+                <button className="btn-ghost" style={{ position: 'absolute', top: 18, right: 18, fontSize: 22 }} onClick={() => setShowImportModal(false)}>×</button>
                 <button className="btn-ghost" style={{ marginBottom: 18 }} onClick={() => { setImportStep('select'); setSelectedType(null); setSelectedFolder(null); }}>← Back</button>
                 <div style={{ marginBottom: 18 }}>
                   <strong style={{ fontSize: 16 }}>Select a Folder</strong>
@@ -442,9 +774,9 @@ const StudyRoom = () => {
                 )}
               </>
             )}
-            {importStep === 'documents' && selectedType === 'doc' && (
+            {importStep === 'documents' && selectedType === 'document' && (
               <>
-                <button className="btn-ghost" style={{ position: 'absolute', top: 18, right: 18, fontSize: 22 }} onClick={handleImportResource}>×</button>
+                <button className="btn-ghost" style={{ position: 'absolute', top: 18, right: 18, fontSize: 22 }} onClick={() => setShowImportModal(false)}>×</button>
                 <button className="btn-ghost" style={{ marginBottom: 18 }} onClick={() => { setImportStep('folders'); setSelectedDocument(null); setSelectedFolder(null); }}>← Back</button>
                 <div style={{ marginBottom: 18 }}>
                   <strong style={{ fontSize: 16 }}>Select a Document from "{selectedFolder?.name}"</strong>
@@ -591,6 +923,104 @@ const StudyRoom = () => {
             </div>
         </div>
       )}
+      
+      {/* Resource Content Overlay */}
+      {showOverlay && (
+        <div className="resource-overlay" onClick={closeOverlay}>
+          <div className="overlay-content" onClick={(e) => e.stopPropagation()}>
+            <div className="overlay-header">
+              <h3>
+                {overlayType === 'document' && (overlayContent?.title || 'Document Notes')}
+                {overlayType === 'link' && 'Link Content'}
+                {overlayType === 'file' && 'File Viewer'}
+              </h3>
+              <button className="close-btn" onClick={closeOverlay}>×</button>
+            </div>
+            
+            {isLoadingOverlay ? (
+              <div className="loading-content">
+                <div className="spinner"></div>
+                <p>Loading content...</p>
+              </div>
+            ) : (
+              <div className="overlay-body">
+                {overlayType === 'document' && overlayContent && (
+                  <div className="document-content">
+                    <div className="notes-content">
+                      {console.log('Document overlay content:', overlayContent)}
+                      <div dangerouslySetInnerHTML={{ 
+                        __html: overlayContent.content || overlayContent.notes || overlayContent.text || 'No content available' 
+                      }} />
+                    </div>
+                    {overlayContent.tag && (
+                      <div className="document-tag">
+                        <span>Tag: {overlayContent.tag.title}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {overlayType === 'link' && overlayContent && (
+                  <div className="link-content">
+                    <h4>{overlayContent.title}</h4>
+                    <div className="link-url">
+                      <a href={overlayContent.link} target="_blank" rel="noopener noreferrer">
+                        {overlayContent.link}
+                      </a>
+                    </div>
+                    {overlayContent.link.includes('youtube.com') || overlayContent.link.includes('youtu.be') ? (
+                      <div className="video-embed">
+                        <iframe
+                          src={overlayContent.link.replace('watch?v=', 'embed/')}
+                          title={overlayContent.title}
+                          width="100%"
+                          height="400"
+                          frameBorder="0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                        ></iframe>
+                      </div>
+                    ) : (
+                      <div className="link-preview">
+                        <p>Click the link above to view the content</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {overlayType === 'file' && overlayContent && (
+                  <div className="file-content">
+                    <h4>{overlayContent.file_name || 'File'}</h4>
+                    <div className="file-viewer">
+                      {overlayContent.file_upload && overlayContent.file_upload.includes('.pdf') ? (
+                        <iframe
+                          src={overlayContent.file_upload}
+                          title={overlayContent.file_name}
+                          width="100%"
+                          height="600"
+                          style={{ border: 'none' }}
+                        ></iframe>
+                      ) : (
+                        <div className="file-download">
+                          <p>File: {overlayContent.file_name}</p>
+                          <a 
+                            href={overlayContent.file_upload} 
+                            download={overlayContent.file_name}
+                            className="download-btn"
+                          >
+                            Download File
+                          </a>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+      
         </div>
     );
 };

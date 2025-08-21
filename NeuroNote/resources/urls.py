@@ -5,5 +5,6 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('create/', views.ImportResource.as_view(), name='create-resource'),
-    path('link/', views.ImportResource.as_view(), name='get-link')
+    path('link/<int:id>/', views.ImportResource.as_view(), name='get-link'),
+    path('delete/<int:id>/', views.ImportResource.as_view(), name='delete-resource')
 ]

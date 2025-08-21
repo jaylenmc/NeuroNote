@@ -2,24 +2,27 @@ from django.db import models
 from documents.models import Document
 from authentication.models import AuthUser
 
-class Resource(models.Model):
-    class FileTypes(models.TextChoices):
-        EPUB = "epub", "epub"
-        MOBI = "mobi", "mobi"
-        AZW3 = "azw3", "azw3"
-        DOCX = "docx", "docx"
-        PDF = "pdf", "PDF"
+class ResourceTypes(models.TextChoices):
+        TEXTBOOK = "textbook", "Textbook"
+        FILE = "file", "File"
         LINK = "link", "Link"
 
-    class ResourceTypes(models.TextChoices):
-        TEXTBOOK = "textbook", "Textbook"
-        PDF = "pdf", "PDF"
-        LINK = "link", "Link"
-    
-    user = models.ForeignKey(AuthUser, on_delete=models.CASCADE)
-    resource_type = models.CharField(max_length=8)
+class LinkUpload(models.Model):
+    user = models.ForeignKey(AuthUser, on_delete=models.CASCADE, related_name="link_user")
+    link = models.URLField(max_length=255)
+    title = models.CharField(max_length=255)
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+
+    resource_type = models.CharField(default=ResourceTypes.LINK, max_length=8)
 
 class FileUpload(models.Model):
+    class FileTypes(models.TextChoices):
+        EPUB = "epub", "EPUB"
+        MOBI = "mobi", "MOBI"
+        AZW3 = "azw3", "AZW3"
+        DOCX = "docx", "DOCX"
+        PDF = "pdf", "PDF"
+
     def user_directory_path(instance, filename):
         return f"user_{instance.user.id}/{filename.split('.')[1]}/{filename}"
       
@@ -27,9 +30,7 @@ class FileUpload(models.Model):
     file_upload = models.FileField(upload_to=user_directory_path)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     file_name = models.CharField(max_length=255, default='Untitled')
-    resource = models.ForeignKey(Resource, on_delete=models.CASCADE, null=True, related_name="file_resource")
 
-class LinkUpload(models.Model):
-    link = models.URLField(max_length=255)
-    title = models.CharField(max_length=255)
-    resource = models.ForeignKey(Resource, on_delete=models.CASCADE, null=True, related_name="link_resource")
+    resource_type = models.CharField(choices=ResourceTypes.choices, max_length=8)
+    file_type = models.CharField(choices=FileTypes.choices, max_length=4)
+    

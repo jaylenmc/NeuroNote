@@ -1,7 +1,7 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Document, Tag
+from .models import Document
 from .serializers import DocumentInputSerializer, DocumentOutputSerializer
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
@@ -20,7 +20,7 @@ class DocumentView(APIView):
 
         documents = Document.objects.filter(folder__user=request.user, folder__id=folder_id)
         serializer = DocumentOutputSerializer(documents, many=True)
-        print(serializer.data)
+        print(f"Serializer data: {serializer.data}")
         return Response(serializer.data, status=status.HTTP_200_OK)
     
     def post(self, request):        
@@ -47,11 +47,3 @@ class DocumentView(APIView):
         if delete_count == 0:
             return Response({"Message": "Document doesn't exist"}, status=status.HTTP_404_NOT_FOUND)
         return Response({'Message': "Document successfully deleted"}, status=status.HTTP_200_OK)
-    
-@api_view(['DELETE'])
-@permission_classes([IsAuthenticated])
-def tag_delete(request, doc_id, tag_id):
-    delete_count, _ = Tag.objects.filter(document__folder__user=request.user, document=doc_id, id=tag_id).delete()
-    if delete_count == 0:
-        return Response({"Message": "Tag doesn't exist"}, status=status.HTTP_404_NOT_FOUND)
-    return Response({"Message": "Tag successfully deleted"}, status=status.HTTP_200_OK)
