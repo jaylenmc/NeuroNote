@@ -1,31 +1,29 @@
 🧠 NeuroNote
-A study platform built with Django REST Framework and designed for students. Unlike many study tools that focus mostly on theory, NeuroNote is built to emphasize practical, applied 
-learning. The goal is to help students, especially in engineering and technical majors to learn more effectively through active recall and spaced repetition rather than passive review 
-in order to gain a deeper understanding. Meant to bring a tad bit of competitiveness amoung friends to make study sessions a little more enjoyable.
+NeuroNote is a study platform built with Django REST Framework, designed for students. Unlike many tools that focus only on theory, NeuroNote emphasizes practical, applied learning. It uses active recall and spaced repetition to help students master concepts deeply—while adding a touch of competitiveness to make studying more engaging.
 
 🚀 Features 
-	-	User Authentication (Google OAuth2 login)
-	-	Notes, quizzes(AI gives explanations on correct and inccorect answers), flashcards(spaced repition based on forgetting curve using SM-2/SM-21 algorithms), File uploads, (Able to pin resources in study room for easy retriveval)
-	-	Achievements, mastery badges, flashcard/deck mastery
-	-	Level system
+	-	User Authentication: Google OAuth2 login
+	-	Study Tools: Notes, quizzes(AI gives explanations on correct and inccorect answers), flashcards(spaced repition based on forgetting curve using SM-2/SM-21 algorithms), File uploads
+ 	-	Pinned Resources: Save and quickly retrieve key files/links in a study room
+	-	Gamification: Achievements, mastery badges, flashcard/deck mastery, level system
 
 🛠️ Planned Features
- 	- 	Collaboration (quiz battles, notes/decks marketplace, group study sessions, leaderboards)
-  	- 	Mobile app
-   	- 	Automated study plan generator (generate flashcard schedules, problems sets, quizzes, and breaks to avoid burnout)
-	- 	Analytics/dashboard (weakness/strong areas, retention forecast, goal tracking)
- 	- 	Study mode personalization (Focus mode, application mode, cram mode, deep mastery mode)
+ 	- 	Collaboration: quiz battles, notes/decks marketplace, group study sessions, leaderboards
+  	- 	Mobile app: Using react native
+   	- 	Automated study plan generator: Generate flashcard schedules, problems sets, quizzes, and breaks to avoid burnout
+	- 	Analytics/dashboard: show weakness/strong areas, retention forecast, goal tracking
+ 	- 	Study mode personalization: Focus mode, application mode, cram mode, deep mastery mode
   	- 	Curriculum Inegration
 
  ⚡ Tech Stack
 	-	Backend: Django, Django REST Framework
-	-	Database: SQLite (dev), easily switchable to PostgreSQL
+	-	Database: SQLite (for development) and PostgreSQL (for production)
 	-	Auth: Google OAuth2
 	-	Frontend (planned): React, React Native
 
 🛠️ Setup Instructions
 1. Clone the repo
-  - git clone https://github.com/your-username/NeuroNote.git
+  - git clone https://github.com/jaylenmc/NeuroNote.git
   - cd NeuroNote
     
 2. Create & activate a virtual environment
@@ -44,14 +42,22 @@ Just generate them fresh:
     
 5. Create a superuser
 - python manage.py createsuperuser
+
+(Optional) Run The In Progress Frontend:
+(Basic UI runs, but not all features are complete)
+* After Cloning Repo *
+- cd react-project
+- cd frontend
+- npm install
   
 6. Run the server
-  - python manage.py runserver
-  - Now visit: http://127.0.0.1:8000/
+  - Backend: python3 manage.py runserver -> visit: http://127.0.0.1:8000/
+  - Frontend: npm run dev -> visit: http://localhost:5173/
 
 📝 Notes for Reviewers / Employers
   -	Migrations were reset for simplicity, so you won’t encounter historical conflicts when setting up locally.
   -	Codebase demonstrates:
+  -	Includes implementation of spaced repetition scheduling (SM-2/SM-21 algorithms)
   -	Clean API design with DRF
   -	Custom serializers & services (e.g. scheduling algorithm)
   -	Authentication flow with external providers
