@@ -36,7 +36,6 @@ NeuroNote is a study platform built with Django REST Framework, designed for stu
     
 4. Run migrations <br>
 ⚠️ Note: Migrations were reset to simplify setup. <br>
-Just generate them fresh: <br>
 - python manage.py makemigrations <br>
 - python manage.py migrate <br>
     
