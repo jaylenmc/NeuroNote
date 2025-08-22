@@ -1,22 +1,29 @@
 🧠 NeuroNote
-A study platform built with Django REST Framework and designed for engineering students. It supports notes, file uploads, spaced repetition scheduling, and Google OAuth2 login.
+A study platform built with Django REST Framework and designed for students. Unlike many study tools that focus mostly on theory, NeuroNote is built to emphasize practical, applied 
+learning. The goal is to help students, especially in engineering and technical majors to learn more effectively through active recall and spaced repetition rather than passive review 
+in order to gain a deeper understanding. Meant to bring a tad bit of competitiveness amoung friends to make study sessions a little more enjoyable.
 
-🚀 Features
-	•	User Authentication (Google OAuth2 login)
-	•	Notes & Documents (create, edit, delete, organize)
-	•	File Uploads (store & pin files to study rooms)
-	•	Spaced Repetition Scheduling (SM-2/SM-21 algorithms for flashcards)
-	•	API-first Backend (designed for a React Native frontend)
-	•	Test Coverage (unit tests for models, serializers, and views)
+🚀 Features 
+	-	User Authentication (Google OAuth2 login)
+	-	Notes, quizzes(AI gives explanations on correct and inccorect answers), flashcards(spaced repition based on forgetting curve using SM-2/SM-21 algorithms), File uploads, (Able to pin resources in study room for easy retriveval)
+	-	Achievements, mastery badges, flashcard/deck mastery
+	-	Level system
+
+🛠️ Planned Features
+ 	- 	Collaboration (quiz battles, notes/decks marketplace, group study sessions, leaderboards)
+  	- 	Mobile app
+   	- 	Automated study plan generator (generate flashcard schedules, problems sets, quizzes, and breaks to avoid burnout)
+	- 	Analytics/dashboard (weakness/strong areas, retention forecast, goal tracking)
+ 	- 	Study mode personalization (Focus mode, application mode, cram mode, deep mastery mode)
+  	- 	Curriculum Inegration
 
  ⚡ Tech Stack
-	•	Backend: Django, Django REST Framework
-	•	Database: SQLite (dev), easily switchable to PostgreSQL
-	•	Auth: Google OAuth2
-	•	Frontend (planned): React Native
+	-	Backend: Django, Django REST Framework
+	-	Database: SQLite (dev), easily switchable to PostgreSQL
+	-	Auth: Google OAuth2
+	-	Frontend (planned): React, React Native
 
 🛠️ Setup Instructions
-
 1. Clone the repo
   - git clone https://github.com/your-username/NeuroNote.git
   - cd NeuroNote
@@ -42,17 +49,10 @@ Just generate them fresh:
   - python manage.py runserver
   - Now visit: http://127.0.0.1:8000/
 
-📌 API Endpoints
-  •	POST /auth/google/ – Login with Google OAuth2
-  •	GET /api/notes/ – List notes
-  •	POST /api/files/ – Upload a file
-  •	POST /api/pinned/ – Pin a resource to a study room
-  •	GET /api/schedule/ – Get next review items (SM-21 algorithm)
-
 📝 Notes for Reviewers / Employers
-  •	Migrations were reset for simplicity, so you won’t encounter historical conflicts when setting up locally.
-  •	Codebase demonstrates:
-  •	Clean API design with DRF
-  •	Custom serializers & services (e.g. scheduling algorithm)
-  •	Authentication flow with external providers
-  •	Unit tests for critical paths
+  -	Migrations were reset for simplicity, so you won’t encounter historical conflicts when setting up locally.
+  -	Codebase demonstrates:
+  -	Clean API design with DRF
+  -	Custom serializers & services (e.g. scheduling algorithm)
+  -	Authentication flow with external providers
+  -	Unit tests for critical paths
