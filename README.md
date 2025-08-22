@@ -2,10 +2,10 @@
 NeuroNote is a study platform built with Django REST Framework, designed for students. Unlike many tools that focus only on theory, NeuroNote emphasizes practical, applied learning. It uses active recall and spaced repetition to help students master concepts deeply—while adding a touch of competitiveness to make studying more engaging.
 
 🚀 Features <br>
-	-	User Authentication: Google OAuth2 login <br>
-	-	Study Tools: Notes, File uploads, quizzes(AI gives explanations on correct and inccorect answers), flashcards(spaced repition based on forgetting curve using SM-2/SM-21 algorithms) <br>
- 	-	Pinned Resources: Save and quickly retrieve key files/links in a study room <br>
-	-	Gamification: Achievements, mastery badges, flashcard/deck mastery, level system <br>
+	+	User Authentication: Google OAuth2 login <br>
+	+	Study Tools: Notes, File uploads, quizzes(AI gives explanations on correct and inccorect answers), flashcards(spaced repition based on forgetting curve using SM-2/SM-21 algorithms) <br>
+ 	+	Pinned Resources: Save and quickly retrieve key files/links in a study room <br>
+	+	Gamification: Achievements, mastery badges, flashcard/deck mastery, level system <br>
 
 🛠️ Planned Features
  	- 	Collaboration: quiz battles, notes/decks marketplace, group study sessions, leaderboards
